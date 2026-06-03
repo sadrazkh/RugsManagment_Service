@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="fa"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>داشبورد - سیستم‌های فرش آریا</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;900&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Vazirmatn:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed-variant": "#8a1a1a",
+                        "surface-container": "#efeeea",
+                        "surface-bright": "#fbf9f5",
+                        "tertiary-fixed-dim": "#bbc7db",
+                        "secondary-fixed-dim": "#e9c176",
+                        "inverse-primary": "#ffb3ac",
+                        "on-secondary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "on-secondary-fixed-variant": "#5d4201",
+                        "background": "#fbf9f5",
+                        "surface-container-low": "#f5f3ef",
+                        "tertiary-container": "#3d4959",
+                        "on-background": "#1b1c1a",
+                        "primary-fixed-dim": "#ffb3ac",
+                        "surface-variant": "#e4e2de",
+                        "tertiary": "#273342",
+                        "inverse-surface": "#30312e",
+                        "primary": "#6b0008",
+                        "on-surface-variant": "#58413f",
+                        "on-surface": "#1b1c1a",
+                        "primary-container": "#8c1b1b",
+                        "error-container": "#ffdad6",
+                        "error": "#ba1a1a",
+                        "on-secondary-fixed": "#261900",
+                        "on-secondary-container": "#785a1a",
+                        "surface-container-high": "#eae8e4",
+                        "primary-fixed": "#ffdad6",
+                        "on-primary-container": "#ff9c93",
+                        "on-tertiary-fixed-variant": "#3c4858",
+                        "surface": "#fbf9f5",
+                        "surface-container-highest": "#e4e2de",
+                        "secondary": "#775a19",
+                        "on-tertiary-fixed": "#101c2b",
+                        "secondary-container": "#fed488",
+                        "outline-variant": "#e0bfbc",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-on-surface": "#f2f0ed",
+                        "secondary-fixed": "#ffdea5",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-container": "#acb8cb",
+                        "outline": "#8c716e",
+                        "on-tertiary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "surface-tint": "#ac332f",
+                        "tertiary-fixed": "#d7e3f8",
+                        "on-primary-fixed": "#410003",
+                        "surface-dim": "#dbdad6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "xl": "64px",
+                        "gutter": "24px",
+                        "container-max": "1440px",
+                        "lg": "40px",
+                        "sm": "16px",
+                        "md": "24px",
+                        "xs": "8px",
+                        "base": "4px"
+                    },
+                    "fontFamily": {
+                        "title-md": ["Vazirmatn", "beVietnamPro"],
+                        "display-lg": ["Vazirmatn", "beVietnamPro"],
+                        "headline-lg-mobile": ["Vazirmatn", "beVietnamPro"],
+                        "headline-lg": ["Vazirmatn", "beVietnamPro"],
+                        "label-sm": ["Vazirmatn", "jetbrainsMono"],
+                        "body-lg": ["Vazirmatn", "ibmPlexSans"],
+                        "body-md": ["Vazirmatn", "ibmPlexSans"]
+                    },
+                    "fontSize": {
+                        "title-md": ["20px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined[data-weight="fill"] {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        /* Subtle texture for cards */
+        .card-texture {
+            background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23e0d7cd' fill-opacity='0.1' fill-rule='evenodd'%3E%3Ccircle cx='3' cy='3' r='1'/%3E%3Ccircle cx='13' cy='13' r='1'/%3E%3C/g%3E%3C/svg%3E");
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-lg min-h-screen flex flex-col md:flex-row antialiased">
+<!-- SideNavBar (Desktop) -->
+<nav class="hidden lg:flex flex-col h-full py-lg fixed right-0 top-0 w-[280px] bg-surface-container-lowest border-l border-outline-variant z-40">
+<div class="px-md mb-8">
+<h1 class="font-title-md text-title-md font-black text-primary tracking-tight">پورتال مدیریت</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">مجموعه میراث</p>
+</div>
+<div class="flex-1 flex flex-col gap-2 px-sm">
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container text-on-secondary-container rounded-full mx-2 font-title-md text-title-md" href="#">
+<span class="material-symbols-outlined" data-weight="fill">dashboard</span>
+                داشبورد
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest rounded-full mx-2 transition-all font-title-md text-title-md" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+                موجودی
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest rounded-full mx-2 transition-all font-title-md text-title-md" href="#">
+<span class="material-symbols-outlined">account_tree</span>
+                فرآیندها
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest rounded-full mx-2 transition-all font-title-md text-title-md" href="#">
+<span class="material-symbols-outlined">analytics</span>
+                گزارش‌ها
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest rounded-full mx-2 transition-all font-title-md text-title-md" href="#">
+<span class="material-symbols-outlined">settings</span>
+                تنظیمات
+            </a>
+</div>
+<div class="px-md mb-6">
+<button class="w-full bg-primary text-on-primary py-3 px-4 rounded-full font-title-md text-title-md hover:bg-primary-container transition-colors shadow-sm flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">add</span>
+                ثبت فرش جدید
+            </button>
+</div>
+<div class="mt-auto px-sm flex flex-col gap-2">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest rounded-full mx-2 transition-all font-title-md text-title-md" href="#">
+<span class="material-symbols-outlined">help</span>
+                مرکز راهنما
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest rounded-full mx-2 transition-all font-title-md text-title-md" href="#">
+<span class="material-symbols-outlined">logout</span>
+                خروج
+            </a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 lg:mr-[280px] flex flex-col min-h-screen">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center w-full px-md h-16 sticky top-0 z-50 bg-surface-bright border-b border-outline-variant">
+<!-- Mobile Menu Button & Logo -->
+<div class="flex items-center gap-4 lg:hidden">
+<button class="text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full transition-colors duration-200">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<span class="text-title-md font-title-md font-bold text-primary">سیستم‌های فرش آریا</span>
+</div>
+<div class="hidden lg:block">
+<span class="text-title-md font-title-md font-bold text-primary">سیستم‌های فرش آریا</span>
+</div>
+<!-- Trailing Actions -->
+<div class="flex items-center gap-2">
+<button class="text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full transition-colors duration-200 flex items-center gap-1 font-label-sm text-label-sm group relative" title="تغییر زبان">
+<span class="material-symbols-outlined">translate</span>
+<span class="hidden md:inline">FA</span>
+</button>
+<button class="text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full transition-colors duration-200">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full transition-colors duration-200">
+<span class="material-symbols-outlined" data-weight="fill">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Dashboard Content -->
+<div class="p-4 md:p-gutter flex-1 space-y-6">
+<!-- Welcome & Quick Action -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+<div>
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface mb-1">داشبورد</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">نمای کلی سیستم مدیریت فرش شما</p>
+</div>
+<button class="bg-primary text-on-primary px-6 py-3 rounded-lg font-title-md text-title-md hover:bg-primary-container transition-colors shadow-sm flex items-center gap-2 w-full md:w-auto justify-center">
+<span class="material-symbols-outlined">qr_code_scanner</span>
+<span>ثبت سریع</span>
+</button>
+</div>
+<!-- Stats Grid (Bento Style) -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-gutter">
+<!-- Stat Card 1 -->
+<div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl shadow-[0_4px_20px_rgba(26,26,26,0.02)] hover:shadow-[0_4px_20px_rgba(26,26,26,0.05)] transition-shadow card-texture relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-24 h-24 bg-surface-container-highest rounded-br-full -ml-4 -mt-4 opacity-50"></div>
+<div class="flex items-center gap-4 mb-4 relative z-10">
+<div class="p-3 bg-secondary-container text-on-secondary-container rounded-lg">
+<span class="material-symbols-outlined">inventory_2</span>
+</div>
+<h3 class="font-title-md text-title-md text-on-surface">کل فرش‌ها</h3>
+</div>
+<div class="relative z-10">
+<span class="font-display-lg text-display-lg text-primary block">۱,۲۴۸</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant mt-2 flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-secondary">trending_up</span>
+<span>+۱۲ این هفته</span>
+</span>
+</div>
+</div>
+<!-- Stat Card 2 -->
+<div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl shadow-[0_4px_20px_rgba(26,26,26,0.02)] hover:shadow-[0_4px_20px_rgba(26,26,26,0.05)] transition-shadow card-texture relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-24 h-24 bg-surface-container-highest rounded-br-full -ml-4 -mt-4 opacity-50"></div>
+<div class="flex items-center gap-4 mb-4 relative z-10">
+<div class="p-3 bg-surface-variant text-on-surface rounded-lg">
+<span class="material-symbols-outlined">water_drop</span>
+</div>
+<h3 class="font-title-md text-title-md text-on-surface">در حال شستشو</h3>
+</div>
+<div class="relative z-10">
+<span class="font-display-lg text-display-lg text-on-surface block">۸۴</span>
+<div class="w-full bg-surface-variant h-1 mt-4 rounded-full overflow-hidden flex justify-end">
+<div class="bg-secondary h-full w-[45%]"></div>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant mt-2 block">۴۵٪ ظرفیت تکمیل شده</span>
+</div>
+</div>
+<!-- Stat Card 3 -->
+<div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl shadow-[0_4px_20px_rgba(26,26,26,0.02)] hover:shadow-[0_4px_20px_rgba(26,26,26,0.05)] transition-shadow card-texture relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-24 h-24 bg-surface-container-highest rounded-br-full -ml-4 -mt-4 opacity-50"></div>
+<div class="flex items-center gap-4 mb-4 relative z-10">
+<div class="p-3 bg-tertiary-container text-on-tertiary-container rounded-lg">
+<span class="material-symbols-outlined">local_shipping</span>
+</div>
+<h3 class="font-title-md text-title-md text-on-surface">آماده ارسال</h3>
+</div>
+<div class="relative z-10">
+<span class="font-display-lg text-display-lg text-on-surface block">۳۲</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant mt-2 flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-tertiary-container">schedule</span>
+<span>۸ مورد تاخیر دارند</span>
+</span>
+</div>
+</div>
+</div>
+<!-- Lower Section Grid -->
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+<!-- Recent Activities (Spans 2 columns on XL) -->
+<div class="xl:col-span-2 bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-[0_4px_20px_rgba(26,26,26,0.02)]">
+<div class="px-6 py-4 border-b border-surface-variant flex justify-between items-center bg-surface-bright">
+<h3 class="font-title-md text-title-md text-on-surface font-semibold">فعالیت‌های اخیر</h3>
+<button class="text-secondary hover:text-secondary-fixed font-label-sm text-label-sm uppercase tracking-wider transition-colors">مشاهده همه</button>
+</div>
+<div class="divide-y divide-surface-variant">
+<!-- Activity Item 1 -->
+<div class="p-4 hover:bg-surface-bright transition-colors flex items-start gap-4">
+<div class="p-2 bg-secondary-container text-on-secondary-container rounded-full mt-1">
+<span class="material-symbols-outlined text-[20px]">swap_horiz</span>
+</div>
+<div class="flex-1">
+<p class="font-body-md text-body-md text-on-surface">
+<span class="font-medium">فرش #۴۰۲</span> به <span class="font-medium text-secondary">مرحله پرداخت</span> منتقل شد
+</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-1">امروز، ۱۰:۴۵ صبح • توسط علی ر.</p>
+</div>
+<div class="hidden sm:block">
+<img alt="Carpet detail" class="w-12 h-12 rounded object-cover border border-surface-variant inner-shadow" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCQyir3qRPFMLvRuV7njNSL9UCzliGK_kBjK9oZoWely4JeKMPDKAB4dtDWrVB5ZnQjitLMrDZVzsfdEBjlQyA28j8cno6bb69VeSBX4EX6KmBvU_o8TPQg1ijIhRV1r1XXzhWKNeRwf-oT-Y0BIajByv8krnGlcNFyCnF0fYwUr4ZoEYdbKRI93i7pcRydj5UIKidewzPzyE85_bZCI8FAkeBZ7guhjj8pXpdJvcrQozFt8fS0XJ9UC6xCZ1g1cOjQ5KXDtIIWqss"/>
+</div>
+</div>
+<!-- Activity Item 2 -->
+<div class="p-4 hover:bg-surface-bright transition-colors flex items-start gap-4">
+<div class="p-2 bg-primary text-on-primary rounded-full mt-1">
+<span class="material-symbols-outlined text-[20px]">add</span>
+</div>
+<div class="flex-1">
+<p class="font-body-md text-body-md text-on-surface">
+                                    ثبت جدید: <span class="font-medium text-primary">ترکیب ابریشم تبریز (SKU-TBZ-89)</span>
+</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-1">امروز، ۰۹:۱۲ صبح • توسط سیستم</p>
+</div>
+</div>
+<!-- Activity Item 3 -->
+<div class="p-4 hover:bg-surface-bright transition-colors flex items-start gap-4">
+<div class="p-2 bg-surface-variant text-on-surface-variant rounded-full mt-1">
+<span class="material-symbols-outlined text-[20px]">check_circle</span>
+</div>
+<div class="flex-1">
+<p class="font-body-md text-body-md text-on-surface">
+بازرسی کیفیت <span class="font-medium">فرش #۳۹۸</span> با موفقیت انجام شد.
+                                </p>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-1">دیروز، ۱۶:۳۰ عصر • توسط بازرس م.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Priority Actions / Alerts -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-[0_4px_20px_rgba(26,26,26,0.02)] flex flex-col">
+<div class="px-6 py-4 border-b border-surface-variant bg-surface-bright">
+<h3 class="font-title-md text-title-md text-on-surface font-semibold">اقدامات نیازمند توجه</h3>
+</div>
+<div class="p-6 flex-1 flex flex-col gap-4 bg-gradient-to-b from-surface-bright to-surface-container-lowest">
+<div class="border border-outline-variant rounded-lg p-4 bg-surface flex gap-3 items-start border-r-4 border-r-secondary">
+<span class="material-symbols-outlined text-secondary mt-0.5">warning</span>
+<div>
+<h4 class="font-title-md text-title-md text-on-surface text-[16px] leading-snug">بررسی برآورد مرمت</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1 mb-2">فرش #۳۱۰ برای مرمت شیرازه نیاز به تایید دارد.</p>
+<button class="text-secondary hover:text-secondary-fixed font-label-sm text-label-sm uppercase tracking-wider font-medium">اکنون بررسی کنید</button>
+</div>
+</div>
+<div class="border border-outline-variant rounded-lg p-4 bg-surface flex gap-3 items-start">
+<span class="material-symbols-outlined text-on-surface-variant mt-0.5">inventory</span>
+<div>
+<h4 class="font-title-md text-title-md text-on-surface text-[16px] leading-snug">کمبود لوازم بسته‌بندی</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">لوله‌های حمل و نقل مقاوم رو به اتمام است (۵ عدد باقی مانده).</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

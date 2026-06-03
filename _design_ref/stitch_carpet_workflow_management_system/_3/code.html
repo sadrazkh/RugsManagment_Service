@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+
+<html class="light" dir="rtl" lang="fa"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Aria Rug System - Inventory</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@500;600;700&amp;family=IBM+Plex+Sans:wght@400&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "primary-container": "#8c1b1b",
+                      "surface-container-high": "#eae8e4",
+                      "on-secondary-container": "#785a1a",
+                      "outline": "#8c716e",
+                      "surface-variant": "#e4e2de",
+                      "on-error-container": "#93000a",
+                      "on-primary-container": "#ff9c93",
+                      "on-secondary-fixed-variant": "#5d4201",
+                      "surface-bright": "#fbf9f5",
+                      "secondary-fixed": "#ffdea5",
+                      "inverse-surface": "#30312e",
+                      "secondary": "#775a19",
+                      "surface-container-highest": "#e4e2de",
+                      "tertiary": "#273342",
+                      "on-secondary": "#ffffff",
+                      "on-primary-fixed-variant": "#8a1a1a",
+                      "error": "#ba1a1a",
+                      "on-tertiary-container": "#acb8cb",
+                      "on-background": "#1b1c1a",
+                      "surface-dim": "#dbdad6",
+                      "on-tertiary-fixed": "#101c2b",
+                      "on-error": "#ffffff",
+                      "surface-tint": "#ac332f",
+                      "inverse-on-surface": "#f2f0ed",
+                      "surface-container": "#efeeea",
+                      "surface": "#fbf9f5",
+                      "outline-variant": "#e0bfbc",
+                      "background": "#fbf9f5",
+                      "on-secondary-fixed": "#261900",
+                      "tertiary-fixed": "#d7e3f8",
+                      "surface-container-low": "#f5f3ef",
+                      "secondary-container": "#fed488",
+                      "on-tertiary": "#ffffff",
+                      "surface-container-lowest": "#ffffff",
+                      "on-primary": "#ffffff",
+                      "tertiary-fixed-dim": "#bbc7db",
+                      "tertiary-container": "#3d4959",
+                      "error-container": "#ffdad6",
+                      "on-surface-variant": "#58413f",
+                      "primary": "#6b0008",
+                      "secondary-fixed-dim": "#e9c176",
+                      "primary-fixed": "#ffdad6",
+                      "primary-fixed-dim": "#ffb3ac",
+                      "inverse-primary": "#ffb3ac",
+                      "on-surface": "#1b1c1a",
+                      "on-tertiary-fixed-variant": "#3c4858",
+                      "on-primary-fixed": "#410003"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "xs": "8px",
+                      "lg": "40px",
+                      "container-max": "1440px",
+                      "base": "4px",
+                      "md": "24px",
+                      "sm": "16px",
+                      "gutter": "24px",
+                      "xl": "64px"
+              },
+              "fontFamily": {
+                      "title-md": [
+                              "beVietnamPro", "sans-serif"
+                      ],
+                      "body-lg": [
+                              "ibmPlexSans", "sans-serif"
+                      ],
+                      "label-sm": [
+                              "jetbrainsMono", "monospace"
+                      ],
+                      "headline-lg-mobile": [
+                              "beVietnamPro", "sans-serif"
+                      ],
+                      "display-lg": [
+                              "beVietnamPro", "sans-serif"
+                      ],
+                      "headline-lg": [
+                              "beVietnamPro", "sans-serif"
+                      ],
+                      "body-md": [
+                              "ibmPlexSans", "sans-serif"
+                      ]
+              },
+              "fontSize": {
+                      "title-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        body { font-family: 'IBM Plex Sans', sans-serif; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface antialiased min-h-screen flex flex-col pt-[64px] pb-[80px]">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface border-b border-outline-variant flex justify-between items-center px-sm h-16">
+<!-- RTL layout: Leading icon is on the right visually -->
+<button aria-label="Language" class="p-2 text-on-surface-variant hover:bg-surface-container-low transition-colors active:scale-95 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">language</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary truncate px-2 text-center flex-1">
+            Aria Rug Systems
+        </h1>
+<button aria-label="Notifications" class="p-2 text-on-surface-variant hover:bg-surface-container-low transition-colors active:scale-95 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">notifications</span>
+</button>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 flex flex-col w-full px-sm py-sm gap-md overflow-y-auto">
+<!-- Search and Filters Section -->
+<section class="flex flex-col gap-sm">
+<!-- Title -->
+<h2 class="font-title-md text-title-md text-on-surface">موجودی انبار</h2>
+<!-- Search Bar -->
+<div class="relative w-full">
+<div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+<span class="material-symbols-outlined text-outline">search</span>
+</div>
+<input class="block w-full bg-surface-container-highest border border-outline-variant rounded-xl py-3 pr-10 pl-4 font-body-md text-body-md text-on-surface placeholder:text-outline focus:ring-2 focus:ring-primary focus:border-primary transition-all" placeholder="جستجوی فرش، شناسه یا طرح..." type="text"/>
+</div>
+<!-- Filter Chips (Horizontal Scroll) -->
+<div class="flex overflow-x-auto hide-scrollbar gap-xs py-1">
+<button class="flex-shrink-0 bg-primary-container text-on-primary-container font-label-sm text-label-sm px-4 py-2 rounded-full border border-primary-container transition-colors">
+                    همه فرش‌ها
+                </button>
+<button class="flex-shrink-0 bg-surface-variant text-on-surface-variant font-label-sm text-label-sm px-4 py-2 rounded-full border border-outline-variant hover:bg-surface-container-high transition-colors">
+                    موجود در انبار
+                </button>
+<button class="flex-shrink-0 bg-surface-variant text-on-surface-variant font-label-sm text-label-sm px-4 py-2 rounded-full border border-outline-variant hover:bg-surface-container-high transition-colors">
+                    دستباف تبریز
+                </button>
+<button class="flex-shrink-0 bg-surface-variant text-on-surface-variant font-label-sm text-label-sm px-4 py-2 rounded-full border border-outline-variant hover:bg-surface-container-high transition-colors">
+                    ابریشم خالص
+                </button>
+<button class="flex-shrink-0 bg-surface-variant text-on-surface-variant font-label-sm text-label-sm px-4 py-2 rounded-full border border-outline-variant hover:bg-surface-container-high transition-colors">
+                    نیازمند مرمت
+                </button>
+</div>
+<!-- Context Bar -->
+<div class="flex justify-between items-center text-outline font-label-sm text-label-sm mt-1">
+<span>۴۵۸ مورد یافت شد</span>
+<button class="flex items-center gap-1 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[16px]">sort</span>
+                    مرتب‌سازی
+                </button>
+</div>
+</section>
+<!-- Inventory List (High Density Cards) -->
+<section class="flex flex-col gap-xs">
+<!-- Item 1 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-xs flex gap-sm items-center shadow-[0_2px_8px_rgba(26,26,26,0.04)] active:scale-[0.99] transition-transform">
+<!-- Thumbnail -->
+<div class="w-20 h-20 flex-shrink-0 rounded-md overflow-hidden border border-surface-container-high relative">
+<img alt="تبریز طرح ماهی" class="w-full h-full object-cover" data-alt="A close-up, high-resolution shot of a luxurious, intricately woven Persian rug, specifically a Tabriz Mahi pattern. The dominant colors are deep royal reds, soft ivory whites, and rich heritage golds, illuminated by soft, natural, museum-quality lighting. The texture of the fine silk and wool knots is clearly visible, conveying a sense of centuries-old artisanal tradition and high value." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD1IrVg4VmOhXNk82-6kr6pqbtOkkttOM2ROvydgMpB-Xu302R_hxCC9WVZiFbTkQYIIIDK0ppm57aojrdiGdGSnv7B_pxzYh8is7WXpTcjmznhRAENcZMKWTiC7ew4FsmMD5U18nxcf0IP6eacAMx9Z815WOeatG60LMwnpYml22JrX_tPL95yW-aEyN82JTLpda5PfpbRDUbzucKIik_-VX__siQk5mfm-eLxIZPsZPXzOmzY7yo0r5_-HMCHXkchdA1BWpaggTY"/>
+</div>
+<!-- Details -->
+<div class="flex-1 flex flex-col justify-between h-full py-1">
+<div class="flex justify-between items-start">
+<h3 class="font-title-md text-[16px] leading-tight text-on-surface font-semibold line-clamp-1">تبریز دستباف طرح ماهی</h3>
+<div class="bg-secondary-container/30 text-secondary border border-secondary/20 font-label-sm text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[12px]">check_circle</span>
+                            موجود
+                        </div>
+</div>
+<div class="font-label-sm text-outline mt-1 font-mono tracking-wider">SKU-8492-TBZ</div>
+<div class="flex justify-between items-end mt-auto pt-1">
+<span class="font-body-md text-on-surface-variant text-sm text-[13px]">۳ × ۴ متر • پشم و ابریشم</span>
+<span class="material-symbols-outlined text-outline text-[18px]">more_vert</span>
+</div>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-xs flex gap-sm items-center shadow-[0_2px_8px_rgba(26,26,26,0.04)] active:scale-[0.99] transition-transform">
+<div class="w-20 h-20 flex-shrink-0 rounded-md overflow-hidden border border-surface-container-high relative">
+<img alt="اصفهان لچک ترنج" class="w-full h-full object-cover" data-alt="A stunningly detailed top-down view of an Isfahan Lachak Toranj carpet. The intricate central medallion is surrounded by complex floral motifs woven in deep crimson, midnight blue, and bright ivory. The lighting is pristine and even, highlighting the meticulous digital craftsmanship aesthetic. The image exudes luxury, order, and high-contrast materiality." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAiR4dcj6f3npUASaaaw9pB01Dnj_P2KedC_sBWfac3Ao1aDQP2uA6lH-sap8hqiANTXZdVnT9DfP9qUFRA3QDPevABc5ywdZ3O06SiqyDwsS6cRS87B71T7TK9GwPIhtPO00UITzgfhJ3cMfDG5Nv6GyGjANzImJ2WC6app1RlnwUL6NJM6JeZPv1FiVEYWhlRiIo3MudsXEW_2l4bWoBkB-OQrHGZncO2F2fIz10tEy772ItJdiu0Aag38LhwZNGJk1LTsS8sHeY"/>
+</div>
+<div class="flex-1 flex flex-col justify-between h-full py-1">
+<div class="flex justify-between items-start">
+<h3 class="font-title-md text-[16px] leading-tight text-on-surface font-semibold line-clamp-1">اصفهان لچک ترنج اعلا</h3>
+<div class="bg-surface-variant text-on-surface-variant border border-outline-variant font-label-sm text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[12px]">local_shipping</span>
+                            در حال ارسال
+                        </div>
+</div>
+<div class="font-label-sm text-outline mt-1 font-mono tracking-wider">SKU-1055-ISF</div>
+<div class="flex justify-between items-end mt-auto pt-1">
+<span class="font-body-md text-on-surface-variant text-sm text-[13px]">۲.۵ × ۳.۵ متر • ابریشم خالص</span>
+<span class="material-symbols-outlined text-outline text-[18px]">more_vert</span>
+</div>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-xs flex gap-sm items-center shadow-[0_2px_8px_rgba(26,26,26,0.04)] active:scale-[0.99] transition-transform opacity-75">
+<div class="w-20 h-20 flex-shrink-0 rounded-md overflow-hidden border border-surface-container-high relative">
+<div class="absolute inset-0 bg-surface-dim/50 z-10 flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant text-[24px]">build</span>
+</div>
+<img alt="قالیچه قم" class="w-full h-full object-cover" data-alt="A focused image of an antique Qum silk rug undergoing restoration. The colors are slightly faded but rich, featuring muted corals, earthy browns, and warm ivory tones. The lighting is focused, casting soft shadows that emphasize the texture and the artisanal heritage. The composition is structured and corporate yet organic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDeWWpqafh0CPBl11mMHDcTr2XH3CZuRaNfwr6aAGc47qTxyA1or6CfsMGDYIcMzz5K_YgFiGwA0e40hLArg9I3vp_p8BNnLyc6WNkzPBVSLxGNQ_yqPycj91HJp0Rz7jxkSEFFIKJr4zBdBlJ1ZrlenAbgAu6Rct-q-6wFVg_Ed0dsh_oNVlwoE4Z-oc_aTWn6P8jy7vXy2hDB-vQvSMFdETbqB9uylDG1jgIFt-SuROkldGqe2WCKsJ7pbKbSnmuDKaecqWkYGA4"/>
+</div>
+<div class="flex-1 flex flex-col justify-between h-full py-1">
+<div class="flex justify-between items-start">
+<h3 class="font-title-md text-[16px] leading-tight text-on-surface font-semibold line-clamp-1">قالیچه ابریشم قم عتیقه</h3>
+<div class="bg-error-container/40 text-error border border-error/30 font-label-sm text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[12px]">healing</span>
+                            مرمت
+                        </div>
+</div>
+<div class="font-label-sm text-outline mt-1 font-mono tracking-wider">SKU-0931-QUM</div>
+<div class="flex justify-between items-end mt-auto pt-1">
+<span class="font-body-md text-on-surface-variant text-sm text-[13px]">۱.۵ × ۲ متر • ابریشم</span>
+<span class="material-symbols-outlined text-outline text-[18px]">more_vert</span>
+</div>
+</div>
+</div>
+<!-- Item 4 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-xs flex gap-sm items-center shadow-[0_2px_8px_rgba(26,26,26,0.04)] active:scale-[0.99] transition-transform">
+<div class="w-20 h-20 flex-shrink-0 rounded-md overflow-hidden border border-surface-container-high relative">
+<img alt="کاشان طرح افشان" class="w-full h-full object-cover" data-alt="A vibrant, crisp photograph of a Kashan carpet featuring an intricate Afshan pattern. The color palette revolves around a deep, saturated primary red, balanced by crisp ivory borders and navy blue botanical motifs. The lighting is modern, clean, and bright, fitting a high-end digital inventory system while respecting the artisanal tradition." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAWUp5x2r-yvSK9zlKZJscK2KpPssn2DIvsuB1_4Um-r4QQVkEwa20DYtohgu_pcFY-gA4Og1ZqQEgKNcJjPjwLNxDB2xlRS5ZpPBcy8V1LDIW-cCsZbdfVpfbnAuYrKegxIeYLW1hYKK-aqBptPMBLyAjJhT0slUCS2pylOnlKdr1PQ0akI4-Bm9fesTBr54V9kKhuKjULqx7tNDUtvqlVClPG4IJ7DRiMy_zN0LB-BVlwWx6Qn0M4WvrYAUx-Wk2KhM7B4f13K8g"/>
+</div>
+<div class="flex-1 flex flex-col justify-between h-full py-1">
+<div class="flex justify-between items-start">
+<h3 class="font-title-md text-[16px] leading-tight text-on-surface font-semibold line-clamp-1">کاشان دستباف طرح افشان</h3>
+<div class="bg-secondary-container/30 text-secondary border border-secondary/20 font-label-sm text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[12px]">check_circle</span>
+                            موجود
+                        </div>
+</div>
+<div class="font-label-sm text-outline mt-1 font-mono tracking-wider">SKU-3321-KSH</div>
+<div class="flex justify-between items-end mt-auto pt-1">
+<span class="font-body-md text-on-surface-variant text-sm text-[13px]">۳ × ۴ متر • کرک و ابریشم</span>
+<span class="material-symbols-outlined text-outline text-[18px]">more_vert</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Loading Indicator / Padding at bottom -->
+<div class="w-full flex justify-center py-sm">
+<span class="material-symbols-outlined text-outline animate-spin">progress_activity</span>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-xs py-base bg-surface border-t border-outline-variant rounded-t-xl shadow-md h-[80px]">
+<!-- Tab 1: Dashboard (Inactive) -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant w-16 h-full hover:bg-surface-variant transition-colors rounded-lg active:scale-90">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">dashboard</span>
+<span class="font-label-sm text-label-sm tracking-normal">Dashboard</span>
+</button>
+<!-- Tab 2: Inventory (Active) - Mapped semantically to this screen -->
+<button class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1.5 w-auto min-w-[72px] h-auto hover:bg-surface-variant transition-colors active:scale-90 shadow-[0_2px_10px_rgba(140,27,27,0.15)]">
+<span class="material-symbols-outlined mb-0.5" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+<span class="font-label-sm text-label-sm tracking-normal font-semibold">Inventory</span>
+</button>
+<!-- Tab 3: Workflows (Inactive) -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant w-16 h-full hover:bg-surface-variant transition-colors rounded-lg active:scale-90">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">account_tree</span>
+<span class="font-label-sm text-label-sm tracking-normal">Workflows</span>
+</button>
+<!-- Tab 4: Profile (Inactive) -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant w-16 h-full hover:bg-surface-variant transition-colors rounded-lg active:scale-90">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">person</span>
+<span class="font-label-sm text-label-sm tracking-normal">Profile</span>
+</button>
+</nav>
+</body></html>

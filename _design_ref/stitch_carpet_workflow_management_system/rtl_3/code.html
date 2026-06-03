@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+
+<html class="light" dir="rtl" lang="fa"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>سیستم‌های فرش آریا - پیگیری گردش کار</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;900&amp;family=Be+Vietnam+Pro:wght@400;500;600;700;900&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed-variant": "#8a1a1a",
+                        "surface-container": "#efeeea",
+                        "surface-bright": "#fbf9f5",
+                        "tertiary-fixed-dim": "#bbc7db",
+                        "secondary-fixed-dim": "#e9c176",
+                        "inverse-primary": "#ffb3ac",
+                        "on-secondary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "on-secondary-fixed-variant": "#5d4201",
+                        "background": "#fbf9f5",
+                        "surface-container-low": "#f5f3ef",
+                        "tertiary-container": "#3d4959",
+                        "on-background": "#1b1c1a",
+                        "primary-fixed-dim": "#ffb3ac",
+                        "surface-variant": "#e4e2de",
+                        "tertiary": "#273342",
+                        "inverse-surface": "#30312e",
+                        "primary": "#6b0008",
+                        "on-surface-variant": "#58413f",
+                        "on-surface": "#1b1c1a",
+                        "primary-container": "#8c1b1b",
+                        "error-container": "#ffdad6",
+                        "error": "#ba1a1a",
+                        "on-secondary-fixed": "#261900",
+                        "on-secondary-container": "#785a1a",
+                        "surface-container-high": "#eae8e4",
+                        "primary-fixed": "#ffdad6",
+                        "on-primary-container": "#ff9c93",
+                        "on-tertiary-fixed-variant": "#3c4858",
+                        "surface": "#fbf9f5",
+                        "surface-container-highest": "#e4e2de",
+                        "secondary": "#775a19",
+                        "on-tertiary-fixed": "#101c2b",
+                        "secondary-container": "#fed488",
+                        "outline-variant": "#e0bfbc",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-on-surface": "#f2f0ed",
+                        "secondary-fixed": "#ffdea5",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-container": "#acb8cb",
+                        "outline": "#8c716e",
+                        "on-tertiary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "surface-tint": "#ac332f",
+                        "tertiary-fixed": "#d7e3f8",
+                        "on-primary-fixed": "#410003",
+                        "surface-dim": "#dbdad6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "xl": "64px",
+                        "gutter": "24px",
+                        "container-max": "1440px",
+                        "lg": "40px",
+                        "sm": "16px",
+                        "md": "24px",
+                        "xs": "8px",
+                        "base": "4px"
+                    },
+                    "fontFamily": {
+                        "title-md": ["Vazirmatn", "Be Vietnam Pro"],
+                        "display-lg": ["Vazirmatn", "Be Vietnam Pro"],
+                        "headline-lg-mobile": ["Vazirmatn", "Be Vietnam Pro"],
+                        "headline-lg": ["Vazirmatn", "Be Vietnam Pro"],
+                        "label-sm": ["Vazirmatn", "JetBrains Mono"],
+                        "body-lg": ["Vazirmatn", "IBM Plex Sans"],
+                        "body-md": ["Vazirmatn", "IBM Plex Sans"]
+                    },
+                    "fontSize": {
+                        "title-md": ["20px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Vazirmatn', 'IBM Plex Sans', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .icon-fill { font-variation-settings: 'FILL' 1; }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex antialiased">
+<!-- SideNavBar -->
+<nav class="hidden lg:flex flex-col h-full py-lg fixed right-0 top-0 w-[280px] bg-surface-container-lowest dark:bg-surface-container-high border-l border-outline-variant z-40">
+<div class="px-md mb-8">
+<h1 class="font-title-md text-title-md font-black text-primary">سیستم‌های فرش آریا</h1>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-1">مجموعه میراث</p>
+</div>
+<div class="flex-1 overflow-y-auto px-2">
+<a class="flex items-center gap-3 px-4 py-3 mx-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest rounded-full transition-all group" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-title-md text-title-md">داشبورد</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 mx-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest rounded-full transition-all group" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-title-md text-title-md">موجودی</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 mx-2 bg-secondary-container text-on-secondary-container rounded-full transition-all group" href="#">
+<span class="material-symbols-outlined icon-fill">account_tree</span>
+<span class="font-title-md text-title-md">گردش کارها</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 mx-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest rounded-full transition-all group" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-title-md text-title-md">گزارش‌ها</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 mx-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest rounded-full transition-all group" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-title-md text-title-md">تنظیمات</span>
+</a>
+</div>
+<div class="px-md mt-auto pt-6 border-t border-outline-variant mx-2">
+<button class="w-full flex justify-center items-center gap-2 py-3 bg-primary text-on-primary rounded-full hover:bg-primary-container transition-colors mb-4">
+<span class="material-symbols-outlined">add</span>
+<span class="font-title-md text-title-md">ثبت فرش جدید</span>
+</button>
+<div class="flex flex-col gap-2">
+<a class="flex items-center gap-3 px-4 py-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest rounded-full transition-all" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-body-md text-body-md">مرکز راهنما</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest rounded-full transition-all" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-body-md text-body-md">خروج</span>
+</a>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 lg:mr-[280px] w-full flex flex-col min-h-screen">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center w-full px-md h-16 sticky top-0 z-30 bg-surface-bright dark:bg-surface-dim border-b border-outline-variant dark:border-on-surface-variant">
+<div class="flex items-center gap-4 lg:hidden">
+<button class="text-on-surface-variant hover:text-on-surface p-2">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<span class="text-title-md font-title-md font-bold text-primary dark:text-primary-fixed-dim">سیستم‌های فرش آریا</span>
+</div>
+<div class="hidden lg:flex items-center gap-2">
+<a class="text-on-surface-variant hover:text-on-surface flex items-center gap-1" href="#">
+<span class="material-symbols-outlined transform rotate-180">arrow_back</span>
+<span class="font-body-md text-body-md">بازگشت به موجودی</span>
+</a>
+</div>
+<div class="flex items-center gap-4 text-primary dark:text-inverse-primary">
+<button class="p-2 hover:bg-surface-container-high transition-colors duration-200 rounded-full scale-95 active:scale-90"><span class="material-symbols-outlined">translate</span></button>
+<button class="p-2 hover:bg-surface-container-high transition-colors duration-200 rounded-full scale-95 active:scale-90"><span class="material-symbols-outlined">notifications</span></button>
+<button class="p-2 hover:bg-surface-container-high transition-colors duration-200 rounded-full scale-95 active:scale-90"><span class="material-symbols-outlined">account_circle</span></button>
+</div>
+</header>
+<!-- Content Canvas -->
+<div class="flex-1 p-4 md:p-md lg:p-lg overflow-y-auto">
+<!-- Context Header -->
+<div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+<div>
+<div class="flex items-center gap-3 mb-2">
+<span class="px-3 py-1 bg-tertiary text-on-tertiary rounded-full font-label-sm text-label-sm">شناسه: ARS-8492-ISF</span>
+<span class="flex items-center gap-1 text-secondary font-label-sm text-label-sm">
+<span class="material-symbols-outlined icon-fill text-[16px]">verified</span>
+                            اصالت تایید شده
+                        </span>
+</div>
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-background">گردش کار - پایه ابریشم اصفهان</h2>
+</div>
+<div class="flex gap-3 w-full md:w-auto">
+<button class="flex-1 md:flex-none px-6 py-2 border-[1.5px] border-primary text-primary rounded-full font-title-md text-title-md hover:bg-primary/5 transition-colors">چاپ برچسب</button>
+<button class="flex-1 md:flex-none px-6 py-2 bg-primary text-on-primary rounded-full font-title-md text-title-md hover:bg-primary-container transition-colors">ذخیره تغییرات</button>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Main Tracking View -->
+<div class="lg:col-span-8 flex flex-col gap-gutter">
+<!-- Progress Stepper Card -->
+<div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-md shadow-[0_4px_20px_rgba(26,26,26,0.02)]">
+<h3 class="font-title-md text-title-md text-on-surface mb-6 border-b border-surface-variant pb-2">روند مرمت و پردازش</h3>
+<!-- Responsive Stepper Layout -->
+<div class="relative">
+<!-- Desktop Line connecting steps -->
+<div class="hidden md:block absolute top-6 left-[10%] right-[10%] h-0.5 bg-surface-variant -z-10"></div>
+<div class="flex flex-col md:flex-row justify-between gap-6 md:gap-2">
+<!-- Step 1: Completed -->
+<div class="flex md:flex-col items-center gap-4 md:gap-2 relative flex-1">
+<div class="w-12 h-12 rounded-full bg-primary text-on-primary flex items-center justify-center z-10 shrink-0">
+<span class="material-symbols-outlined">check</span>
+</div>
+<div class="md:text-center">
+<div class="font-title-md text-title-md text-on-surface">پس از بافت</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">تکمیل شده ۲۰ مهر</div>
+</div>
+</div>
+<!-- Step 2: Completed -->
+<div class="flex md:flex-col items-center gap-4 md:gap-2 relative flex-1">
+<!-- Mobile connecting line -->
+<div class="md:hidden absolute top-[-24px] bottom-[24px] right-[23px] w-0.5 bg-surface-variant -z-10"></div>
+<div class="w-12 h-12 rounded-full bg-primary text-on-primary flex items-center justify-center z-10 shrink-0">
+<span class="material-symbols-outlined">check</span>
+</div>
+<div class="md:text-center">
+<div class="font-title-md text-title-md text-on-surface">پرداخت</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">تکمیل شده ۲۳ مهر</div>
+</div>
+</div>
+<!-- Step 3: Active -->
+<div class="flex md:flex-col items-center gap-4 md:gap-2 relative flex-1 cursor-pointer group">
+<div class="md:hidden absolute top-[-24px] bottom-[24px] right-[23px] w-0.5 bg-surface-variant -z-10"></div>
+<div class="w-12 h-12 rounded-full bg-secondary text-on-secondary flex items-center justify-center z-10 shrink-0 shadow-[0_0_0_4px_rgba(233,193,118,0.3)] transition-all">
+<span class="material-symbols-outlined">water_drop</span>
+</div>
+<div class="md:text-center">
+<div class="font-title-md text-title-md text-primary font-bold">شستشو</div>
+<div class="font-label-sm text-label-sm text-secondary">در حال انجام</div>
+</div>
+</div>
+<!-- Step 4: Pending -->
+<div class="flex md:flex-col items-center gap-4 md:gap-2 relative flex-1 opacity-60 hover:opacity-100 transition-opacity cursor-pointer">
+<div class="md:hidden absolute top-[-24px] bottom-[24px] right-[23px] w-0.5 bg-surface-variant -z-10"></div>
+<div class="w-12 h-12 rounded-full bg-surface-container border-2 border-outline-variant text-on-surface-variant flex items-center justify-center z-10 shrink-0">
+<span class="material-symbols-outlined">straighten</span>
+</div>
+<div class="md:text-center">
+<div class="font-title-md text-title-md text-on-surface-variant">دارکشی</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">در انتظار</div>
+</div>
+</div>
+<!-- Step 5: Pending -->
+<div class="flex md:flex-col items-center gap-4 md:gap-2 relative flex-1 opacity-60 hover:opacity-100 transition-opacity cursor-pointer">
+<div class="md:hidden absolute top-[-24px] bottom-[24px] right-[23px] w-0.5 bg-surface-variant -z-10"></div>
+<div class="w-12 h-12 rounded-full bg-surface-container border-2 border-outline-variant text-on-surface-variant flex items-center justify-center z-10 shrink-0">
+<span class="material-symbols-outlined">content_cut</span>
+</div>
+<div class="md:text-center">
+<div class="font-title-md text-title-md text-on-surface-variant">پرداخت نهایی</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">در انتظار</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Active Stage Detail Form (Washing) -->
+<div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-[0_4px_20px_rgba(26,26,26,0.02)] overflow-hidden">
+<div class="bg-tertiary text-on-tertiary px-md py-3 flex justify-between items-center">
+<h3 class="font-title-md text-title-md flex items-center gap-2">
+<span class="material-symbols-outlined">water_drop</span>
+                                مرحله فعلی: شستشو
+                            </h3>
+<span class="px-3 py-1 bg-secondary text-on-secondary rounded-full font-label-sm text-label-sm">در حال انجام</span>
+</div>
+<div class="p-md flex flex-col gap-6">
+<!-- Status & Date Row -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="flex flex-col gap-2">
+<label class="font-label-sm text-label-sm text-on-surface-variant">به‌روزرسانی وضعیت</label>
+<select class="w-full bg-surface-container-low border border-surface-variant rounded-lg px-4 py-2 font-body-md text-body-md focus:ring-1 focus:ring-primary focus:border-primary outline-none">
+<option value="pending">در انتظار شروع</option>
+<option selected="" value="progress">در حال انجام (خیساندن)</option>
+<option value="drying">مرحله خشک کردن</option>
+<option value="completed">تکمیل شده</option>
+</select>
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-sm text-label-sm text-on-surface-variant">تاریخ هدف تکمیل</label>
+<div class="relative">
+<input class="w-full bg-surface-container-low border border-surface-variant rounded-lg pr-10 pl-4 py-2 font-body-md text-body-md focus:ring-1 focus:ring-primary focus:border-primary outline-none text-on-surface" type="date" value="2023-10-25"/>
+<span class="material-symbols-outlined absolute right-3 top-2.5 text-on-surface-variant pointer-events-none">calendar_month</span>
+</div>
+</div>
+</div>
+<!-- Technical Notes -->
+<div class="flex flex-col gap-2">
+<label class="font-label-sm text-label-sm text-on-surface-variant flex justify-between">
+<span>یادداشت‌های فنی (ثبت استادکار)</span>
+<span class="text-secondary cursor-pointer hover:underline">مشاهده تاریخچه</span>
+</label>
+<textarea class="w-full bg-surface-container-low border border-surface-variant rounded-lg p-4 font-body-md text-body-md focus:ring-1 focus:ring-primary focus:border-primary outline-none resize-none" placeholder="یادداشت‌های مربوط به ثبات رنگ، دمای آب، یا درمان‌های خاص اعمال شده را وارد کنید..." rows="4"></textarea>
+</div>
+<!-- Action Buttons -->
+<div class="flex justify-end gap-3 pt-4 border-t border-surface-variant">
+<button class="px-6 py-2 text-on-surface-variant font-title-md text-title-md hover:text-on-surface transition-colors">لغو</button>
+<button class="px-6 py-2 border-[1.5px] border-primary text-primary rounded-full font-title-md text-title-md hover:bg-primary/5 transition-colors">ذخیره پیش‌نویس</button>
+<button class="px-6 py-2 bg-primary text-on-primary rounded-full font-title-md text-title-md hover:bg-primary-container transition-colors">به‌روزرسانی مرحله</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Contextual Sidebar/Meta Panel -->
+<div class="lg:col-span-4 flex flex-col gap-gutter">
+<!-- Carpet Summary Card -->
+<div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-md shadow-[0_4px_20px_rgba(26,26,26,0.02)]">
+<div class="aspect-[4/3] w-full rounded-lg bg-surface-variant mb-4 overflow-hidden relative border border-outline-variant/50">
+<!-- Placeholder image using a sophisticated pattern prompt -->
+<div class="w-full h-full bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-[64px] text-surface-variant opacity-50">texture</span>
+</div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent flex items-end p-3">
+<span class="text-white font-title-md text-title-md drop-shadow-md">مبدا اصفهان</span>
+</div>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between items-center border-b border-surface-variant pb-2">
+<span class="font-label-sm text-label-sm text-on-surface-variant">ابعاد</span>
+<span class="font-label-sm text-label-sm text-on-surface font-semibold font-mono" dir="ltr">3.0m x 4.0m</span>
+</div>
+<div class="flex justify-between items-center border-b border-surface-variant pb-2">
+<span class="font-label-sm text-label-sm text-on-surface-variant">تراکم گره</span>
+<span class="font-label-sm text-label-sm text-on-surface font-semibold font-mono" dir="ltr">850 KPSI</span>
+</div>
+<div class="flex justify-between items-center border-b border-surface-variant pb-2">
+<span class="font-label-sm text-label-sm text-on-surface-variant">جنس</span>
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">ابریشم روی پایه ابریشم</span>
+</div>
+<div class="flex justify-between items-center pb-1">
+<span class="font-label-sm text-label-sm text-on-surface-variant">استادکار مسئول</span>
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">استاد ر. تهرانی</span>
+</div>
+</div>
+</div>
+<!-- Quick Activity Log -->
+<div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-md shadow-[0_4px_20px_rgba(26,26,26,0.02)]">
+<h3 class="font-title-md text-title-md text-on-surface mb-4 border-b border-surface-variant pb-2">فعالیت‌های اخیر</h3>
+<div class="flex flex-col gap-4">
+<div class="flex gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center shrink-0 mt-1">
+<span class="material-symbols-outlined text-[16px]">payments</span>
+</div>
+<div>
+<p class="font-body-md text-body-md text-on-surface">پرداخت تایید شد. مرحله به تکمیل شده تغییر یافت.</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">۲۳ مهر، ۰۹:۳۰ صبح</p>
+</div>
+</div>
+<div class="flex gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center shrink-0 mt-1">
+<span class="material-symbols-outlined text-[16px]">water_drop</span>
+</div>
+<div>
+<p class="font-body-md text-body-md text-on-surface">شستشو توسط استاد ر. تهرانی آغاز شد.</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">۲۴ مهر، ۰۸:۱۵ صبح</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="h-20"></div> <!-- Bottom padding for scrolling -->
+</div>
+</main>
+</body></html>

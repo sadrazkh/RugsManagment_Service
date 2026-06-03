@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="fa"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>پیگیری گردش کار - آریا راگ</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;family=IBM+Plex+Sans:wght@400;500&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-container": "#8c1b1b",
+                        "surface-container-high": "#eae8e4",
+                        "on-secondary-container": "#785a1a",
+                        "outline": "#8c716e",
+                        "surface-variant": "#e4e2de",
+                        "on-error-container": "#93000a",
+                        "on-primary-container": "#ff9c93",
+                        "on-secondary-fixed-variant": "#5d4201",
+                        "surface-bright": "#fbf9f5",
+                        "secondary-fixed": "#ffdea5",
+                        "inverse-surface": "#30312e",
+                        "secondary": "#775a19",
+                        "surface-container-highest": "#e4e2de",
+                        "tertiary": "#273342",
+                        "on-secondary": "#ffffff",
+                        "on-primary-fixed-variant": "#8a1a1a",
+                        "error": "#ba1a1a",
+                        "on-tertiary-container": "#acb8cb",
+                        "on-background": "#1b1c1a",
+                        "surface-dim": "#dbdad6",
+                        "on-tertiary-fixed": "#101c2b",
+                        "on-error": "#ffffff",
+                        "surface-tint": "#ac332f",
+                        "inverse-on-surface": "#f2f0ed",
+                        "surface-container": "#efeeea",
+                        "surface": "#fbf9f5",
+                        "outline-variant": "#e0bfbc",
+                        "background": "#fbf9f5",
+                        "on-secondary-fixed": "#261900",
+                        "tertiary-fixed": "#d7e3f8",
+                        "surface-container-low": "#f5f3ef",
+                        "secondary-container": "#fed488",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed-dim": "#bbc7db",
+                        "tertiary-container": "#3d4959",
+                        "error-container": "#ffdad6",
+                        "on-surface-variant": "#58413f",
+                        "primary": "#6b0008",
+                        "secondary-fixed-dim": "#e9c176",
+                        "primary-fixed": "#ffdad6",
+                        "primary-fixed-dim": "#ffb3ac",
+                        "inverse-primary": "#ffb3ac",
+                        "on-surface": "#1b1c1a",
+                        "on-tertiary-fixed-variant": "#3c4858",
+                        "on-primary-fixed": "#410003"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "xs": "8px",
+                        "lg": "40px",
+                        "container-max": "1440px",
+                        "base": "4px",
+                        "md": "24px",
+                        "sm": "16px",
+                        "gutter": "24px",
+                        "xl": "64px"
+                    },
+                    "fontFamily": {
+                        "title-md": ["Be Vietnam Pro", "sans-serif"],
+                        "body-lg": ["IBM Plex Sans", "sans-serif"],
+                        "label-sm": ["JetBrains Mono", "monospace"],
+                        "headline-lg-mobile": ["Be Vietnam Pro", "sans-serif"],
+                        "display-lg": ["Be Vietnam Pro", "sans-serif"],
+                        "headline-lg": ["Be Vietnam Pro", "sans-serif"],
+                        "body-md": ["IBM Plex Sans", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "title-md": ["20px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Be Vietnam Pro', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface h-screen flex flex-col overflow-hidden">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-dim border-b border-outline-variant dark:border-outline flex justify-between items-center w-full px-sm h-16 shrink-0">
+<button class="text-primary dark:text-primary-fixed-dim hover:bg-surface-container-low transition-colors active:scale-95 transition-transform p-2 rounded-full">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_forward</span> <!-- RTL back button -->
+</button>
+<div class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary dark:text-primary-fixed-dim">
+            Aria Rug Systems
+        </div>
+<button class="text-primary dark:text-primary-fixed-dim hover:bg-surface-container-low transition-colors active:scale-95 transition-transform p-2 rounded-full">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">notifications</span>
+</button>
+</header>
+<!-- Main Content -->
+<main class="flex-1 overflow-y-auto pb-24 px-sm py-md bg-surface">
+<!-- Carpet Overview Card -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant p-4 mb-6 shadow-sm">
+<div class="flex gap-4">
+<div class="w-24 h-24 rounded-lg overflow-hidden shrink-0 border border-outline-variant/50 relative">
+<img alt="Carpet Detail" class="w-full h-full object-cover" data-alt="A close-up shot of an intricate Persian carpet, highlighting rich, deep red and ivory hues. The texture of the woven wool is clearly visible under soft, warm lighting. The image embodies a sense of heritage and digital craftsmanship within a bright, clean, high-end corporate style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAb7pPhv2pfvpfmBdHjJsCIPfyQ_gM2Aow7uel8_i0n41Z0ScoqGTWdo2VJvB_vF7LUtcTftdbXEtelCOl0zI4zYfog2cOls8RiA0buKtB84CzyageltflAK2mn31mnFLUX0c1q0UpE2CTlQ41wSYuvl_lp1gDmqsXum81jqp6W8a-e2t7f3pu9Mt0hYTOWrKCjrrC3MJeMdpjqiMy6sck_H6s0Tc60JPt_AgifuBV6mGO30jBeEIIpP2YIz-1hcuawwp81S7cW1Po"/>
+</div>
+<div class="flex flex-col justify-center">
+<h2 class="font-title-md text-title-md text-on-surface mb-1">فرش تبریز ماهی</h2>
+<p class="font-label-sm text-label-sm text-on-surface-variant font-mono">SKU: TAB-992-04</p>
+<div class="mt-2 flex items-center gap-1 text-secondary">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">verified</span>
+<span class="font-label-sm text-label-sm">اصالت تایید شده</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Progress Tracker (Stepper) -->
+<div class="mb-8">
+<h3 class="font-title-md text-title-md text-on-surface mb-4">وضعیت فعلی: شستشو</h3>
+<div class="relative">
+<!-- Vertical Line -->
+<div class="absolute right-[11px] top-2 bottom-2 w-0.5 bg-outline-variant"></div>
+<div class="flex flex-col gap-6">
+<!-- Step 1: Completed -->
+<div class="relative flex gap-4 items-start z-10">
+<div class="w-6 h-6 rounded-full bg-primary flex items-center justify-center shrink-0 shadow-sm ring-4 ring-surface">
+<span class="material-symbols-outlined text-white text-[14px]">check</span>
+</div>
+<div>
+<p class="font-body-md text-body-md font-bold text-on-surface">پس از بافت (بازرسی)</p>
+<p class="font-body-md text-body-md text-on-surface-variant">تایید کیفیت بافت اولیه.</p>
+</div>
+</div>
+<!-- Step 2: Active -->
+<div class="relative flex gap-4 items-start z-10">
+<div class="w-6 h-6 rounded-full bg-secondary flex items-center justify-center shrink-0 shadow-sm ring-4 ring-surface">
+<div class="w-2 h-2 rounded-full bg-surface-container-lowest"></div>
+</div>
+<div>
+<p class="font-body-md text-body-md font-bold text-on-surface">شستشوی تخصصی</p>
+<p class="font-body-md text-body-md text-on-surface-variant">در حال حاضر در واحد شستشو.</p>
+</div>
+</div>
+<!-- Step 3: Pending -->
+<div class="relative flex gap-4 items-start z-10">
+<div class="w-6 h-6 rounded-full bg-surface border-2 border-outline-variant flex items-center justify-center shrink-0 ring-4 ring-surface">
+</div>
+<div>
+<p class="font-body-md text-body-md text-outline">مرمت و پرداخت</p>
+</div>
+</div>
+<!-- Step 4: Pending -->
+<div class="relative flex gap-4 items-start z-10">
+<div class="w-6 h-6 rounded-full bg-surface border-2 border-outline-variant flex items-center justify-center shrink-0 ring-4 ring-surface">
+</div>
+<div>
+<p class="font-body-md text-body-md text-outline">آماده ارسال</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Update Form -->
+<div class="bg-surface-container-low rounded-xl p-4 border border-outline-variant/30">
+<h3 class="font-title-md text-title-md text-on-surface mb-4">بروزرسانی وضعیت</h3>
+<form class="space-y-4">
+<div>
+<label class="block font-label-sm text-label-sm text-on-surface mb-1">مرحله بعدی</label>
+<select class="w-full bg-surface border border-outline-variant rounded-lg p-2 font-body-md text-body-md text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none">
+<option>تکمیل شستشو و انتقال به مرمت</option>
+<option>نیاز به شستشوی مجدد</option>
+<option>توقف موقت</option>
+</select>
+</div>
+<div>
+<label class="block font-label-sm text-label-sm text-on-surface mb-1">یادداشت‌های فنی</label>
+<textarea class="w-full bg-surface border border-outline-variant rounded-lg p-2 font-body-md text-body-md text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none" placeholder="جزئیات فرآیند یا مشکلات مشاهده شده را وارد کنید..." rows="3"></textarea>
+</div>
+<div class="flex gap-2 pt-2">
+<button class="flex-1 bg-primary text-white font-title-md text-title-md py-2 rounded-lg hover:bg-primary/90 transition-colors" type="button">
+                        ثبت تغییرات
+                    </button>
+<button class="px-4 border-2 border-primary text-primary font-title-md text-title-md rounded-lg hover:bg-primary/5 transition-colors" type="button">
+                        لغو
+                    </button>
+</div>
+</form>
+</div>
+</main>
+<!-- BottomNavBar - Suppressed as per logic for contextual transactional screens, but instructed to implement the component if logic permits. Wait, task says this is a top level navigation flow? No, this is a "Mobile Workflow tracking screen. Shows the current stage of a specific carpet". It implies a specific sub-page.
+    However, I will include it as standard for the app shell, setting "Workflows" as active. -->
+<nav class="bg-surface dark:bg-surface-dim border-t border-outline-variant dark:border-outline shadow-md docked full-width bottom-0 rounded-t-xl fixed bottom-0 w-full z-50 flex justify-around items-center px-xs py-base md:hidden">
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant transition-colors active:scale-90 transition-transform p-2 rounded-lg">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">dashboard</span>
+<span class="font-label-sm text-label-sm">Dashboard</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant transition-colors active:scale-90 transition-transform p-2 rounded-lg">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">inventory_2</span>
+<span class="font-label-sm text-label-sm">Inventory</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 hover:bg-surface-variant transition-colors active:scale-90 transition-transform">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">account_tree</span>
+<span class="font-label-sm text-label-sm">Workflows</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant transition-colors active:scale-90 transition-transform p-2 rounded-lg">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</button>
+</nav>
+</body></html>
