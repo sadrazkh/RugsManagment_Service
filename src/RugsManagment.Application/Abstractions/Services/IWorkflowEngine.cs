@@ -66,7 +66,8 @@ public record AdvanceStepRequest(
     string? PricingConfigJson,
     string? FieldValuesJson,
     string? Notes,
-    bool MarkCompleted = true);
+    bool MarkCompleted = true,
+    decimal? Adjustment = null);
 
 /// <summary>خلاصهٔ مالی یک فرش برای نمایش</summary>
 public record RugCostSummary(

@@ -32,6 +32,9 @@ public class RugWorkflowStep : BaseEntity
     public decimal? AppliedUnitRate { get; set; }
     public string? PricingConfigJson { get; set; }
 
+    /// <summary>تخفیف (منفی) یا هزینهٔ اضافه (مثبت) که به نتیجهٔ فرمول اعمال می‌شود</summary>
+    public decimal? Adjustment { get; set; }
+
     /// <summary>مقادیر فرم داینامیک مرحله (JSON)</summary>
     public string? FieldValuesJson { get; set; }
     public string? Notes { get; set; }
@@ -40,6 +43,6 @@ public class RugWorkflowStep : BaseEntity
     public ProcessStepType ProcessStepType { get; set; } = null!;
     public ServiceProvider? ServiceProvider { get; set; }
 
-    /// <summary>هزینهٔ مؤثر برای جمع‌زنی: اول دستی، بعد محاسبه‌شده، وگرنه صفر</summary>
-    public decimal EffectiveCost => ManualCostOverride ?? CalculatedCost ?? 0;
+    /// <summary>هزینهٔ مؤثر: (دستی یا محاسبه‌شده) + تخفیف/اضافه؛ هرگز منفی نمی‌شود</summary>
+    public decimal EffectiveCost => Math.Max(0, (ManualCostOverride ?? CalculatedCost ?? 0) + (Adjustment ?? 0));
 }

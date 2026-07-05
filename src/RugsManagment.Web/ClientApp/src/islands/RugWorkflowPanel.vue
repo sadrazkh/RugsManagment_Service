@@ -8,8 +8,10 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import { api } from '@/lib/api'
 import { formatThousands } from '@/lib/money'
-import MoneyInput from '@/components/MoneyInput.vue'
+import CostRuleEditor from '@/components/CostRuleEditor.vue'
 import type { Rug } from '@/lib/types'
+
+const costEditor = ref<InstanceType<typeof CostRuleEditor> | null>(null)
 
 const props = defineProps<{ rugId: string }>()
 
@@ -36,20 +38,7 @@ const currentStep = computed(() => orderedSteps.value.find((s) => s.status === 1
 // ── مودال حرکت ──
 const modal = reactive({
   open: false, kind: 'forward' as 'forward' | 'back',
-  manual: false, model: 1, unitRate: undefined as number | undefined,
-  manualCost: undefined as number | undefined, providerId: '', date: '', notes: '',
-})
-const estimate = computed(() => {
-  if (!rug.value) return 0
-  if (modal.manual) return modal.manualCost ?? 0
-  const r = modal.unitRate ?? 0
-  switch (modal.model) {
-    case 0: return r
-    case 1: return Math.round(r * rug.value.areaSquareMeters * 100) / 100
-    case 4: return Math.round(r * rug.value.lengthMeters * 100) / 100
-    case 5: return Math.round(r * rug.value.widthMeters * 100) / 100
-    default: return r
-  }
+  providerId: '', date: '', notes: '',
 })
 
 // ── ویرایش مسیر ──
@@ -70,7 +59,7 @@ async function load() {
 }
 
 function openForward() {
-  Object.assign(modal, { open: true, kind: 'forward', manual: false, model: 1, unitRate: undefined, manualCost: undefined, providerId: currentStep.value ? '' : '', date: new Date().toISOString().slice(0, 10), notes: '' })
+  Object.assign(modal, { open: true, kind: 'forward', providerId: '', date: new Date().toISOString().slice(0, 10), notes: '' })
 }
 function openBack() {
   Object.assign(modal, { open: true, kind: 'back', notes: '' })
@@ -82,12 +71,11 @@ function fieldValues() {
   return Object.keys(obj).length ? JSON.stringify(obj) : null
 }
 function movePayload(markCompleted: boolean) {
+  const pricing = costEditor.value?.toPayload() ?? { manualCostOverride: null, pricingModel: null, unitRate: null, pricingConfigJson: null, adjustment: null }
   return {
     serviceProviderId: modal.providerId || null,
-    manualCostOverride: modal.manual ? (modal.manualCost ?? 0) : null,
-    pricingModel: modal.manual ? null : modal.model,
-    unitRate: modal.manual ? null : (modal.unitRate ?? null),
-    pricingConfigJson: null, fieldValuesJson: fieldValues(),
+    ...pricing,
+    fieldValuesJson: fieldValues(),
     notes: modal.notes || null, markCompleted,
   }
 }
@@ -209,14 +197,7 @@ onMounted(load)
         <p class="mb-4 text-sm text-on-surface-variant">جزئیات این مرحله را وارد کنید سپس به مرحلهٔ بعد بروید.</p>
         <div v-if="error" class="mb-3 rounded-lg bg-error-container px-3 py-2 text-sm text-error">{{ error }}</div>
         <div class="space-y-3">
-          <label class="flex items-center gap-2 text-sm"><input v-model="modal.manual" type="checkbox" class="h-4 w-4" /> مبلغ دستی</label>
-          <div v-if="!modal.manual" class="grid grid-cols-2 gap-3">
-            <label class="block"><span class="mb-1 block text-sm">روش</span>
-              <select v-model.number="modal.model" class="fld"><option :value="0">ثابت</option><option :value="1">× مساحت</option><option :value="4">× طول</option><option :value="5">× عرض</option></select>
-            </label>
-            <label class="block"><span class="mb-1 block text-sm">نرخ</span><MoneyInput v-model="modal.unitRate" suffix="تومان" /></label>
-          </div>
-          <label v-else class="block"><span class="mb-1 block text-sm">مبلغ</span><MoneyInput v-model="modal.manualCost" suffix="تومان" /></label>
+          <CostRuleEditor ref="costEditor" :width="rug?.widthMeters ?? 0" :length="rug?.lengthMeters ?? 0" />
           <div class="grid grid-cols-2 gap-3">
             <label v-if="providers.length" class="block"><span class="mb-1 block text-sm">انجام‌دهنده</span>
               <select v-model="modal.providerId" class="fld"><option value="">—</option><option v-for="p in providers" :key="p.id" :value="p.id">{{ p.name }}</option></select>
@@ -224,9 +205,6 @@ onMounted(load)
             <label class="block"><span class="mb-1 block text-sm">تاریخ</span><input v-model="modal.date" type="date" dir="ltr" class="fld" /></label>
           </div>
           <label class="block"><span class="mb-1 block text-sm">توضیح</span><input v-model="modal.notes" class="fld" /></label>
-          <div class="flex items-center justify-between rounded-lg border border-dashed border-outline-variant px-3 py-2 text-sm">
-            <span class="text-on-surface-variant">هزینه (تخمین)</span><span class="font-bold" dir="ltr">{{ formatThousands(estimate) }}</span>
-          </div>
         </div>
         <div class="mt-5 flex flex-wrap gap-2">
           <button @click="modal.open = false" class="rounded-lg border border-outline-variant px-4 py-2.5 hover:bg-surface-container">انصراف</button>

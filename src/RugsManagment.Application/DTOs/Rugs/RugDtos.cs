@@ -48,7 +48,8 @@ public record RugWorkflowStepDto(
     decimal? AppliedUnitRate,
     string? PricingConfigJson,
     string? FieldValuesJson,
-    string? Notes);
+    string? Notes,
+    decimal? Adjustment = null);
 
 public record RugCostSummaryDto(
     decimal TotalProcessCost,
@@ -103,7 +104,8 @@ public record AdvanceRugStepRequest(
     string? PricingConfigJson,
     string? FieldValuesJson,
     string? Notes,
-    bool MarkCompleted = true);
+    bool MarkCompleted = true,
+    decimal? Adjustment = null);
 
 public record UpdateRugWorkflowRequest(IReadOnlyList<CustomRugStepRequest> PendingSteps);
 

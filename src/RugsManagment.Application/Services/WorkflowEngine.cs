@@ -359,6 +359,9 @@ public sealed class WorkflowEngine(
             step.ManualCostOverride = request.ManualCostOverride;
         else if (request.ManualCostOverride is null && request.PricingModel.HasValue)
             step.ManualCostOverride = null;
+
+        if (request.Adjustment.HasValue)
+            step.Adjustment = request.Adjustment;
     }
 
     /// <summary>اولین مرحله Pending را InProgress می‌کند؛ اگر مرحله‌ای نماند → آماده فروش</summary>

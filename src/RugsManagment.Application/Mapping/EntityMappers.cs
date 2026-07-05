@@ -120,7 +120,8 @@ public static class EntityMappers
         step.AppliedUnitRate,
         step.PricingConfigJson,
         step.FieldValuesJson,
-        step.Notes);
+        step.Notes,
+        step.Adjustment);
 
     public static RugCostSummaryDto ToDto(this RugCostSummary summary) => new(
         summary.TotalProcessCost,

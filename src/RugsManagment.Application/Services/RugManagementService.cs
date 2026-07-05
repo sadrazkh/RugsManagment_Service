@@ -277,5 +277,6 @@ public sealed class RugManagementService(
         request.PricingConfigJson,
         request.FieldValuesJson,
         request.Notes,
-        request.MarkCompleted);
+        request.MarkCompleted,
+        request.Adjustment);
 }
