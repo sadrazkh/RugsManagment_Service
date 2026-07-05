@@ -1,0 +1,19 @@
+@{
+    ViewData["Title"] = ViewData["GroupName"] as string ?? "گروه";
+    var groupId = (Guid)ViewData["GroupId"]!;
+    var groupName = ViewData["GroupName"] as string ?? "";
+}
+<div class="space-y-5">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+            <a asp-action="Index" class="rounded-lg border border-outline-variant px-3 py-1.5 text-sm hover:bg-surface-container">→ بازگشت</a>
+            <h1 class="text-2xl font-bold">@groupName</h1>
+        </div>
+        <form asp-action="Delete" asp-route-id="@groupId" method="post" onsubmit="return confirm('حذف گروه؟ فرش‌ها حذف نمی‌شوند.')">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="rounded-lg border border-outline-variant px-3 py-1.5 text-sm text-error hover:bg-error-container">حذف گروه</button>
+        </form>
+    </div>
+
+    <div data-island="group-detail" data-props='@Json.Serialize(new { groupId, groupName })'></div>
+</div>

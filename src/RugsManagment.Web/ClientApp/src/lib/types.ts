@@ -65,6 +65,8 @@ export interface Rug {
   imageUrl?: string
   notes?: string
   workflowTemplateId?: string
+  batchId?: string
+  batchName?: string
   metadataJson?: string
   workflowSteps: RugWorkflowStep[]
   costs: RugCostSummary

@@ -51,9 +51,13 @@
                 var st = DisplayHelpers.RugStatus(r.Status);
                 <a asp-action="Details" asp-route-id="@r.Id" class="block rounded-xl border border-outline-variant bg-white p-4 shadow-sm">
                     <div class="flex items-start justify-between gap-2">
-                        <div class="min-w-0">
-                            <div class="truncate font-semibold">@(string.IsNullOrEmpty(r.Title) ? "بدون عنوان" : r.Title)</div>
-                            <div class="text-xs text-on-surface-variant" dir="ltr">@r.Sku</div>
+                        <div class="flex min-w-0 items-start gap-2">
+                            <input type="checkbox" data-rug-select="@r.Id" onclick="event.stopPropagation()"
+                                   class="mt-0.5 h-4 w-4 shrink-0 rounded border-outline-variant text-primary" />
+                            <div class="min-w-0">
+                                <div class="truncate font-semibold">@(string.IsNullOrEmpty(r.Title) ? "بدون عنوان" : r.Title)</div>
+                                <div class="text-xs text-on-surface-variant" dir="ltr">@r.Sku</div>
+                            </div>
                         </div>
                         <span class="shrink-0 rounded-full px-2.5 py-1 text-xs @st.Css">@st.Label</span>
                     </div>
@@ -71,6 +75,7 @@
             <table class="w-full text-sm">
                 <thead class="bg-surface-container text-on-surface-variant">
                     <tr>
+                        <th class="w-8 p-3"></th>
                         <th class="p-3 text-right font-medium">کد</th>
                         <th class="p-3 text-right font-medium">عنوان</th>
                         <th class="p-3 text-right font-medium">ابعاد (م)</th>
@@ -86,6 +91,7 @@
                     {
                         var st = DisplayHelpers.RugStatus(r.Status);
                         <tr class="border-t border-outline-variant hover:bg-surface-container/40">
+                            <td class="p-3"><input type="checkbox" data-rug-select="@r.Id" class="h-4 w-4 rounded border-outline-variant text-primary" /></td>
                             <td class="p-3" dir="ltr">@r.Sku</td>
                             <td class="p-3 font-medium">@(string.IsNullOrEmpty(r.Title) ? "—" : r.Title)</td>
                             <td class="p-3" dir="ltr">@DisplayHelpers.Number(r.WidthMeters)×@DisplayHelpers.Number(r.LengthMeters)</td>
@@ -114,5 +120,8 @@
 
         @* جزیرهٔ سبک برای دکمه‌های «مرحلهٔ بعد» داخل لیست *@
         <div data-island="list-quick-advance"></div>
+        @* نوار عملیات دسته‌ای (انتخاب چند فرش) *@
+        <div data-island="rug-bulk-toolbar"></div>
+        <div class="h-16"></div> @* فضای خالی برای نوار چسبان پایین *@
     }
 </div>
