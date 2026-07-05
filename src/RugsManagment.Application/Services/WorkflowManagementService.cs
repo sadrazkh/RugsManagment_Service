@@ -23,6 +23,7 @@ public sealed class WorkflowManagementService(
     IProcessStepTypeRepository stepTypes,
     IWorkflowTemplateRepository templates,
     IServiceProviderRepository providers,
+    IRepository<WorkflowTemplateStep> templateSteps,
     IUnitOfWork unitOfWork) : IWorkflowManagementService
 {
     /// <summary>لیست سراسری مراحل (قالیشویی، رفوگری، …) — برای ساخت قالب و مسیر سفارشی</summary>
@@ -85,22 +86,27 @@ public sealed class WorkflowManagementService(
         template.IsDefault = request.IsDefault;
         template.IsActive = request.IsActive;
         template.UpdatedAt = DateTimeOffset.UtcNow;
-        template.Steps.Clear();
+
+        // مراحل قدیمی را صریح حذف و مراحل جدید را صریح Add می‌کنیم.
+        // چون Id در BaseEntity از پیش ست می‌شود، افزودن به navigation باعث می‌شود EF
+        // آن‌ها را «موجود/Modified» بپندارد؛ AddAsync وضعیت را قطعی Added می‌کند.
+        foreach (var old in template.Steps.ToList())
+            templateSteps.Remove(old);
 
         foreach (var s in request.Steps)
         {
-            template.Steps.Add(new WorkflowTemplateStep
+            await templateSteps.AddAsync(new WorkflowTemplateStep
             {
+                WorkflowTemplateId = template.Id,
                 ProcessStepTypeId = s.ProcessStepTypeId,
                 OrderIndex = s.OrderIndex,
                 IsOptional = s.IsOptional,
                 DefaultServiceProviderId = s.DefaultServiceProviderId,
                 OverridePricingModel = s.OverridePricingModel,
                 OverrideUnitRate = s.OverrideUnitRate
-            });
+            }, ct);
         }
 
-        templates.Update(template);
         await unitOfWork.SaveChangesAsync(ct);
 
         var loaded = await templates.GetWithStepsAsync(id, tenantId, ct)

@@ -39,6 +39,7 @@ export interface RugCostSummary {
 
 export interface RugWorkflowStep {
   id: string
+  processStepTypeId: string
   stepNameFa: string
   icon: string
   orderIndex: number

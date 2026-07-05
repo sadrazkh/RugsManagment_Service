@@ -5,6 +5,8 @@
 export const islands: Record<string, () => Promise<{ default: unknown }>> = {
   hello: () => import('./HelloIsland.vue'),
   'rug-form': () => import('./RugForm.vue'),
-  'rug-cost-panel': () => import('./RugCostPanel.vue'),
+  'rug-workflow': () => import('./RugWorkflowPanel.vue'),
+  'workflow-template-editor': () => import('./WorkflowTemplateEditor.vue'),
+  'list-quick-advance': () => import('./ListQuickAdvance.vue'),
   'custom-fields-manager': () => import('./CustomFieldsManager.vue'),
 }

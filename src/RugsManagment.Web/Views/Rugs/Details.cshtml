@@ -67,42 +67,6 @@
                 </section>
             }
 
-            <!-- تایم‌لاین گردش کار -->
-            <section class="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
-                <h2 class="mb-4 text-sm font-semibold text-primary">مسیر گردش کار</h2>
-                @if (Model.WorkflowSteps.Count == 0)
-                {
-                    <p class="text-sm text-on-surface-variant">مسیری تعریف نشده است. از «ویرایش» یا بخش گردش کار می‌توانید مسیر بسازید.</p>
-                }
-                else
-                {
-                    <ol class="space-y-2">
-                        @foreach (var s in Model.WorkflowSteps.OrderBy(x => x.OrderIndex))
-                        {
-                            var ss = DisplayHelpers.StepStatus(s.Status);
-                            <li class="flex items-center justify-between gap-3 rounded-lg border border-outline-variant px-4 py-3">
-                                <div class="flex items-center gap-3">
-                                    <span class="grid h-8 w-8 place-items-center rounded-full bg-surface-container text-sm">@(s.OrderIndex + 1)</span>
-                                    <div>
-                                        <div class="font-medium">@s.StepNameFa @(s.IsOptional ? "(اختیاری)" : "")</div>
-                                        @if (!string.IsNullOrEmpty(s.ServiceProviderName))
-                                        {
-                                            <div class="text-xs text-on-surface-variant">@s.ServiceProviderName</div>
-                                        }
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    @if (s.EffectiveCost > 0)
-                                    {
-                                        <span class="text-sm" dir="ltr">@DisplayHelpers.Money(s.EffectiveCost)</span>
-                                    }
-                                    <span class="rounded-full px-2.5 py-1 text-xs @ss.Css">@ss.Label</span>
-                                </div>
-                            </li>
-                        }
-                    </ol>
-                }
-            </section>
         </div>
 
         <!-- ستون چپ: هزینه و پنل ثبت -->
@@ -123,8 +87,8 @@
                 </dl>
             </section>
 
-            <!-- جزیرهٔ ثبت هزینهٔ مرحلهٔ جاری -->
-            <div data-island="rug-cost-panel" data-props='@Json.Serialize(new { rugId = Model.Id })'></div>
+            <!-- جزیرهٔ گردش کار: تایم‌لاین، حرکت مراحل با مودال، ویرایش مسیر -->
+            <div data-island="rug-workflow" data-props='@Json.Serialize(new { rugId = Model.Id })'></div>
         </div>
     </div>
 </div>

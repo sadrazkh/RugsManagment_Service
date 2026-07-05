@@ -94,12 +94,25 @@
                             <td class="p-3"><span class="rounded-full px-2.5 py-1 text-xs @st.Css">@st.Label</span></td>
                             <td class="p-3" dir="ltr">@DisplayHelpers.Money(r.Costs.TotalInvestment)</td>
                             <td class="p-3 text-left">
-                                <a asp-action="Details" asp-route-id="@r.Id" class="rounded-lg border border-outline-variant px-3 py-1.5 text-xs hover:bg-surface-container">جزئیات</a>
+                                @{
+                                    var activeStep = r.WorkflowSteps.FirstOrDefault(x => x.Status == WorkflowStepStatus.InProgress);
+                                }
+                                <div class="flex justify-end gap-1.5">
+                                    @if (activeStep is not null)
+                                    {
+                                        <button type="button" data-advance-rug="@r.Id" data-advance-step="@activeStep.Id"
+                                                class="rounded-lg border border-primary px-3 py-1.5 text-xs text-primary hover:bg-primary/10">مرحلهٔ بعد ✓</button>
+                                    }
+                                    <a asp-action="Details" asp-route-id="@r.Id" class="rounded-lg border border-outline-variant px-3 py-1.5 text-xs hover:bg-surface-container">جزئیات</a>
+                                </div>
                             </td>
                         </tr>
                     }
                 </tbody>
             </table>
         </div>
+
+        @* جزیرهٔ سبک برای دکمه‌های «مرحلهٔ بعد» داخل لیست *@
+        <div data-island="list-quick-advance"></div>
     }
 </div>

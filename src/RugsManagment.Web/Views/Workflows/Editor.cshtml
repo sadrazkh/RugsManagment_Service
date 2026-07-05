@@ -1,0 +1,18 @@
+@{
+    ViewData["Title"] = ViewData["TemplateId"] != null ? "ویرایش قالب" : "قالب جدید";
+    var templateId = ViewData["TemplateId"];
+}
+<div class="mx-auto max-w-4xl space-y-5">
+    <div class="flex items-center gap-3">
+        <a asp-action="Index" class="rounded-lg border border-outline-variant px-3 py-1.5 text-sm hover:bg-surface-container">→ بازگشت</a>
+        <h1 class="text-2xl font-bold">@ViewData["Title"]</h1>
+    </div>
+    @if (templateId != null)
+    {
+        <div data-island="workflow-template-editor" data-props='@Json.Serialize(new { templateId })'></div>
+    }
+    else
+    {
+        <div data-island="workflow-template-editor"></div>
+    }
+</div>

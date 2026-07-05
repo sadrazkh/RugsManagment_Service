@@ -33,6 +33,7 @@ public sealed class RugManagementService(
     IRugRepository rugs,
     IWorkflowTemplateRepository templates,
     IWorkflowEngine workflowEngine,
+    IRepository<RugWorkflowStep> rugSteps,
     IUnitOfWork unitOfWork) : IRugManagementService
 {
     public async Task<IReadOnlyList<RugDto>> ListAsync(Guid tenantId, RugStatus? status, CancellationToken ct = default)
@@ -193,11 +194,22 @@ public sealed class RugManagementService(
         var custom = request.PendingSteps
             .Select(s => new CustomWorkflowStepRequest(s.ProcessStepTypeId, s.IsOptional, s.ServiceProviderId, null))
             .ToList();
+
+        var existingIds = rug.WorkflowSteps.Select(s => s.Id).ToHashSet();
         await workflowEngine.UpdateWorkflowPathAsync(rug, custom, ct);
+        // مراحل تازه‌ساختهٔ موتور را صریح Add می‌کنیم تا EF آن‌ها را (با Id از پیش‌تعیین) Added ببیند نه Modified.
+        await AddNewStepsAsync(rug, existingIds, ct);
+
         rug.UpdatedAt = DateTimeOffset.UtcNow;
-        rugs.Update(rug);
         await unitOfWork.SaveChangesAsync(ct);
         return rug.ToDto(workflowEngine);
+    }
+
+    /// <summary>مراحلی که موتور به فرشِ tracked اضافه کرده را با وضعیت Added ثبت می‌کند.</summary>
+    private async Task AddNewStepsAsync(Rug rug, HashSet<Guid> existingIds, CancellationToken ct)
+    {
+        foreach (var step in rug.WorkflowSteps.Where(s => !existingIds.Contains(s.Id)).ToList())
+            await rugSteps.AddAsync(step, ct);
     }
 
     public async Task<BulkOperationResultDto> BulkAdvanceAsync(
@@ -242,9 +254,10 @@ public sealed class RugManagementService(
             {
                 var rug = await rugs.GetWithWorkflowAsync(rugId, tenantId, ct)
                     ?? throw new KeyNotFoundException("فرش یافت نشد.");
+                var existingIds = rug.WorkflowSteps.Select(s => s.Id).ToHashSet();
                 await workflowEngine.UpdateWorkflowPathAsync(rug, custom, ct);
+                await AddNewStepsAsync(rug, existingIds, ct);
                 rug.UpdatedAt = DateTimeOffset.UtcNow;
-                rugs.Update(rug);
                 ok++;
             }
             catch (Exception ex)
