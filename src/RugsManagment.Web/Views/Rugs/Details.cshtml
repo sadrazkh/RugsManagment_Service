@@ -1,0 +1,130 @@
+@using System.Text.Json
+@using RugsManagment.Application.DTOs.Rugs
+@using RugsManagment.Web.Support
+@model RugDto
+@{
+    ViewData["Title"] = string.IsNullOrEmpty(Model.Title) ? Model.Sku : Model.Title;
+    var st = DisplayHelpers.RugStatus(Model.Status);
+    var labels = ViewData["CustomFieldLabels"] as Dictionary<string, string> ?? new();
+    Dictionary<string, JsonElement> metadata = new();
+    if (!string.IsNullOrWhiteSpace(Model.MetadataJson))
+    {
+        try { metadata = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(Model.MetadataJson) ?? new(); }
+        catch { }
+    }
+}
+
+<div class="space-y-5">
+    <!-- سربرگ -->
+    <div class="flex flex-wrap items-start justify-between gap-3">
+        <div class="flex items-center gap-3">
+            <a asp-action="Index" class="rounded-lg border border-outline-variant px-3 py-1.5 text-sm hover:bg-surface-container">→</a>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="text-2xl font-bold">@ViewData["Title"]</h1>
+                    <span class="rounded-full px-2.5 py-1 text-xs @st.Css">@st.Label</span>
+                </div>
+                <div class="text-sm text-on-surface-variant" dir="ltr">@Model.Sku</div>
+            </div>
+        </div>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="rounded-lg bg-primary px-4 py-2.5 font-semibold text-on-primary hover:opacity-90">ویرایش</a>
+    </div>
+
+    <div class="grid gap-5 lg:grid-cols-3">
+        <!-- ستون راست: اطلاعات و گردش کار -->
+        <div class="space-y-5 lg:col-span-2">
+            <!-- مشخصات -->
+            <section class="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
+                <h2 class="mb-4 text-sm font-semibold text-primary">مشخصات</h2>
+                <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
+                    <div><dt class="text-on-surface-variant">اصالت</dt><dd>@(Model.Origin ?? "—")</dd></div>
+                    <div><dt class="text-on-surface-variant">طرح</dt><dd>@(Model.Pattern ?? "—")</dd></div>
+                    <div><dt class="text-on-surface-variant">جنس</dt><dd>@(Model.Material ?? "—")</dd></div>
+                    <div><dt class="text-on-surface-variant">رجشمار</dt><dd dir="ltr">@(Model.KnotDensity?.ToString() ?? "—")</dd></div>
+                    <div><dt class="text-on-surface-variant">ابعاد</dt><dd dir="ltr">@DisplayHelpers.Number(Model.WidthMeters) × @DisplayHelpers.Number(Model.LengthMeters)</dd></div>
+                    <div><dt class="text-on-surface-variant">مساحت</dt><dd dir="ltr">@DisplayHelpers.Number(Model.AreaSquareMeters) م²</dd></div>
+                </dl>
+                @if (!string.IsNullOrWhiteSpace(Model.Notes))
+                {
+                    <div class="mt-4 rounded-lg bg-surface-container px-4 py-3 text-sm">@Model.Notes</div>
+                }
+            </section>
+
+            <!-- فیلدهای سفارشی -->
+            @if (metadata.Count > 0)
+            {
+                <section class="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
+                    <h2 class="mb-4 text-sm font-semibold text-primary">مشخصات سفارشی</h2>
+                    <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
+                        @foreach (var kv in metadata)
+                        {
+                            <div>
+                                <dt class="text-on-surface-variant">@(labels.TryGetValue(kv.Key, out var lbl) ? lbl : kv.Key)</dt>
+                                <dd>@kv.Value.ToString()</dd>
+                            </div>
+                        }
+                    </dl>
+                </section>
+            }
+
+            <!-- تایم‌لاین گردش کار -->
+            <section class="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
+                <h2 class="mb-4 text-sm font-semibold text-primary">مسیر گردش کار</h2>
+                @if (Model.WorkflowSteps.Count == 0)
+                {
+                    <p class="text-sm text-on-surface-variant">مسیری تعریف نشده است. از «ویرایش» یا بخش گردش کار می‌توانید مسیر بسازید.</p>
+                }
+                else
+                {
+                    <ol class="space-y-2">
+                        @foreach (var s in Model.WorkflowSteps.OrderBy(x => x.OrderIndex))
+                        {
+                            var ss = DisplayHelpers.StepStatus(s.Status);
+                            <li class="flex items-center justify-between gap-3 rounded-lg border border-outline-variant px-4 py-3">
+                                <div class="flex items-center gap-3">
+                                    <span class="grid h-8 w-8 place-items-center rounded-full bg-surface-container text-sm">@(s.OrderIndex + 1)</span>
+                                    <div>
+                                        <div class="font-medium">@s.StepNameFa @(s.IsOptional ? "(اختیاری)" : "")</div>
+                                        @if (!string.IsNullOrEmpty(s.ServiceProviderName))
+                                        {
+                                            <div class="text-xs text-on-surface-variant">@s.ServiceProviderName</div>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    @if (s.EffectiveCost > 0)
+                                    {
+                                        <span class="text-sm" dir="ltr">@DisplayHelpers.Money(s.EffectiveCost)</span>
+                                    }
+                                    <span class="rounded-full px-2.5 py-1 text-xs @ss.Css">@ss.Label</span>
+                                </div>
+                            </li>
+                        }
+                    </ol>
+                }
+            </section>
+        </div>
+
+        <!-- ستون چپ: هزینه و پنل ثبت -->
+        <div class="space-y-5">
+            <section class="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
+                <h2 class="mb-4 text-sm font-semibold text-primary">خلاصهٔ مالی</h2>
+                <dl class="space-y-2 text-sm">
+                    <div class="flex justify-between"><dt class="text-on-surface-variant">قیمت خرید</dt><dd dir="ltr">@DisplayHelpers.Money(Model.Costs.PurchaseCost)</dd></div>
+                    <div class="flex justify-between"><dt class="text-on-surface-variant">مجموع هزینهٔ مراحل</dt><dd dir="ltr">@DisplayHelpers.Money(Model.Costs.TotalProcessCost)</dd></div>
+                    <div class="flex justify-between border-t border-outline-variant pt-2 font-semibold"><dt>سرمایه‌گذاری کل</dt><dd dir="ltr">@DisplayHelpers.Money(Model.Costs.TotalInvestment)</dd></div>
+                    <div class="flex justify-between"><dt class="text-on-surface-variant">قیمت فروش هدف</dt><dd dir="ltr">@DisplayHelpers.Money(Model.Costs.TargetSalePrice)</dd></div>
+                    @if (Model.Costs.EstimatedMargin.HasValue)
+                    {
+                        <div class="flex justify-between font-semibold @(Model.Costs.EstimatedMargin >= 0 ? "text-success" : "text-error")">
+                            <dt>سود تخمینی</dt><dd dir="ltr">@DisplayHelpers.Money(Model.Costs.EstimatedMargin)</dd>
+                        </div>
+                    }
+                </dl>
+            </section>
+
+            <!-- جزیرهٔ ثبت هزینهٔ مرحلهٔ جاری -->
+            <div data-island="rug-cost-panel" data-props='@Json.Serialize(new { rugId = Model.Id })'></div>
+        </div>
+    </div>
+</div>

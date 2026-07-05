@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "rugs-web",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--no-launch-profile", "--project", "src/RugsManagment.Web/RugsManagment.Web.csproj", "--urls", "http://localhost:5299"],
+      "port": 5299
+    }
+  ]
+}

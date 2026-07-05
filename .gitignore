@@ -361,3 +361,7 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# ── RugsManagment.Web frontend (Vue islands) ──
+# node_modules و خروجی build که با `npm run build` بازتولید می‌شود
+src/RugsManagment.Web/ClientApp/node_modules/
+src/RugsManagment.Web/wwwroot/dist/

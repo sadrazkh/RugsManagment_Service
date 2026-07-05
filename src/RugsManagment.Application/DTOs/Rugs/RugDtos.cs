@@ -25,7 +25,8 @@ public record RugDto(
     string? CurrentStepNameFa,
     int CurrentStepIndex,
     IReadOnlyList<RugWorkflowStepDto> WorkflowSteps,
-    RugCostSummaryDto Costs);
+    RugCostSummaryDto Costs,
+    string? MetadataJson = null);
 
 public record RugWorkflowStepDto(
     Guid Id,
@@ -71,7 +72,8 @@ public record CreateRugRequest(
     string? Notes,
     Guid? WorkflowTemplateId,
     IReadOnlyList<Guid>? SkippedOptionalStepIds,
-    IReadOnlyList<CustomRugStepRequest>? CustomSteps);
+    IReadOnlyList<CustomRugStepRequest>? CustomSteps,
+    string? MetadataJson = null);
 
 public record CustomRugStepRequest(
     Guid ProcessStepTypeId,
@@ -90,7 +92,8 @@ public record UpdateRugRequest(
     decimal? TargetSalePrice,
     RugStatus? Status,
     string? ImageUrl,
-    string? Notes);
+    string? Notes,
+    string? MetadataJson = null);
 
 public record AdvanceRugStepRequest(
     Guid? ServiceProviderId,

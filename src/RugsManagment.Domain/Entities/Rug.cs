@@ -29,6 +29,12 @@ public class Rug : BaseEntity, ITenantScoped
     public string? ImageUrl { get; set; }
     public string? Notes { get; set; }
 
+    /// <summary>
+    /// مقادیر فیلدهای سفارشی این کارگاه به‌صورت JSON (ستون jsonb).
+    /// کلیدها از CustomFieldDefinition.Key می‌آیند — انعطاف NoSQL‌گونه بدون تغییر اسکیمـا.
+    /// </summary>
+    public string? MetadataJson { get; set; }
+
     /// <summary>اگر از قالب ساخته شده؛ null یعنی مسیر کاملاً سفارشی</summary>
     public Guid? WorkflowTemplateId { get; set; }
 

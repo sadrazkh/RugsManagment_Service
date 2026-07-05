@@ -65,6 +65,7 @@ public sealed class RugManagementService(
             TargetSalePrice = request.TargetSalePrice,
             ImageUrl = request.ImageUrl,
             Notes = request.Notes,
+            MetadataJson = request.MetadataJson,
             Status = RugStatus.Draft
         };
 
@@ -113,6 +114,7 @@ public sealed class RugManagementService(
         if (request.Status.HasValue) rug.Status = request.Status.Value;
         rug.ImageUrl = request.ImageUrl ?? rug.ImageUrl;
         rug.Notes = request.Notes ?? rug.Notes;
+        rug.MetadataJson = request.MetadataJson ?? rug.MetadataJson;
         rug.UpdatedAt = DateTimeOffset.UtcNow;
 
         rugs.Update(rug);

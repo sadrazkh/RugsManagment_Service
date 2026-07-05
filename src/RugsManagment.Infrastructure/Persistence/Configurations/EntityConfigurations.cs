@@ -56,7 +56,21 @@ public class RugConfiguration : IEntityTypeConfiguration<Rug>
         builder.HasOne(r => r.Tenant).WithMany(t => t.Rugs).HasForeignKey(r => r.TenantId);
         builder.HasOne(r => r.Batch).WithMany(b => b.Rugs).HasForeignKey(r => r.BatchId).OnDelete(DeleteBehavior.SetNull);
         builder.HasMany(r => r.WorkflowSteps).WithOne(s => s.Rug).HasForeignKey(s => s.RugId).OnDelete(DeleteBehavior.Cascade);
+        builder.Property(r => r.MetadataJson).HasColumnType("jsonb"); // متادیتای انعطاف‌پذیر
         builder.Ignore(r => r.AreaSquareMeters); // فقط در کد محاسبه می‌شود
+    }
+}
+
+/// <summary>فیلدهای سفارشی هر کارگاه — کلید یکتا در محدودهٔ همان کارگاه</summary>
+public class CustomFieldDefinitionConfiguration : IEntityTypeConfiguration<CustomFieldDefinition>
+{
+    public void Configure(EntityTypeBuilder<CustomFieldDefinition> builder)
+    {
+        builder.HasIndex(f => new { f.TenantId, f.Key }).IsUnique();
+        builder.Property(f => f.Key).HasMaxLength(60).IsRequired();
+        builder.Property(f => f.Label).HasMaxLength(120).IsRequired();
+        builder.Property(f => f.OptionsJson).HasColumnType("jsonb");
+        builder.HasOne(f => f.Tenant).WithMany().HasForeignKey(f => f.TenantId).OnDelete(DeleteBehavior.Cascade);
     }
 }
 

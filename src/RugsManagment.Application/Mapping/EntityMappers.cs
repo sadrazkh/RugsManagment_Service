@@ -1,5 +1,6 @@
 using RugsManagment.Application.Abstractions.Services;
 using RugsManagment.Application.DTOs.Auth;
+using RugsManagment.Application.DTOs.CustomFields;
 using RugsManagment.Application.DTOs.Dashboard;
 using RugsManagment.Application.DTOs.Rugs;
 using RugsManagment.Application.DTOs.Tenants;
@@ -92,8 +93,12 @@ public static class EntityMappers
             current?.ProcessStepType?.NameFa,
             rug.CurrentStepIndex,
             rug.WorkflowSteps.OrderBy(s => s.OrderIndex).Select(s => s.ToDto()).ToList(),
-            costs.ToDto());
+            costs.ToDto(),
+            rug.MetadataJson);
     }
+
+    public static CustomFieldDefinitionDto ToDto(this CustomFieldDefinition f) => new(
+        f.Id, f.Key, f.Label, f.FieldType, f.OptionsJson, f.IsRequired, f.SortOrder, f.IsActive);
 
     public static RugWorkflowStepDto ToDto(this RugWorkflowStep step) => new(
         step.Id,

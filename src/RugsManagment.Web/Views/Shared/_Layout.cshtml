@@ -1,0 +1,99 @@
+@using System.Security.Claims
+@using RugsManagment.Web.Auth
+@inject RugsManagment.Web.Frontend.ViteAssets ViteAssets
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@{
+    var csrf = Antiforgery.GetAndStoreTokens(Context).RequestToken;
+    var isAuthed = User.Identity?.IsAuthenticated == true;
+    var role = User.FindFirstValue(ClaimTypes.Role);
+    var isSystemAdmin = role == nameof(RugsManagment.Domain.Enums.UserRole.SystemAdmin);
+    var isTenantAdmin = role == nameof(RugsManagment.Domain.Enums.UserRole.TenantAdmin);
+    string Active(string controller) =>
+        string.Equals(ViewContext.RouteData.Values["controller"]?.ToString(), controller, StringComparison.OrdinalIgnoreCase)
+            ? "bg-primary/10 text-primary font-semibold" : "text-on-surface-variant hover:bg-surface-container";
+}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#6b0008" />
+    <meta name="csrf-token" content="@csrf" />
+    <title>@ViewData["Title"] — سامانه مدیریت فرش</title>
+
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" />
+    @ViteAssets.RenderHead(Html)
+</head>
+<body class="min-h-screen bg-surface text-on-surface antialiased" style="font-family:'Vazirmatn',system-ui,sans-serif;">
+@if (!isAuthed)
+{
+    @* صفحات عمومی (ورود) — بدون منو، تمام‌صفحه *@
+    <div class="grid min-h-screen place-items-center px-4">
+        @RenderBody()
+    </div>
+}
+else
+{
+    <div class="flex min-h-screen">
+        @* ── نوار کناری (دسکتاپ) / کشویی (موبایل) ── *@
+        <input type="checkbox" id="nav-toggle" class="peer hidden" />
+        <label for="nav-toggle" class="fixed inset-0 z-30 hidden bg-black/40 peer-checked:block md:!hidden"></label>
+
+        <aside class="fixed inset-y-0 right-0 z-40 w-72 translate-x-full overflow-y-auto border-l border-outline-variant bg-white transition-transform peer-checked:translate-x-0 md:static md:translate-x-0">
+            <div class="flex items-center gap-2 border-b border-outline-variant px-5 py-4 font-bold text-primary">
+                <span class="grid h-9 w-9 place-items-center rounded-lg bg-primary text-on-primary">ف</span>
+                <span>مدیریت فرش</span>
+            </div>
+            <nav class="space-y-1 p-3 text-sm">
+                @if (isSystemAdmin)
+                {
+                    <a asp-controller="Admin" asp-action="Index" class="flex items-center gap-3 rounded-lg px-3 py-2.5 @Active("Admin")">🏢 کارگاه‌ها</a>
+                }
+                else
+                {
+                    <a asp-controller="Dashboard" asp-action="Index" class="flex items-center gap-3 rounded-lg px-3 py-2.5 @Active("Dashboard")">📊 داشبورد</a>
+                    <a asp-controller="Rugs" asp-action="Index" class="flex items-center gap-3 rounded-lg px-3 py-2.5 @Active("Rugs")">🧶 فرش‌ها</a>
+                    <a asp-controller="Groups" asp-action="Index" class="flex items-center gap-3 rounded-lg px-3 py-2.5 @Active("Groups")">📦 گروه‌ها</a>
+                    <a asp-controller="Workflows" asp-action="Index" class="flex items-center gap-3 rounded-lg px-3 py-2.5 @Active("Workflows")">🔀 گردش کار</a>
+                    <a asp-controller="Labels" asp-action="Index" class="flex items-center gap-3 rounded-lg px-3 py-2.5 @Active("Labels")">🏷️ برچسب‌ها</a>
+                    @if (isTenantAdmin)
+                    {
+                        <a asp-controller="Users" asp-action="Index" class="flex items-center gap-3 rounded-lg px-3 py-2.5 @Active("Users")">👥 کاربران</a>
+                        <a asp-controller="Settings" asp-action="CustomFields" class="flex items-center gap-3 rounded-lg px-3 py-2.5 @Active("Settings")">⚙️ فیلدهای سفارشی</a>
+                    }
+                }
+            </nav>
+        </aside>
+
+        <div class="flex min-w-0 flex-1 flex-col">
+            <header class="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-outline-variant bg-white/90 px-4 py-3 backdrop-blur md:px-6">
+                <label for="nav-toggle" class="grid h-10 w-10 cursor-pointer place-items-center rounded-lg hover:bg-surface-container md:hidden" aria-label="منو">☰</label>
+                <div class="text-sm text-on-surface-variant">@ViewData["Title"]</div>
+                <div class="flex items-center gap-3">
+                    @if (User.GetTenantName() is string tn)
+                    {
+                        <span class="hidden rounded-full bg-secondary-container px-3 py-1 text-xs text-on-secondary-container sm:inline">@tn</span>
+                    }
+                    <span class="hidden text-sm text-on-surface-variant sm:inline">@User.GetDisplayName()</span>
+                    <form asp-controller="Account" asp-action="Logout" method="post" class="inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="rounded-lg border border-outline-variant px-3 py-1.5 text-sm text-on-surface-variant hover:bg-surface-container">خروج</button>
+                    </form>
+                </div>
+            </header>
+
+            <main class="flex-1 px-4 py-6 md:px-6">
+                @if (TempData["Toast"] is string toast)
+                {
+                    <div class="mb-4 rounded-lg bg-success/10 px-4 py-3 text-sm text-success">@toast</div>
+                }
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+}
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

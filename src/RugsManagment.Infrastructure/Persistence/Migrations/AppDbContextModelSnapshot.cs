@@ -22,6 +22,54 @@ namespace RugsManagment.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("RugsManagment.Domain.Entities.CustomFieldDefinition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("FieldType")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("OptionsJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "Key")
+                        .IsUnique();
+
+                    b.ToTable("CustomFieldDefinitions");
+                });
+
             modelBuilder.Entity("RugsManagment.Domain.Entities.ProcessStepType", b =>
                 {
                     b.Property<Guid>("Id")
@@ -99,6 +147,9 @@ namespace RugsManagment.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Material")
                         .HasColumnType("text");
+
+                    b.Property<string>("MetadataJson")
+                        .HasColumnType("jsonb");
 
                     b.Property<string>("Notes")
                         .HasColumnType("text");
@@ -189,6 +240,12 @@ namespace RugsManagment.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("AppliedPricingModel")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("AppliedUnitRate")
+                        .HasColumnType("numeric");
+
                     b.Property<decimal?>("CalculatedCost")
                         .HasColumnType("numeric");
 
@@ -212,6 +269,9 @@ namespace RugsManagment.Infrastructure.Persistence.Migrations
 
                     b.Property<int>("OrderIndex")
                         .HasColumnType("integer");
+
+                    b.Property<string>("PricingConfigJson")
+                        .HasColumnType("text");
 
                     b.Property<Guid>("ProcessStepTypeId")
                         .HasColumnType("uuid");
@@ -455,6 +515,17 @@ namespace RugsManagment.Infrastructure.Persistence.Migrations
                     b.HasIndex("WorkflowTemplateId");
 
                     b.ToTable("WorkflowTemplateSteps");
+                });
+
+            modelBuilder.Entity("RugsManagment.Domain.Entities.CustomFieldDefinition", b =>
+                {
+                    b.HasOne("RugsManagment.Domain.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("RugsManagment.Domain.Entities.Rug", b =>

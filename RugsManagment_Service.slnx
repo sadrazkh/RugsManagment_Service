@@ -3,4 +3,5 @@
   <Project Path="src/RugsManagment.Application/RugsManagment.Application.csproj" />
   <Project Path="src/RugsManagment.Infrastructure/RugsManagment.Infrastructure.csproj" />
   <Project Path="src/RugsManagment.Api/RugsManagment.Api.csproj" />
+  <Project Path="src/RugsManagment.Web/RugsManagment.Web.csproj" />
 </Solution>

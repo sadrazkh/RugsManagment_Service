@@ -1,0 +1,68 @@
+@model RugsManagment.Web.Models.Users.UserFormViewModel
+@using RugsManagment.Domain.Enums
+@{
+    ViewData["Title"] = Model.IsEdit ? "ویرایش کاربر" : "کاربر جدید";
+}
+
+<div class="mx-auto max-w-xl space-y-6">
+    <div class="flex items-center gap-3">
+        <a asp-action="Index" class="rounded-lg border border-outline-variant px-3 py-1.5 text-sm hover:bg-surface-container">→ بازگشت</a>
+        <h1 class="text-2xl font-bold">@ViewData["Title"]</h1>
+    </div>
+
+    <div class="rounded-2xl border border-outline-variant bg-white p-6 shadow-sm">
+        @if (!string.IsNullOrEmpty(Model.Error))
+        {
+            <div class="mb-4 rounded-lg bg-error-container px-4 py-3 text-sm text-error">@Model.Error</div>
+        }
+
+        <form asp-action="Save" method="post" class="space-y-5">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="Id" />
+
+            <div>
+                <label asp-for="FullName" class="mb-1 block text-sm font-medium"></label>
+                <input asp-for="FullName" class="w-full rounded-lg border border-outline-variant px-3 py-2.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+                <span asp-validation-for="FullName" class="mt-1 block text-xs text-error"></span>
+            </div>
+
+            <div>
+                <label asp-for="Email" class="mb-1 block text-sm font-medium"></label>
+                <input asp-for="Email" dir="ltr" readonly="@Model.IsEdit"
+                       class="w-full rounded-lg border border-outline-variant px-3 py-2.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary @(Model.IsEdit ? "bg-surface-container" : "")" />
+                <span asp-validation-for="Email" class="mt-1 block text-xs text-error"></span>
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label asp-for="Role" class="mb-1 block text-sm font-medium"></label>
+                    <select asp-for="Role" class="w-full rounded-lg border border-outline-variant px-3 py-2.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+                        <option value="@((int)UserRole.Operator)">اپراتور</option>
+                        <option value="@((int)UserRole.TenantAdmin)">مدیر کارگاه</option>
+                    </select>
+                </div>
+                <label class="flex items-center gap-2 pt-7 text-sm">
+                    <input asp-for="IsActive" type="checkbox" class="h-4 w-4 rounded border-outline-variant text-primary" />
+                    حساب فعال باشد
+                </label>
+            </div>
+
+            <div>
+                <label asp-for="Password" class="mb-1 block text-sm font-medium"></label>
+                <input asp-for="Password" dir="ltr" autocomplete="new-password"
+                       placeholder="@(Model.IsEdit ? "برای تغییر رمز پر کنید" : "")"
+                       class="w-full rounded-lg border border-outline-variant px-3 py-2.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+                <span asp-validation-for="Password" class="mt-1 block text-xs text-error"></span>
+            </div>
+
+            <div class="flex justify-end gap-3 border-t border-outline-variant pt-5">
+                <a asp-action="Index" class="rounded-lg border border-outline-variant px-4 py-2.5 hover:bg-surface-container">انصراف</a>
+                <button type="submit" class="rounded-lg bg-primary px-5 py-2.5 font-semibold text-on-primary hover:opacity-90">ذخیره</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

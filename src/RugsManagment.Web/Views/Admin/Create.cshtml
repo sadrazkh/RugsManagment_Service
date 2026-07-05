@@ -1,0 +1,77 @@
+@model RugsManagment.Web.Models.Admin.CreateTenantViewModel
+@{
+    ViewData["Title"] = "کارگاه جدید";
+}
+
+<div class="mx-auto max-w-2xl space-y-6">
+    <div class="flex items-center gap-3">
+        <a asp-action="Index" class="rounded-lg border border-outline-variant px-3 py-1.5 text-sm hover:bg-surface-container">→ بازگشت</a>
+        <h1 class="text-2xl font-bold">ساخت کارگاه جدید</h1>
+    </div>
+
+    <div class="rounded-2xl border border-outline-variant bg-white p-6 shadow-sm">
+        @if (!string.IsNullOrEmpty(Model.Error))
+        {
+            <div class="mb-4 rounded-lg bg-error-container px-4 py-3 text-sm text-error">@Model.Error</div>
+        }
+
+        <form asp-action="Create" method="post" class="space-y-5">
+            @Html.AntiForgeryToken()
+
+            <fieldset class="space-y-4">
+                <legend class="mb-2 text-sm font-semibold text-primary">مشخصات کارگاه</legend>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <label asp-for="Name" class="mb-1 block text-sm font-medium"></label>
+                        <input asp-for="Name" class="w-full rounded-lg border border-outline-variant px-3 py-2.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+                        <span asp-validation-for="Name" class="mt-1 block text-xs text-error"></span>
+                    </div>
+                    <div>
+                        <label asp-for="Slug" class="mb-1 block text-sm font-medium"></label>
+                        <input asp-for="Slug" dir="ltr" placeholder="tabriz-loom" class="w-full rounded-lg border border-outline-variant px-3 py-2.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+                        <span asp-validation-for="Slug" class="mt-1 block text-xs text-error"></span>
+                    </div>
+                    <div>
+                        <label asp-for="ContactPhone" class="mb-1 block text-sm font-medium"></label>
+                        <input asp-for="ContactPhone" dir="ltr" class="w-full rounded-lg border border-outline-variant px-3 py-2.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+                    </div>
+                    <div>
+                        <label asp-for="ContactEmail" class="mb-1 block text-sm font-medium"></label>
+                        <input asp-for="ContactEmail" dir="ltr" class="w-full rounded-lg border border-outline-variant px-3 py-2.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+                        <span asp-validation-for="ContactEmail" class="mt-1 block text-xs text-error"></span>
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset class="space-y-4 border-t border-outline-variant pt-5">
+                <legend class="mb-2 text-sm font-semibold text-primary">مدیر کارگاه (حساب ورود)</legend>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <label asp-for="AdminFullName" class="mb-1 block text-sm font-medium"></label>
+                        <input asp-for="AdminFullName" class="w-full rounded-lg border border-outline-variant px-3 py-2.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+                        <span asp-validation-for="AdminFullName" class="mt-1 block text-xs text-error"></span>
+                    </div>
+                    <div>
+                        <label asp-for="AdminEmail" class="mb-1 block text-sm font-medium"></label>
+                        <input asp-for="AdminEmail" dir="ltr" class="w-full rounded-lg border border-outline-variant px-3 py-2.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+                        <span asp-validation-for="AdminEmail" class="mt-1 block text-xs text-error"></span>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label asp-for="AdminPassword" class="mb-1 block text-sm font-medium"></label>
+                        <input asp-for="AdminPassword" dir="ltr" class="w-full rounded-lg border border-outline-variant px-3 py-2.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+                        <span asp-validation-for="AdminPassword" class="mt-1 block text-xs text-error"></span>
+                    </div>
+                </div>
+            </fieldset>
+
+            <div class="flex justify-end gap-3 border-t border-outline-variant pt-5">
+                <a asp-action="Index" class="rounded-lg border border-outline-variant px-4 py-2.5 hover:bg-surface-container">انصراف</a>
+                <button type="submit" class="rounded-lg bg-primary px-5 py-2.5 font-semibold text-on-primary hover:opacity-90">ساخت کارگاه</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

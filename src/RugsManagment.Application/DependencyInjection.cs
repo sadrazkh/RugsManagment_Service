@@ -16,6 +16,9 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IRugManagementService, RugManagementService>();
         services.AddScoped<ITenantManagementService, TenantManagementService>();
+        services.AddScoped<IUserManagementService, UserManagementService>();
+        services.AddScoped<ICustomFieldService, CustomFieldService>();
+        services.AddScoped<ILookupService, LookupService>();
         services.AddScoped<IWorkflowManagementService, WorkflowManagementService>();
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IRugBatchService, RugBatchService>();

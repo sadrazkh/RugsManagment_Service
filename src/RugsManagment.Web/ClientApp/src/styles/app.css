@@ -1,0 +1,49 @@
+@import 'tailwindcss';
+
+/*
+ * Tailwind v4 به‌صورت پیش‌فرض فقط سورس ClientApp را اسکن می‌کند.
+ * این خط باعث می‌شود کلاس‌های utility که در viewهای رِیزور استفاده می‌شوند هم تولید شوند.
+ */
+@source '../../../Views/**/*.cshtml';
+
+/*
+ * پالت «Heritage Loom» (از _design_ref/.../DESIGN.md) به‌صورت توکن‌های Tailwind v4.
+ * این توکن‌ها utilityهایی مثل bg-primary / text-on-surface / border-outline-variant می‌سازند
+ * و همان متغیرها در Razor/CSS معمولی هم قابل استفاده‌اند (var(--color-primary)).
+ */
+@theme {
+  --color-surface: #fbf9f5;
+  --color-surface-container: #efeeea;
+  --color-surface-container-high: #eae8e4;
+  --color-on-surface: #1b1c1a;
+  --color-on-surface-variant: #58413f;
+  --color-outline: #8c716e;
+  --color-outline-variant: #e0bfbc;
+
+  --color-primary: #6b0008;
+  --color-primary-container: #8c1b1b;
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: #ff9c93;
+
+  --color-secondary: #775a19;
+  --color-secondary-container: #fed488;
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-container: #785a1a;
+
+  --color-tertiary: #273342;
+  --color-on-tertiary: #ffffff;
+
+  --color-success: #3f6212;
+  --color-warning: #b45309;
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+
+  --font-sans: 'Vazirmatn', 'IBM Plex Sans', system-ui, sans-serif;
+  --radius-lg: 0.5rem;
+}
+
+/* پایه — RTL و فونت فارسی از layout رِیزور اعمال می‌شود */
+:root {
+  color-scheme: light;
+}

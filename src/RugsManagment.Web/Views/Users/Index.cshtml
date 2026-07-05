@@ -1,0 +1,54 @@
+@model IReadOnlyList<RugsManagment.Application.DTOs.Auth.UserDto>
+@{
+    ViewData["Title"] = "کاربران کارگاه";
+    string RoleFa(string r) => r switch
+    {
+        "TenantAdmin" => "مدیر کارگاه",
+        "Operator" => "اپراتور",
+        _ => r
+    };
+}
+
+<div class="space-y-6">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <h1 class="text-2xl font-bold">کاربران کارگاه</h1>
+        <a asp-action="Create" class="rounded-lg bg-primary px-4 py-2.5 font-semibold text-on-primary hover:opacity-90">+ کاربر جدید</a>
+    </div>
+
+    @if (Model.Count == 0)
+    {
+        <div class="rounded-xl border border-dashed border-outline-variant bg-white p-10 text-center text-on-surface-variant">
+            هنوز کاربری اضافه نشده است.
+        </div>
+    }
+    else
+    {
+        <div class="overflow-hidden rounded-xl border border-outline-variant bg-white">
+            <table class="w-full text-sm">
+                <thead class="bg-surface-container text-on-surface-variant">
+                    <tr>
+                        <th class="p-3 text-right font-medium">نام</th>
+                        <th class="hidden p-3 text-right font-medium sm:table-cell">ایمیل</th>
+                        <th class="p-3 text-right font-medium">نقش</th>
+                        <th class="p-3"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var u in Model)
+                    {
+                        <tr class="border-t border-outline-variant">
+                            <td class="p-3 font-medium">@u.FullName</td>
+                            <td class="hidden p-3 text-on-surface-variant sm:table-cell" dir="ltr">@u.Email</td>
+                            <td class="p-3">
+                                <span class="rounded-full bg-secondary-container px-2.5 py-1 text-xs text-on-secondary-container">@RoleFa(u.Role)</span>
+                            </td>
+                            <td class="p-3 text-left">
+                                <a asp-action="Edit" asp-route-id="@u.Id" class="rounded-lg border border-outline-variant px-3 py-1.5 text-xs hover:bg-surface-container">ویرایش</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
