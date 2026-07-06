@@ -10,5 +10,6 @@ export const islands: Record<string, () => Promise<{ default: unknown }>> = {
   'rug-bulk-toolbar': () => import('./RugBulkToolbar.vue'),
   'group-detail': () => import('./GroupDetail.vue'),
   'label-designer': () => import('./LabelDesigner.vue'),
+  'pwa-install': () => import('./PwaInstall.vue'),
   'custom-fields-manager': () => import('./CustomFieldsManager.vue'),
 }

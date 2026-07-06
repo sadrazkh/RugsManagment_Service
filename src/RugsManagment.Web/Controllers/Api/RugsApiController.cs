@@ -51,8 +51,18 @@ public class RugsApiController(IRugManagementService rugs) : ApiControllerBase
     public async Task<IActionResult> GoBack(Guid rugId, CancellationToken ct)
         => Ok(await rugs.GoBackStepAsync(User.RequireTenantId(), rugId, ct));
 
+    /// <summary>اعمال یک قالب گردش کار روی فرشی که هنوز مسیر ندارد.</summary>
+    [HttpPost("{rugId:guid}/workflow/apply-template")]
+    public async Task<IActionResult> ApplyTemplate(Guid rugId, [FromBody] ApplyTemplateRequest request, CancellationToken ct)
+        => Ok(await rugs.ApplyTemplateAsync(User.RequireTenantId(), rugId, request.TemplateId, request.SkippedOptionalStepIds, ct));
+
     /// <summary>پیشبرد گروهی مرحلهٔ جاریِ چند فرش با هم.</summary>
     [HttpPost("bulk/advance")]
     public async Task<IActionResult> BulkAdvance([FromBody] BulkAdvanceRequest request, CancellationToken ct)
         => Ok(await rugs.BulkAdvanceAsync(User.RequireTenantId(), request, ct));
+
+    /// <summary>بازگشت گروهی چند فرش به مرحلهٔ قبل.</summary>
+    [HttpPost("bulk/back")]
+    public async Task<IActionResult> BulkBack([FromBody] BulkRugIdsRequest request, CancellationToken ct)
+        => Ok(await rugs.BulkGoBackAsync(User.RequireTenantId(), request, ct));
 }

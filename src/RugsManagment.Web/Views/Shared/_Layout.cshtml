@@ -79,6 +79,7 @@ else
                 <label for="nav-toggle" class="grid h-10 w-10 cursor-pointer place-items-center rounded-lg hover:bg-surface-container md:hidden" aria-label="منو">☰</label>
                 <div class="text-sm text-on-surface-variant">@ViewData["Title"]</div>
                 <div class="flex items-center gap-3">
+                    <div data-island="pwa-install"></div>
                     @if (User.GetTenantName() is string tn)
                     {
                         <span class="hidden rounded-full bg-secondary-container px-3 py-1 text-xs text-on-secondary-container sm:inline">@tn</span>

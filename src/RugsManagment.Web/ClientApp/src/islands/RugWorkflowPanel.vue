@@ -17,14 +17,20 @@ const props = defineProps<{ rugId: string }>()
 
 interface Provider { id: string; name: string }
 interface StepType { id: string; nameFa: string }
+interface Template { id: string; name: string; isDefault: boolean }
 interface Row { uid: number; processStepTypeId: string; stepNameFa: string; isOptional: boolean }
 
 const rug = ref<Rug | null>(null)
 const providers = ref<Provider[]>([])
 const stepTypes = ref<StepType[]>([])
+const templates = ref<Template[]>([])
+const chosenTemplate = ref('')
 const loading = ref(true)
 const busy = ref(false)
 const error = ref('')
+
+const hasCompleted = computed(() => orderedSteps.value.some((s) => s.status === 2 || s.status === 3))
+const noPath = computed(() => orderedSteps.value.length === 0)
 
 const statusLabel: Record<number, string> = { 0: 'در صف', 1: 'در حال انجام', 2: 'تکمیل', 3: 'رد‌شده', 4: 'لغو' }
 const statusCss: Record<number, string> = {
@@ -49,13 +55,24 @@ let counter = 0
 async function load() {
   loading.value = true
   try {
-    const [r, p, st] = await Promise.all([
+    const [r, p, st, tpl] = await Promise.all([
       api.get<Rug>(`/api/rugs/${props.rugId}`),
       api.get<Provider[]>('/api/lookups/service-providers'),
       api.get<StepType[]>('/api/lookups/step-types'),
+      api.get<Template[]>('/api/lookups/workflow-templates'),
     ])
-    rug.value = r; providers.value = p; stepTypes.value = st
+    rug.value = r; providers.value = p; stepTypes.value = st; templates.value = tpl
+    chosenTemplate.value = tpl.find((t) => t.isDefault)?.id ?? tpl[0]?.id ?? ''
   } catch (e) { error.value = (e as Error).message } finally { loading.value = false }
+}
+
+async function applyTemplate() {
+  if (!chosenTemplate.value) return
+  busy.value = true; error.value = ''
+  try {
+    await api.post(`/api/rugs/${props.rugId}/workflow/apply-template`, { templateId: chosenTemplate.value, skippedOptionalStepIds: null })
+    window.location.reload()
+  } catch (e) { error.value = (e as Error).message; busy.value = false }
 }
 
 function openForward() {
@@ -164,6 +181,21 @@ onMounted(load)
 
       <!-- تایم‌لاین -->
       <template v-else>
+        <!-- انتخاب مسیر برای فرشی که هنوز مسیر ندارد (یا فقط مراحل در صف دارد) -->
+        <div v-if="noPath || !hasCompleted" class="mb-3 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3">
+          <p class="mb-2 text-sm font-medium text-primary">
+            {{ noPath ? 'این فرش هنوز مسیری ندارد — یک قالب انتخاب کنید:' : 'تغییر مسیر با یک قالب آماده:' }}
+          </p>
+          <div class="flex flex-wrap gap-2">
+            <select v-model="chosenTemplate" class="fld flex-1">
+              <option v-for="t in templates" :key="t.id" :value="t.id">{{ t.name }}</option>
+            </select>
+            <button :disabled="busy || !chosenTemplate" @click="applyTemplate"
+                    class="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-on-primary disabled:opacity-60">اعمال مسیر</button>
+          </div>
+          <p v-if="noPath" class="mt-2 text-xs text-on-surface-variant">یا با «ویرایش مسیر» بالا، مراحل را دستی بچینید.</p>
+        </div>
+
         <ol class="space-y-2">
           <li v-for="s in orderedSteps" :key="s.id"
               class="flex items-center justify-between gap-2 rounded-lg border px-3 py-2.5"
@@ -184,7 +216,7 @@ onMounted(load)
           <button v-if="currentStep.isOptional" :disabled="busy" @click="skipCurrent" class="rounded-lg border border-outline-variant px-4 py-2.5 hover:bg-surface-container">رد کردن</button>
           <button :disabled="busy" @click="openBack" class="rounded-lg border border-outline-variant px-4 py-2.5 text-on-surface-variant hover:bg-surface-container">→ مرحلهٔ قبل</button>
         </div>
-        <div v-else class="mt-4 rounded-lg bg-success/10 px-4 py-3 text-center text-sm text-success">همهٔ مراحل تمام شده است.</div>
+        <div v-else-if="!noPath" class="mt-4 rounded-lg bg-success/10 px-4 py-3 text-center text-sm text-success">همهٔ مراحل تمام شده است.</div>
       </template>
     </template>
   </div>

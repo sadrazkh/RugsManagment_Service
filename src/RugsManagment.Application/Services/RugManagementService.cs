@@ -21,7 +21,9 @@ public interface IRugManagementService
     Task<RugDto> GoBackStepAsync(Guid tenantId, Guid rugId, CancellationToken ct = default);
     Task<RugDto> ActivateStepAsync(Guid tenantId, Guid rugId, Guid stepId, CancellationToken ct = default);
     Task<RugDto> UpdateWorkflowAsync(Guid tenantId, Guid rugId, UpdateRugWorkflowRequest request, CancellationToken ct = default);
+    Task<RugDto> ApplyTemplateAsync(Guid tenantId, Guid rugId, Guid templateId, IReadOnlyList<Guid>? skippedOptionalStepIds, CancellationToken ct = default);
     Task<BulkOperationResultDto> BulkAdvanceAsync(Guid tenantId, BulkAdvanceRequest request, CancellationToken ct = default);
+    Task<BulkOperationResultDto> BulkGoBackAsync(Guid tenantId, BulkRugIdsRequest request, CancellationToken ct = default);
     Task<BulkOperationResultDto> BulkUpdateWorkflowAsync(Guid tenantId, BulkUpdateWorkflowRequest request, CancellationToken ct = default);
 }
 
@@ -203,6 +205,56 @@ public sealed class RugManagementService(
         rug.UpdatedAt = DateTimeOffset.UtcNow;
         await unitOfWork.SaveChangesAsync(ct);
         return rug.ToDto(workflowEngine);
+    }
+
+    /// <summary>
+    /// اعمال یک قالب گردش کار روی فرشی که هنوز مسیر ندارد (یا فقط مراحل در صف دارد).
+    /// اگر مرحلهٔ تکمیل‌شده/رد‌شده داشته باشد رد می‌شود تا تاریخچه از بین نرود (از «ویرایش مسیر» استفاده شود).
+    /// </summary>
+    public async Task<RugDto> ApplyTemplateAsync(
+        Guid tenantId, Guid rugId, Guid templateId, IReadOnlyList<Guid>? skippedOptionalStepIds, CancellationToken ct = default)
+    {
+        var rug = await rugs.GetWithWorkflowAsync(rugId, tenantId, ct)
+            ?? throw new KeyNotFoundException("فرش یافت نشد.");
+
+        if (rug.WorkflowSteps.Any(s => s.Status is WorkflowStepStatus.Completed or WorkflowStepStatus.Skipped))
+            throw new InvalidOperationException("این فرش تاریخچهٔ مرحله دارد؛ برای تغییر مسیر از «ویرایش مسیر» استفاده کنید.");
+
+        var template = await templates.GetWithStepsAsync(templateId, tenantId, ct)
+            ?? throw new InvalidOperationException("قالب فرایند یافت نشد.");
+
+        var existingIds = rug.WorkflowSteps.Select(s => s.Id).ToHashSet();
+        await workflowEngine.InitializeWorkflowFromTemplateAsync(rug, template, skippedOptionalStepIds, ct);
+        await AddNewStepsAsync(rug, existingIds, ct);
+        rug.UpdatedAt = DateTimeOffset.UtcNow;
+        await unitOfWork.SaveChangesAsync(ct);
+
+        // بارگذاری دوباره برای داشتن نام مراحل (navigation ProcessStepType)
+        var reloaded = await rugs.GetWithWorkflowAsync(rugId, tenantId, ct)!;
+        return reloaded!.ToDto(workflowEngine);
+    }
+
+    public async Task<BulkOperationResultDto> BulkGoBackAsync(Guid tenantId, BulkRugIdsRequest request, CancellationToken ct = default)
+    {
+        var errors = new List<BulkItemErrorDto>();
+        var ok = 0;
+        foreach (var rugId in request.RugIds.Distinct())
+        {
+            try
+            {
+                var rug = await rugs.GetWithWorkflowAsync(rugId, tenantId, ct)
+                    ?? throw new KeyNotFoundException("فرش یافت نشد.");
+                await workflowEngine.GoBackStepAsync(rug, ct);
+                rug.UpdatedAt = DateTimeOffset.UtcNow;
+                ok++;
+            }
+            catch (Exception ex)
+            {
+                errors.Add(new BulkItemErrorDto(rugId, ex.Message));
+            }
+        }
+        await unitOfWork.SaveChangesAsync(ct);
+        return new BulkOperationResultDto(ok, errors.Count, errors);
     }
 
     /// <summary>مراحلی که موتور به فرشِ tracked اضافه کرده را با وضعیت Added ثبت می‌کند.</summary>

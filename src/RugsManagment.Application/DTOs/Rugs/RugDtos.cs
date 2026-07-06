@@ -109,6 +109,8 @@ public record AdvanceRugStepRequest(
 
 public record UpdateRugWorkflowRequest(IReadOnlyList<CustomRugStepRequest> PendingSteps);
 
+public record ApplyTemplateRequest(Guid TemplateId, IReadOnlyList<Guid>? SkippedOptionalStepIds);
+
 public record BulkRugIdsRequest(IReadOnlyList<Guid> RugIds);
 
 public record BulkAdvanceRequest(
