@@ -19,6 +19,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<RugBatch> RugBatches => Set<RugBatch>();
     public DbSet<RugWorkflowStep> RugWorkflowSteps => Set<RugWorkflowStep>();
     public DbSet<CustomFieldDefinition> CustomFieldDefinitions => Set<CustomFieldDefinition>();
+    public DbSet<LabelTemplate> LabelTemplates => Set<LabelTemplate>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

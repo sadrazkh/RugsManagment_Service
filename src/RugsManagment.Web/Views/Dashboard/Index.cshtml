@@ -1,10 +1,116 @@
+@using RugsManagment.Application.DTOs.Dashboard
+@using RugsManagment.Web.Support
+@model DashboardStatsDto
 @{
     ViewData["Title"] = "داشبورد";
+    var maxCount = Model.StepDistribution.Count > 0 ? Model.StepDistribution.Max(s => s.Count) : 1;
+    string StatusFa(string s) => s switch
+    {
+        "Draft" => "پیش‌نویس", "InProgress" => "در جریان", "ReadyForSale" => "آمادهٔ فروش",
+        "Sold" => "فروخته‌شده", "Archived" => "بایگانی", _ => s
+    };
 }
+
 <div class="space-y-6">
-    <h1 class="text-2xl font-bold">داشبورد کارگاه</h1>
-    <div class="rounded-xl border border-outline-variant bg-white p-6 text-on-surface-variant">
-        خلاصهٔ آماری (فرش‌ها بر اساس مرحله، ارزش موجودی، سود و فعالیت‌های اخیر) در فاز داشبورد تکمیل می‌شود.
-        منوی راست برای دسترسی به بخش‌ها فعال است.
+    <h1 class="text-2xl font-bold">داشبورد</h1>
+
+    <!-- کارت‌های خلاصه -->
+    <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        @{
+            (string Label, string Value, string Css)[] cards =
+            {
+                ("کل فرش‌ها", Model.TotalRugs.ToString(), "text-on-surface"),
+                ("در جریان", Model.InProgress.ToString(), "text-secondary"),
+                ("آمادهٔ فروش", Model.ReadyForSale.ToString(), "text-success"),
+                ("فروخته‌شده", Model.Sold.ToString(), "text-primary"),
+            };
+        }
+        @foreach (var c in cards)
+        {
+            <div class="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
+                <div class="text-sm text-on-surface-variant">@c.Label</div>
+                <div class="mt-1 text-3xl font-bold @c.Css" dir="ltr">@c.Value</div>
+            </div>
+        }
+    </div>
+
+    <!-- کارت‌های مالی -->
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
+            <div class="text-sm text-on-surface-variant">ارزش کل موجودی</div>
+            <div class="mt-1 text-xl font-bold" dir="ltr">@DisplayHelpers.Money(Model.TotalInvestment)</div>
+        </div>
+        <div class="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
+            <div class="text-sm text-on-surface-variant">ارزش در جریان تولید</div>
+            <div class="mt-1 text-xl font-bold" dir="ltr">@DisplayHelpers.Money(Model.PipelineValue)</div>
+        </div>
+        <div class="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
+            <div class="text-sm text-on-surface-variant">ارزش آمادهٔ فروش</div>
+            <div class="mt-1 text-xl font-bold text-success" dir="ltr">@DisplayHelpers.Money(Model.ReadyForSaleValue)</div>
+        </div>
+        <div class="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
+            <div class="text-sm text-on-surface-variant">سود تخمینی</div>
+            <div class="mt-1 text-xl font-bold @(Model.ProfitEstimate >= 0 ? "text-success" : "text-error")" dir="ltr">@DisplayHelpers.Money(Model.ProfitEstimate)</div>
+        </div>
+    </div>
+
+    <div class="grid gap-6 lg:grid-cols-2">
+        <!-- فرش‌ها بر اساس مرحله -->
+        <section class="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
+            <h2 class="mb-4 text-sm font-semibold text-primary">فرش‌ها بر اساس مرحلهٔ جاری</h2>
+            @if (Model.StepDistribution.Count == 0)
+            {
+                <p class="py-6 text-center text-sm text-on-surface-variant">فرش در حال انجامی وجود ندارد.</p>
+            }
+            else
+            {
+                <div class="space-y-3">
+                    @foreach (var s in Model.StepDistribution.OrderByDescending(x => x.Count))
+                    {
+                        var pct = (int)Math.Round(100.0 * s.Count / maxCount);
+                        <div>
+                            <div class="mb-1 flex justify-between text-sm">
+                                <span>@s.StepName</span>
+                                <span class="text-on-surface-variant" dir="ltr">@s.Count</span>
+                            </div>
+                            <div class="h-2.5 w-full overflow-hidden rounded-full bg-surface-container">
+                                <div class="h-full rounded-full bg-primary" style="width:@(pct)%"></div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            <div class="mt-4 flex flex-wrap gap-3 border-t border-outline-variant pt-4 text-sm">
+                <span class="rounded-full bg-warning/10 px-3 py-1 text-warning">هزینهٔ ثبت‌نشده: @Model.PendingCostCount فرش</span>
+                <a asp-controller="Groups" asp-action="Index" class="rounded-full bg-secondary-container px-3 py-1 text-on-secondary-container hover:opacity-90">گروه‌ها: @Model.BatchCount</a>
+            </div>
+        </section>
+
+        <!-- فعالیت اخیر -->
+        <section class="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
+            <div class="mb-4 flex items-center justify-between">
+                <h2 class="text-sm font-semibold text-primary">فرش‌های اخیر</h2>
+                <a asp-controller="Rugs" asp-action="Index" class="text-xs text-primary hover:underline">همه</a>
+            </div>
+            @if (Model.RecentRugs.Count == 0)
+            {
+                <p class="py-6 text-center text-sm text-on-surface-variant">هنوز فرشی ثبت نشده است.</p>
+            }
+            else
+            {
+                <ul class="divide-y divide-outline-variant">
+                    @foreach (var r in Model.RecentRugs)
+                    {
+                        <li class="flex items-center justify-between gap-3 py-2.5">
+                            <a asp-controller="Rugs" asp-action="Details" asp-route-id="@r.Id" class="min-w-0">
+                                <div class="truncate font-medium hover:text-primary">@(string.IsNullOrEmpty(r.Title) ? "بدون عنوان" : r.Title)</div>
+                                <div class="text-xs text-on-surface-variant" dir="ltr">@r.Sku · @StatusFa(r.Status)@(r.CurrentStepName != null ? " · " + r.CurrentStepName : "")</div>
+                            </a>
+                            <span class="shrink-0 text-sm" dir="ltr">@DisplayHelpers.Money(r.TotalInvestment)</span>
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
     </div>
 </div>

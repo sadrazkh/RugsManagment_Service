@@ -74,6 +74,17 @@ public class CustomFieldDefinitionConfiguration : IEntityTypeConfiguration<Custo
     }
 }
 
+/// <summary>قالب‌های برچسب هر کارگاه — طراحی بصری در jsonb</summary>
+public class LabelTemplateConfiguration : IEntityTypeConfiguration<LabelTemplate>
+{
+    public void Configure(EntityTypeBuilder<LabelTemplate> builder)
+    {
+        builder.Property(l => l.Name).HasMaxLength(200).IsRequired();
+        builder.Property(l => l.ElementsJson).HasColumnType("jsonb");
+        builder.HasOne(l => l.Tenant).WithMany().HasForeignKey(l => l.TenantId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
 public class RugBatchConfiguration : IEntityTypeConfiguration<RugBatch>
 {
     public void Configure(EntityTypeBuilder<RugBatch> builder)

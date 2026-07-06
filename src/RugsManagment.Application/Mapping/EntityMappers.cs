@@ -160,17 +160,28 @@ public static class EntityMappers
             .Select(g => new StepDistributionDto(g.Key, g.Count()))
             .ToList();
 
-        var pipeline = rugs
-            .Where(r => r.Status == RugStatus.InProgress)
-            .Sum(r => workflowEngine.CalculateRugCosts(r).TotalInvestment);
+        // یک بار محاسبهٔ هزینهٔ هر فرش تا از تکرار جلوگیری شود
+        var costed = rugs.Select(r => (Rug: r, Costs: workflowEngine.CalculateRugCosts(r))).ToList();
+
+        var pipeline = costed.Where(x => x.Rug.Status == RugStatus.InProgress).Sum(x => x.Costs.TotalInvestment);
+        var profit = costed.Where(x => x.Costs.EstimatedMargin.HasValue).Sum(x => x.Costs.EstimatedMargin!.Value);
+        var readyValue = costed.Where(x => x.Rug.Status == RugStatus.ReadyForSale).Sum(x => x.Costs.TotalInvestment);
+        var batchCount = rugs.Where(r => r.BatchId.HasValue).Select(r => r.BatchId).Distinct().Count();
+        // فرش‌های در جریان که هزینهٔ مرحلهٔ جاری‌شان هنوز ثبت نشده
+        var pendingCost = costed.Count(x => x.Rug.Status == RugStatus.InProgress
+            && x.Rug.WorkflowSteps.Any(s => s.Status == WorkflowStepStatus.InProgress && s.EffectiveCost == 0));
 
         return new DashboardStatsDto(
             rugs.Count,
             rugs.Count(r => r.Status == RugStatus.InProgress),
             rugs.Count(r => r.Status == RugStatus.ReadyForSale),
             rugs.Count(r => r.Status == RugStatus.Sold),
-            rugs.Sum(r => workflowEngine.CalculateRugCosts(r).TotalInvestment),
+            costed.Sum(x => x.Costs.TotalInvestment),
             pipeline,
+            profit,
+            readyValue,
+            batchCount,
+            pendingCost,
             recent,
             distribution);
     }

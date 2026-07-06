@@ -8,6 +8,10 @@ public record DashboardStatsDto(
     int Sold,
     decimal TotalInvestment,
     decimal PipelineValue,
+    decimal ProfitEstimate,
+    decimal ReadyForSaleValue,
+    int BatchCount,
+    int PendingCostCount,
     IReadOnlyList<RecentRugDto> RecentRugs,
     IReadOnlyList<StepDistributionDto> StepDistribution);
 

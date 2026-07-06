@@ -10,5 +10,6 @@ export const islands: Record<string, () => Promise<{ default: unknown }>> = {
   'list-quick-advance': () => import('./ListQuickAdvance.vue'),
   'rug-bulk-toolbar': () => import('./RugBulkToolbar.vue'),
   'group-detail': () => import('./GroupDetail.vue'),
+  'label-designer': () => import('./LabelDesigner.vue'),
   'custom-fields-manager': () => import('./CustomFieldsManager.vue'),
 }

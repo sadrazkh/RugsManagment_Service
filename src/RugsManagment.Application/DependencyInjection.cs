@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddScoped<IUserManagementService, UserManagementService>();
         services.AddScoped<ICustomFieldService, CustomFieldService>();
         services.AddScoped<ILookupService, LookupService>();
+        services.AddScoped<ILabelTemplateService, LabelTemplateService>();
         services.AddScoped<IWorkflowManagementService, WorkflowManagementService>();
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IRugBatchService, RugBatchService>();
