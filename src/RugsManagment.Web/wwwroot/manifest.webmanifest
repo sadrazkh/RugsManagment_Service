@@ -1,0 +1,16 @@
+{
+  "name": "سامانه مدیریت فرش",
+  "short_name": "مدیریت فرش",
+  "description": "مدیریت گردش کار فرش از تولید تا آماده‌سازی برای فروش",
+  "lang": "fa",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#fbf9f5",
+  "theme_color": "#6b0008",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

@@ -3,7 +3,6 @@
  * هر جزیرهٔ جدید فقط یک سطر اینجا اضافه می‌کند؛ Vite آن را به‌صورت جدا code-split می‌کند.
  */
 export const islands: Record<string, () => Promise<{ default: unknown }>> = {
-  hello: () => import('./HelloIsland.vue'),
   'rug-form': () => import('./RugForm.vue'),
   'rug-workflow': () => import('./RugWorkflowPanel.vue'),
   'workflow-template-editor': () => import('./WorkflowTemplateEditor.vue'),

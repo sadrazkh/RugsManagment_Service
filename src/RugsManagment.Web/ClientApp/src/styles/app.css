@@ -47,3 +47,8 @@
 :root {
   color-scheme: light;
 }
+
+/* فضای امن پایین برای دستگاه‌های دارای notch/home-indicator */
+.pb-safe {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}

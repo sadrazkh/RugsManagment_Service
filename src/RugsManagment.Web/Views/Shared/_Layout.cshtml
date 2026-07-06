@@ -21,6 +21,13 @@
     <meta name="csrf-token" content="@csrf" />
     <title>@ViewData["Title"] — سامانه مدیریت فرش</title>
 
+    @* PWA — نصب‌پذیری و آفلاین *@
+    <link rel="manifest" href="~/manifest.webmanifest" />
+    <link rel="icon" href="~/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="~/icon.svg" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
     <link rel="stylesheet"
           href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" />
@@ -95,5 +102,13 @@ else
     </div>
 }
     @await RenderSectionAsync("Scripts", required: false)
+    <script>
+        // ثبت Service Worker برای PWA (نصب روی موبایل/تبلت + fallback آفلاین)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('/sw.js').catch(function () { /* بی‌صدا */ });
+            });
+        }
+    </script>
 </body>
 </html>

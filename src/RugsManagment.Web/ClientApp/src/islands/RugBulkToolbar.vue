@@ -62,7 +62,7 @@ onMounted(async () => {
 <template>
   <transition name="slide-up">
     <div v-if="count > 0"
-         class="fixed inset-x-0 bottom-0 z-40 border-t border-outline-variant bg-white/95 px-4 py-3 shadow-lg backdrop-blur">
+         class="pb-safe fixed inset-x-0 bottom-0 z-40 border-t border-outline-variant bg-white/95 px-4 pt-3 shadow-lg backdrop-blur">
       <div class="mx-auto flex max-w-[1440px] flex-wrap items-center gap-3">
         <span class="font-bold text-primary">{{ count }} انتخاب‌شده</span>
         <button @click="clearAll" class="text-sm text-on-surface-variant hover:underline">لغو</button>
