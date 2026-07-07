@@ -365,3 +365,6 @@ FodyWeavers.xsd
 # node_modules و خروجی build که با `npm run build` بازتولید می‌شود
 src/RugsManagment.Web/ClientApp/node_modules/
 src/RugsManagment.Web/wwwroot/dist/
+
+# کلیدهای Data Protection (محلی) — در تولید روی volume ماندگار CapRover
+src/RugsManagment.Web/App_Data/

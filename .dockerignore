@@ -1,0 +1,21 @@
+# خروجی‌های build و وابستگی‌ها (داخل ایمیج بازتولید می‌شوند)
+**/bin/
+**/obj/
+**/node_modules/
+src/RugsManagment.Web/wwwroot/dist/
+src/RugsManagment.Web/App_Data/
+
+# پروژه‌های قدیمیِ کنارگذاشته‌شده (میزبان جدید جایگزینشان شده)
+client/
+RugsManagment_Service/
+
+# ابزار و متادیتا
+.git/
+.vs/
+.vscode/
+.claude/
+_design_ref/
+_design_ref2/
+docs/
+**/*.user
+docker-compose.yml

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using RugsManagment.Application;
 using RugsManagment.Infrastructure;
 using RugsManagment.Infrastructure.Persistence.Seed;
@@ -7,9 +8,7 @@ using RugsManagment.Infrastructure.Persistence.Seed;
 // ═══════════════════════════════════════════════════════════════════
 // میزبان یکپارچه: MVC/Razor + کنترلرهای API + جزیره‌های Vue
 // یک اپلیکیشن، یک پورت. بدون سرور جداگانه‌ی فرانت در تولید.
-//   - AddApplication/AddInfrastructure: همان سرویس‌ها و دیتابیس پروژه‌ی قبلی
-//   - احراز هویت مبتنی بر Cookie (طبیعی برای اپ MVC؛ مشکل ورود قبلی را حل می‌کند)
-//   - جزیره‌های Vue از wwwroot/dist سرو می‌شوند (خروجی build خط لوله‌ی Vite)
+// آماده برای اجرا پشت پراکسی معکوس (CapRover/Nginx) که SSL را مدیریت می‌کند.
 // ═══════════════════════════════════════════════════════════════════
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,17 +16,27 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
-// کلیدهای Data Protection را ماندگار کن تا کوکی احراز هویت و توکن antiforgery
-// با ری‌استارت یا اجرای چند نمونه باطل نشوند (لازم برای محیط تولید).
+// کلیدهای Data Protection را ماندگار کن تا کوکی و توکن antiforgery با ری‌استارت باطل نشوند.
+// مسیر از طریق DataProtection:KeyPath قابل تنظیم است تا در کانتینر به یک volume ماندگار اشاره کند.
+var keyPath = builder.Configuration["DataProtection:KeyPath"]
+    ?? Path.Combine(builder.Environment.ContentRootPath, "App_Data", "keys");
+Directory.CreateDirectory(keyPath);
 builder.Services.AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo(
-        Path.Combine(builder.Environment.ContentRootPath, "App_Data", "keys")))
+    .PersistKeysToFileSystem(new DirectoryInfo(keyPath))
     .SetApplicationName("RugsManagment");
+
+// پردازش هدرهای X-Forwarded-* از پراکسی تا scheme/آی‌پی واقعی شناخته شود (کوکی Secure درست کار کند)
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    // پراکسی CapRover در شبکهٔ داخلی است؛ محدودیت شبکه/پراکسی را برمی‌داریم
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 builder.Services.AddControllersWithViews();
 
-// خروجی HTML فارسی به‌جای entityهای عددی، به‌صورت UTF-8 تمیز رندر شود.
-// (کاراکترهای خطرناک HTML همچنان escape می‌شوند؛ فقط دامنهٔ یونیکد گسترده می‌شود.)
+// خروجی HTML فارسی به‌صورت UTF-8 تمیز (کاراکترهای خطرناک HTML همچنان escape می‌شوند).
 builder.Services.Configure<Microsoft.Extensions.WebEncoders.WebEncoderOptions>(options =>
     options.TextEncoderSettings = new System.Text.Encodings.Web.TextEncoderSettings(System.Text.Unicode.UnicodeRanges.All));
 
@@ -47,17 +56,18 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.Cookie.Name = "rugs.auth";
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
+        // پشت HTTPS (پراکسی) کوکی Secure می‌شود؛ در توسعهٔ HTTP معمولی می‌ماند
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     });
 
 builder.Services.AddAuthorization();
-
-// دسترسی به کاربر جاری از داخل سرویس‌ها (برای جداسازی مستأجر)
 builder.Services.AddHttpContextAccessor();
-
-// پل Razor ↔ خروجی build فرانت (Vue islands)
 builder.Services.AddSingleton<RugsManagment.Web.Frontend.ViteAssets>();
 
 var app = builder.Build();
+
+// باید قبل از بقیهٔ میان‌افزارها باشد تا scheme درست تشخیص داده شود
+app.UseForwardedHeaders();
 
 if (!app.Environment.IsDevelopment())
 {
@@ -65,22 +75,42 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+// پیش‌فرض خاموش است چون CapRover در لبه HTTPS را اجبار می‌کند؛ برای اجرای مستقیم HTTPS قابل‌فعال‌سازی.
+if (builder.Configuration.GetValue("Hosting:UseHttpsRedirection", false))
+    app.UseHttpsRedirection();
+
 app.UseStaticFiles();
 app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-// کنترلرهای API (JSON برای جزیره‌های Vue) — الگوی attribute-route: [Route("api/...")]
 app.MapControllers();
-
-// صفحات MVC/Razor
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
-// migration + دادهٔ اولیه (ادمین سیستم، کارگاه دمو، قالب‌ها) هنگام استارت
-await DatabaseSeeder.SeedAsync(app.Services);
+// migration + دادهٔ اولیه — با چند بار تلاش تا اگر دیتابیس هنگام استارت هنوز آماده نبود کرش نکند
+await MigrateAndSeedWithRetryAsync(app);
 
 app.Run();
+
+// ─────────────────────────────────────────────────────────────
+static async Task MigrateAndSeedWithRetryAsync(WebApplication app)
+{
+    var logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
+    const int maxAttempts = 10;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++)
+    {
+        try
+        {
+            await DatabaseSeeder.SeedAsync(app.Services);
+            return;
+        }
+        catch (Exception ex) when (attempt < maxAttempts)
+        {
+            logger.LogWarning(ex, "اتصال/مهاجرت دیتابیس ناموفق (تلاش {Attempt}/{Max}). تلاش دوباره...", attempt, maxAttempts);
+            await Task.Delay(TimeSpan.FromSeconds(3));
+        }
+    }
+}
