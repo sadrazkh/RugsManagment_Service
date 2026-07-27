@@ -75,6 +75,12 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+// صفحهٔ فارسی و هم‌سبک برای ۴۰۴/۴۰۳/… (بدون تغییر آدرس و بدون تغییر کد وضعیت).
+// مسیرهای /api/* از این شاخه بیرون می‌مانند تا همچنان JSON برگردانند نه HTML.
+app.UseWhen(
+    context => !context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase),
+    branch => branch.UseStatusCodePagesWithReExecute("/status/{0}"));
+
 // پیش‌فرض خاموش است چون CapRover در لبه HTTPS را اجبار می‌کند؛ برای اجرای مستقیم HTTPS قابل‌فعال‌سازی.
 if (builder.Configuration.GetValue("Hosting:UseHttpsRedirection", false))
     app.UseHttpsRedirection();

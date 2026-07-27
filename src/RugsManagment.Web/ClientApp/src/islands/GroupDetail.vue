@@ -7,7 +7,8 @@
  */
 import { computed, onMounted, reactive, ref } from 'vue'
 import { api } from '@/lib/api'
-import { formatThousands } from '@/lib/money'
+import { faMoney, faNumber } from '@/lib/format'
+import AppIcon from '@/components/AppIcon.vue'
 import type { Rug } from '@/lib/types'
 
 const props = defineProps<{ groupId: string; groupName: string }>()
@@ -134,18 +135,18 @@ onMounted(load)
   <div class="space-y-5 pb-24">
     <div v-if="error" class="rounded-lg bg-error-container px-4 py-3 text-sm text-error">{{ error }}</div>
     <div v-if="info" class="rounded-lg bg-success/10 px-4 py-3 text-sm text-success">{{ info }}</div>
-    <div v-if="loading" class="rounded-xl border border-outline-variant bg-white p-8 text-center text-on-surface-variant">در حال بارگذاری…</div>
+    <div v-if="loading" class="rounded-xl border border-outline-variant bg-surface-container-lowest p-8 text-center text-on-surface-variant">در حال بارگذاری…</div>
 
     <template v-else>
       <div class="text-sm text-on-surface-variant"><span class="font-bold text-on-surface">{{ inGroup.length }}</span> فرش در این گروه، در {{ stageGroups.length }} مرحله</div>
 
-      <div v-if="inGroup.length === 0" class="rounded-xl border border-dashed border-outline-variant bg-white p-8 text-center text-on-surface-variant">
+      <div v-if="inGroup.length === 0" class="rounded-xl border border-dashed border-outline-variant bg-surface-container-lowest p-8 text-center text-on-surface-variant">
         هنوز فرشی در این گروه نیست. از پایین اضافه کنید.
       </div>
 
       <!-- ستون‌های مرحله‌محور -->
       <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <section v-for="sg in stageGroups" :key="sg.name" class="rounded-xl border border-outline-variant bg-white p-4 shadow-sm">
+        <section v-for="sg in stageGroups" :key="sg.name" class="rounded-xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm">
           <div class="mb-3 flex items-center justify-between gap-2">
             <h2 class="flex items-center gap-2 font-semibold text-primary">
               {{ sg.name }}
@@ -165,22 +166,28 @@ onMounted(load)
                 <div class="text-xs text-on-surface-variant" dir="ltr">{{ r.sku }}</div>
               </a>
               <div class="shrink-0 text-left">
-                <div class="text-xs text-on-surface-variant" dir="ltr">{{ progress(r).done }}/{{ progress(r).total }}</div>
-                <div class="mt-0.5 h-1.5 w-12 overflow-hidden rounded-full bg-surface-container">
+                <div class="text-xs text-on-surface-variant" data-numeric>
+                  {{ faNumber(progress(r).done) }}/{{ faNumber(progress(r).total) }}
+                </div>
+                <div class="mt-0.5 h-1.5 w-12 overflow-hidden rounded-full bg-surface-container"
+                     role="img" :aria-label="`${progress(r).done} از ${progress(r).total} مرحله تکمیل شده`">
                   <div class="h-full rounded-full bg-success" :style="{ width: (progress(r).total ? progress(r).done / progress(r).total * 100 : 0) + '%' }"></div>
                 </div>
               </div>
-              <button @click="removeOne(r.id)" :disabled="busy" class="shrink-0 text-xs text-error hover:opacity-70" title="خروج از گروه">✕</button>
+              <button type="button" :disabled="busy" @click="removeOne(r.id)"
+                      class="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-error hover:bg-error-container">
+                <AppIcon name="close" class="h-4 w-4" :label="`خروج ${r.sku} از گروه`" />
+              </button>
             </li>
           </ul>
         </section>
       </div>
 
       <!-- افزودن فرش بدون گروه -->
-      <section class="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
+      <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
         <div class="mb-3 flex items-center justify-between">
           <h2 class="text-sm font-semibold text-primary">افزودن فرش به گروه</h2>
-          <button :disabled="busy" @click="addSelected" class="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-on-primary hover:opacity-90 disabled:opacity-50">افزودن</button>
+          <button :disabled="busy" @click="addSelected" class="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-on-primary hover:bg-primary-hover disabled:opacity-50">افزودن</button>
         </div>
         <div v-if="unassigned.length === 0" class="py-4 text-center text-sm text-on-surface-variant">فرش بدون گروهی موجود نیست.</div>
         <ul v-else class="max-h-60 divide-y divide-outline-variant overflow-y-auto">
@@ -194,13 +201,22 @@ onMounted(load)
 
     <!-- نوار عملیات زیرمجموعه (چسبان پایین) -->
     <transition name="fade">
-      <div v-if="selectedIds.length > 0" class="pb-safe fixed inset-x-0 bottom-0 z-40 border-t border-outline-variant bg-white/95 px-4 pt-3 shadow-lg backdrop-blur">
+      <div v-if="selectedIds.length > 0" class="pb-safe fixed inset-x-0 bottom-0 z-40 border-t border-outline-variant bg-surface-container-lowest/95 px-4 pt-3 shadow-lg backdrop-blur">
         <div class="mx-auto flex max-w-[1440px] flex-wrap items-center gap-2">
-          <span class="font-bold text-primary">{{ selectedIds.length }} انتخاب</span>
-          <button @click="clearSel" class="text-sm text-on-surface-variant hover:underline">لغو</button>
+          <span class="font-bold text-primary" aria-live="polite">{{ faNumber(selectedIds.length) }} انتخاب</span>
+          <button type="button" @click="clearSel"
+                  class="inline-flex min-h-11 items-center rounded-lg px-2 text-sm text-on-surface-variant hover:bg-surface-container">لغو</button>
           <div class="flex-1"></div>
-          <button :disabled="busy" @click="backSel" class="rounded-lg border border-outline-variant px-3 py-2 text-sm hover:bg-surface-container disabled:opacity-50">→ مرحلهٔ قبل</button>
-          <button :disabled="busy" @click="advanceSel" class="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-on-primary hover:opacity-90 disabled:opacity-50">مرحلهٔ بعد ←</button>
+          <button type="button" :disabled="busy" @click="backSel"
+                  class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-3 text-sm hover:bg-surface-container">
+            <AppIcon name="arrow-right" class="h-4 w-4" />
+            مرحلهٔ قبل
+          </button>
+          <button type="button" :disabled="busy" @click="advanceSel"
+                  class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-semibold text-on-primary hover:bg-primary-hover">
+            مرحلهٔ بعد
+            <AppIcon name="arrow-left" class="h-4 w-4" />
+          </button>
           <span class="mx-1 h-6 w-px bg-outline-variant"></span>
           <button :disabled="busy" @click="newSubGroup" class="rounded-lg border border-primary px-3 py-2 text-sm text-primary hover:bg-primary/10 disabled:opacity-50">گروه جدید از انتخاب</button>
           <select v-if="otherGroups.length" v-model="moveTarget" class="rounded-lg border border-outline-variant px-2 py-2 text-sm">

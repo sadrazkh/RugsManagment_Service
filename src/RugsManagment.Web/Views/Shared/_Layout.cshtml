@@ -8,18 +8,64 @@
     var role = User.FindFirstValue(ClaimTypes.Role);
     var isSystemAdmin = role == nameof(RugsManagment.Domain.Enums.UserRole.SystemAdmin);
     var isTenantAdmin = role == nameof(RugsManagment.Domain.Enums.UserRole.TenantAdmin);
-    string Active(string controller) =>
-        string.Equals(ViewContext.RouteData.Values["controller"]?.ToString(), controller, StringComparison.OrdinalIgnoreCase)
-            ? "bg-primary/10 text-primary font-semibold" : "text-on-surface-variant hover:bg-surface-container";
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+
+    bool IsActive(string controller) =>
+        string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase);
+
+    string NavCss(string controller) => IsActive(controller)
+        ? "bg-primary/10 text-primary font-semibold"
+        : "text-on-surface-variant hover:bg-surface-container";
+
+    // آیتم‌های منو یک بار تعریف می‌شوند و هم در نوار کناری و هم در ناوبری پایین موبایل به کار می‌روند
+    (string Controller, string Action, string Icon, string Label)[] navItems = isSystemAdmin
+        ? [("Admin", "Index", "building", "کارگاه‌ها")]
+        : isTenantAdmin
+            ?
+            [
+                ("Dashboard", "Index", "dashboard", "داشبورد"),
+                ("Rugs", "Index", "rug", "فرش‌ها"),
+                ("Groups", "Index", "package", "گروه‌ها"),
+                ("Workflows", "Index", "workflow", "گردش کار"),
+                ("Labels", "Index", "tag", "برچسب‌ها"),
+                ("Users", "Index", "users", "کاربران"),
+                ("Settings", "CustomFields", "settings", "فیلدهای سفارشی"),
+            ]
+            :
+            [
+                ("Dashboard", "Index", "dashboard", "داشبورد"),
+                ("Rugs", "Index", "rug", "فرش‌ها"),
+                ("Groups", "Index", "package", "گروه‌ها"),
+                ("Workflows", "Index", "workflow", "گردش کار"),
+                ("Labels", "Index", "tag", "برچسب‌ها"),
+            ];
+
+    // ناوبری پایین موبایل فقط پرکاربردترین‌ها (راهنمای UX: حداکثر ۵ آیتم)
+    var bottomNavItems = navItems.Take(5).ToArray();
 }
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#6b0008" />
+    <meta name="theme-color" content="#6b0008" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#14100f" media="(prefers-color-scheme: dark)" />
     <meta name="csrf-token" content="@csrf" />
     <title>@ViewData["Title"] — سامانه مدیریت فرش</title>
+
+    @*
+        تم قبل از رنگ‌آمیزی صفحه اعمال می‌شود تا در حالت تاریک «فلاش سفید» رخ ندهد.
+        این اسکریپت عمداً inline و همگام است.
+    *@
+    <script>
+        (function () {
+            try {
+                var saved = localStorage.getItem('rugs-theme');
+                var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (saved === 'dark' || (!saved && prefersDark)) document.documentElement.classList.add('dark');
+            } catch (e) { /* حالت خصوصی مرورگر — بی‌صدا */ }
+        })();
+    </script>
 
     @* PWA — نصب‌پذیری و آفلاین *@
     <link rel="manifest" href="~/manifest.webmanifest" />
@@ -33,83 +79,124 @@
           href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" />
     @ViteAssets.RenderHead(Html)
 </head>
-<body class="min-h-screen bg-surface text-on-surface antialiased" style="font-family:'Vazirmatn',system-ui,sans-serif;">
+<body class="min-h-screen bg-surface font-sans text-on-surface antialiased">
+
+@* پرش به محتوا — اولین توقف Tab برای کاربران کیبورد و صفحه‌خوان *@
+<a href="#main-content"
+   class="sr-only-focusable absolute right-4 top-4 z-[80] rounded-lg bg-primary px-4 py-2 text-on-primary">
+    پرش به محتوای اصلی
+</a>
+
 @if (!isAuthed)
 {
     @* صفحات عمومی (ورود) — بدون منو، تمام‌صفحه *@
-    <div class="grid min-h-screen place-items-center px-4">
+    <div id="main-content" class="grid min-h-screen place-items-center px-4">
         @RenderBody()
     </div>
 }
 else
 {
     <div class="flex min-h-screen">
-        @* ── نوار کناری (دسکتاپ) / کشویی (موبایل) ── *@
-        <input type="checkbox" id="nav-toggle" class="peer hidden" />
-        <label for="nav-toggle" class="fixed inset-0 z-30 hidden bg-black/40 peer-checked:block md:!hidden"></label>
+        @* ── پوشش تیره پشت منوی موبایل ── *@
+        <div id="nav-backdrop" hidden class="fixed inset-0 z-30 bg-black/50 md:hidden" data-no-print></div>
 
-        <aside class="fixed inset-y-0 right-0 z-40 w-72 translate-x-full overflow-y-auto border-l border-outline-variant bg-white transition-transform peer-checked:translate-x-0 md:static md:translate-x-0">
-            <div class="flex items-center gap-2 border-b border-outline-variant px-5 py-4 font-bold text-primary">
-                <span class="grid h-9 w-9 place-items-center rounded-lg bg-primary text-on-primary">ف</span>
-                <span>مدیریت فرش</span>
+        @* ── نوار کناری (دسکتاپ ثابت / موبایل کشویی) ── *@
+        <aside id="app-sidebar"
+               aria-label="ناوبری اصلی"
+               class="fixed inset-y-0 right-0 z-40 w-72 translate-x-full overflow-y-auto border-l border-outline-variant bg-surface-container-lowest transition-transform duration-200 md:static md:translate-x-0"
+               data-no-print>
+            <div class="flex items-center justify-between border-b border-outline-variant px-5 py-4">
+                <div class="flex items-center gap-2 font-bold text-primary">
+                    <span class="grid h-9 w-9 place-items-center rounded-lg bg-primary text-on-primary">
+                        <icon name="rug" class="h-5 w-5" />
+                    </span>
+                    <span>مدیریت فرش</span>
+                </div>
+                <button type="button" id="nav-close"
+                        class="grid h-11 w-11 place-items-center rounded-lg hover:bg-surface-container md:hidden">
+                    <icon name="close" label="بستن منو" />
+                </button>
             </div>
+
             <nav class="space-y-1 p-3 text-sm">
-                @if (isSystemAdmin)
+                @foreach (var item in navItems)
                 {
-                    <a asp-controller="Admin" asp-action="Index" class="flex items-center gap-3 rounded-lg px-3 py-2.5 @Active("Admin")">🏢 کارگاه‌ها</a>
-                }
-                else
-                {
-                    <a asp-controller="Dashboard" asp-action="Index" class="flex items-center gap-3 rounded-lg px-3 py-2.5 @Active("Dashboard")">📊 داشبورد</a>
-                    <a asp-controller="Rugs" asp-action="Index" class="flex items-center gap-3 rounded-lg px-3 py-2.5 @Active("Rugs")">🧶 فرش‌ها</a>
-                    <a asp-controller="Groups" asp-action="Index" class="flex items-center gap-3 rounded-lg px-3 py-2.5 @Active("Groups")">📦 گروه‌ها</a>
-                    <a asp-controller="Workflows" asp-action="Index" class="flex items-center gap-3 rounded-lg px-3 py-2.5 @Active("Workflows")">🔀 گردش کار</a>
-                    <a asp-controller="Labels" asp-action="Index" class="flex items-center gap-3 rounded-lg px-3 py-2.5 @Active("Labels")">🏷️ برچسب‌ها</a>
-                    @if (isTenantAdmin)
-                    {
-                        <a asp-controller="Users" asp-action="Index" class="flex items-center gap-3 rounded-lg px-3 py-2.5 @Active("Users")">👥 کاربران</a>
-                        <a asp-controller="Settings" asp-action="CustomFields" class="flex items-center gap-3 rounded-lg px-3 py-2.5 @Active("Settings")">⚙️ فیلدهای سفارشی</a>
-                    }
+                    <a asp-controller="@item.Controller" asp-action="@item.Action"
+                       aria-current="@(IsActive(item.Controller) ? "page" : null)"
+                       class="flex min-h-11 items-center gap-3 rounded-lg px-3 @NavCss(item.Controller)">
+                        <icon name="@item.Icon" />
+                        <span>@item.Label</span>
+                    </a>
                 }
             </nav>
         </aside>
 
         <div class="flex min-w-0 flex-1 flex-col">
-            <header class="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-outline-variant bg-white/90 px-4 py-3 backdrop-blur md:px-6">
-                <label for="nav-toggle" class="grid h-10 w-10 cursor-pointer place-items-center rounded-lg hover:bg-surface-container md:hidden" aria-label="منو">☰</label>
-                <div class="text-sm text-on-surface-variant">@ViewData["Title"]</div>
-                <div class="flex items-center gap-3">
-                    <div data-island="pwa-install"></div>
-                    @if (User.GetTenantName() is string tn)
+            <header class="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-outline-variant bg-surface-container-lowest/90 px-4 py-3 backdrop-blur md:px-6"
+                    data-no-print>
+                <div class="flex min-w-0 items-center gap-2">
+                    <button type="button" id="nav-open"
+                            class="grid h-11 w-11 place-items-center rounded-lg hover:bg-surface-container md:hidden"
+                            aria-controls="app-sidebar" aria-expanded="false">
+                        <icon name="menu" label="باز کردن منو" />
+                    </button>
+                    @* برچسب زمینه‌ای، نه عنوان صفحه — عنوان اصلی (h1) داخل خود صفحه است *@
+                    <span class="truncate text-sm font-medium text-on-surface-variant md:hidden">@ViewData["Title"]</span>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <div data-island="pwa-install" data-skeleton="off"></div>
+
+                    <button type="button" id="theme-toggle"
+                            class="grid h-11 w-11 place-items-center rounded-lg hover:bg-surface-container">
+                        <icon name="sun" class="hidden h-5 w-5 dark:block" label="روشن کردن تم" />
+                        <icon name="moon" class="h-5 w-5 dark:hidden" label="تاریک کردن تم" />
+                    </button>
+
+                    @if (User.GetTenantName() is string tenantName)
                     {
-                        <span class="hidden rounded-full bg-secondary-container px-3 py-1 text-xs text-on-secondary-container sm:inline">@tn</span>
+                        <span class="hidden rounded-full bg-secondary-container px-3 py-1 text-xs text-on-secondary-container sm:inline">@tenantName</span>
                     }
                     <span class="hidden text-sm text-on-surface-variant sm:inline">@User.GetDisplayName()</span>
+
                     <form asp-controller="Account" asp-action="Logout" method="post" class="inline">
                         @Html.AntiForgeryToken()
-                        <button type="submit" class="rounded-lg border border-outline-variant px-3 py-1.5 text-sm text-on-surface-variant hover:bg-surface-container">خروج</button>
+                        <button type="submit"
+                                class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-3 text-sm text-on-surface-variant hover:bg-surface-container">
+                            <icon name="logout" class="h-4 w-4" />
+                            <span class="hidden sm:inline">خروج</span>
+                        </button>
                     </form>
                 </div>
             </header>
 
-            <main class="flex-1 px-4 py-6 md:px-6">
-                @if (TempData["Toast"] is string toast)
+            <main id="main-content" class="flex-1 px-4 py-6 pb-24 md:px-6 md:pb-6">
+                @if (TempData["Toast"] is string toastMessage)
                 {
-                    <div class="mb-4 rounded-lg bg-success/10 px-4 py-3 text-sm text-success">@toast</div>
+                    @* پیام سمت سرور به سیستم Toast کلاینت پاس داده می‌شود تا ظاهر یکسان باشد *@
+                    <div data-server-toast="@toastMessage" data-server-toast-kind="success" hidden></div>
                 }
                 @RenderBody()
             </main>
         </div>
     </div>
-}
-    @await RenderSectionAsync("Scripts", required: false)
-    <script>
-        // ثبت Service Worker برای PWA (نصب روی موبایل/تبلت + fallback آفلاین)
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function () {
-                navigator.serviceWorker.register('/sw.js').catch(function () { /* بی‌صدا */ });
-            });
+
+    @* ── ناوبری پایین (فقط موبایل) — دسترسی یک‌لمسی به بخش‌های اصلی ── *@
+    <nav class="pb-safe fixed inset-x-0 bottom-0 z-30 flex border-t border-outline-variant bg-surface-container-lowest/95 backdrop-blur md:hidden"
+         aria-label="ناوبری سریع" data-no-print>
+        @foreach (var item in bottomNavItems)
+        {
+            <a asp-controller="@item.Controller" asp-action="@item.Action"
+               aria-current="@(IsActive(item.Controller) ? "page" : null)"
+               class="flex flex-1 flex-col items-center gap-0.5 pt-2 text-[0.68rem] @(IsActive(item.Controller) ? "text-primary" : "text-on-surface-variant")">
+                <icon name="@item.Icon" />
+                <span>@item.Label</span>
+            </a>
         }
-    </script>
+    </nav>
+}
+
+@await RenderSectionAsync("Scripts", required: false)
+<script src="~/js/site.js" asp-append-version="true"></script>
 </body>
 </html>

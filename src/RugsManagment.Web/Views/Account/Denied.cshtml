@@ -1,9 +1,15 @@
 @{
     ViewData["Title"] = "دسترسی مجاز نیست";
 }
-<div class="mx-auto max-w-md rounded-2xl border border-outline-variant bg-white p-8 text-center shadow-sm">
-    <div class="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl bg-error-container text-2xl">⛔</div>
+<div class="mx-auto max-w-md rounded-2xl border border-outline-variant bg-surface-container-lowest p-8 text-center shadow-sm">
+    <div class="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl bg-error-container text-on-error-container">
+        <icon name="error" class="h-7 w-7" />
+    </div>
     <h1 class="text-lg font-bold text-on-surface">دسترسی مجاز نیست</h1>
     <p class="mt-2 text-sm text-on-surface-variant">شما اجازهٔ مشاهدهٔ این بخش را ندارید.</p>
-    <a asp-controller="Home" asp-action="Index" class="mt-4 inline-block rounded-lg bg-primary px-4 py-2 text-on-primary">بازگشت</a>
+    <a asp-controller="Home" asp-action="Index"
+       class="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-5 font-semibold text-on-primary hover:bg-primary-hover">
+        <icon name="arrow-right" class="h-4 w-4" />
+        بازگشت به خانه
+    </a>
 </div>

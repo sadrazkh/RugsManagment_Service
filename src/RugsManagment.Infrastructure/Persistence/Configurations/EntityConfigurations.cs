@@ -58,6 +58,11 @@ public class RugConfiguration : IEntityTypeConfiguration<Rug>
         builder.HasMany(r => r.WorkflowSteps).WithOne(s => s.Rug).HasForeignKey(s => s.RugId).OnDelete(DeleteBehavior.Cascade);
         builder.Property(r => r.MetadataJson).HasColumnType("jsonb"); // متادیتای انعطاف‌پذیر
         builder.Ignore(r => r.AreaSquareMeters); // فقط در کد محاسبه می‌شود
+
+        // کنترل هم‌زمانی خوش‌بینانه با ستون سیستمی xmin پستگرس (بدون ستون اضافه در جدول).
+        // اگر دو اپراتور هم‌زمان یک فرش را تغییر دهند، دومی خطای هم‌زمانی می‌گیرد
+        // به‌جای اینکه تغییر اولی را بی‌صدا بازنویسی کند.
+        builder.Property<uint>("xmin").IsRowVersion();
     }
 }
 
@@ -100,5 +105,19 @@ public class ServiceProviderConfiguration : IEntityTypeConfiguration<ServiceProv
     {
         builder.Property(p => p.Name).HasMaxLength(200).IsRequired();
         builder.HasOne(p => p.Tenant).WithMany().HasForeignKey(p => p.TenantId);
+    }
+}
+
+/// <summary>
+/// مرحلهٔ فرش — پرترافیک‌ترین موجودیت برای ویرایش هم‌زمان (دو اپراتور، یک فرش).
+/// کنترل هم‌زمانی با xmin تا ثبت هزینهٔ یکی، ثبت دیگری را بی‌صدا پاک نکند.
+/// </summary>
+public class RugWorkflowStepConfiguration : IEntityTypeConfiguration<RugWorkflowStep>
+{
+    public void Configure(EntityTypeBuilder<RugWorkflowStep> builder)
+    {
+        builder.HasIndex(s => new { s.RugId, s.OrderIndex });
+        builder.Ignore(s => s.EffectiveCost); // فقط در کد محاسبه می‌شود
+        builder.Property<uint>("xmin").IsRowVersion();
     }
 }

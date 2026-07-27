@@ -1,4 +1,2 @@
-@* اعتبارسنجی سمت کلاینت رِیزور به jQuery نیاز دارد؛ چون layout اصلی jQuery را سراسری لود نمی‌کند اینجا خودکفا می‌شود. *@
-<script src="~/lib/jquery/dist/jquery.min.js"></script>
-<script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
-<script src="~/lib/jquery-validation-unobtrusive/dist/jquery.validate.unobtrusive.min.js"></script>
+@* اعتبارسنجی سمت کلاینت — بدون jQuery. همان صفت‌های data-val-* تگ‌هلپرها را می‌خواند. *@
+<script src="~/js/validation.js" asp-append-version="true"></script>

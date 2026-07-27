@@ -2,6 +2,7 @@
 /** مدیریت فیلدهای سفارشی کارگاه: افزودن/ویرایش/حذف. مقادیر در Rug.MetadataJson ذخیره می‌شوند. */
 import { onMounted, reactive, ref } from 'vue'
 import { api } from '@/lib/api'
+import { confirmDialog, toast } from '@/lib/ui'
 import type { CustomFieldDefinition, CustomFieldType } from '@/lib/types'
 
 const fields = ref<CustomFieldDefinition[]>([])
@@ -51,9 +52,21 @@ async function toggleActive(f: CustomFieldDefinition) {
 }
 
 async function remove(f: CustomFieldDefinition) {
-  if (!confirm(`حذف فیلد «${f.label}»؟`)) return
-  try { await api.del(`/api/custom-fields/${f.id}`); await load() }
-  catch (e) { error.value = (e as Error).message }
+  const ok = await confirmDialog({
+    title: `فیلد «${f.label}» حذف شود؟`,
+    message: 'مقادیر ثبت‌شدهٔ این فیلد روی فرش‌ها دیگر نمایش داده نمی‌شوند.',
+    confirmLabel: 'حذف فیلد',
+    danger: true,
+  })
+  if (!ok) return
+
+  try {
+    await api.del(`/api/custom-fields/${f.id}`)
+    toast.success('فیلد حذف شد.')
+    await load()
+  } catch (e) {
+    toast.error((e as Error).message)
+  }
 }
 
 onMounted(load)

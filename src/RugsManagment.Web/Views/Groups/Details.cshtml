@@ -6,14 +6,28 @@
 <div class="space-y-5">
     <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-3">
-            <a asp-action="Index" class="rounded-lg border border-outline-variant px-3 py-1.5 text-sm hover:bg-surface-container">→ بازگشت</a>
+            @* در RTL «بازگشت» به سمت راست اشاره می‌کند *@
+            <a asp-action="Index"
+               class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-3 text-sm hover:bg-surface-container">
+                <icon name="arrow-right" class="h-4 w-4" />
+                بازگشت
+            </a>
             <h1 class="text-2xl font-bold">@groupName</h1>
         </div>
-        <form asp-action="Delete" asp-route-id="@groupId" method="post" onsubmit="return confirm('حذف گروه؟ فرش‌ها حذف نمی‌شوند.')">
+
+        <form asp-action="Delete" asp-route-id="@groupId" method="post"
+              data-confirm="گروه «@groupName» حذف شود؟"
+              data-confirm-message="فرش‌های داخل گروه حذف نمی‌شوند و فقط از این گروه خارج می‌شوند."
+              data-confirm-label="حذف گروه"
+              data-confirm-danger>
             @Html.AntiForgeryToken()
-            <button type="submit" class="rounded-lg border border-outline-variant px-3 py-1.5 text-sm text-error hover:bg-error-container">حذف گروه</button>
+            <button type="submit"
+                    class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-3 text-sm text-error hover:bg-error-container">
+                <icon name="trash" class="h-4 w-4" />
+                حذف گروه
+            </button>
         </form>
     </div>
 
-    <div data-island="group-detail" data-props='@Json.Serialize(new { groupId, groupName })'></div>
+    <div data-island="group-detail" data-skeleton="18rem" data-props='@Json.Serialize(new { groupId, groupName })'></div>
 </div>

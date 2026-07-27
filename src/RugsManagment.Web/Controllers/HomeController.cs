@@ -19,4 +19,15 @@ public class HomeController : Controller
 
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public IActionResult Error() => View();
+
+    /// <summary>
+    /// صفحهٔ کدهای وضعیت (۴۰۳/۴۰۴/…) — از میان‌افزار UseStatusCodePagesWithReExecute صدا زده می‌شود.
+    /// </summary>
+    [Route("/status/{code:int}")]
+    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+    public IActionResult StatusCodeError(int code)
+    {
+        Response.StatusCode = code;
+        return View("StatusCode", code);
+    }
 }

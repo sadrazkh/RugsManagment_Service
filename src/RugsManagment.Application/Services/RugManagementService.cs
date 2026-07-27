@@ -50,7 +50,27 @@ public sealed class RugManagementService(
         return rug?.ToDto(workflowEngine);
     }
 
+    /// <summary>
+    /// ثبت فرش جدید. اگر دو کاربر هم‌زمان ثبت کنند ممکن است SKU یکسان تولید شود و
+    /// ایندکس یکتای دیتابیس آن را رد کند؛ در این حالت چند بار دوباره تلاش می‌کنیم.
+    /// </summary>
     public async Task<RugDto> CreateAsync(Guid tenantId, CreateRugRequest request, CancellationToken ct = default)
+    {
+        const int maxAttempts = 5;
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                return await CreateOnceAsync(tenantId, request, ct);
+            }
+            catch (DuplicateKeyException) when (attempt < maxAttempts)
+            {
+                // برخورد SKU با ثبت هم‌زمان — با شمارهٔ تازه دوباره تلاش می‌کنیم
+            }
+        }
+    }
+
+    private async Task<RugDto> CreateOnceAsync(Guid tenantId, CreateRugRequest request, CancellationToken ct)
     {
         var sku = await rugs.GenerateNextSkuAsync(tenantId, ct);
         var rug = new Rug

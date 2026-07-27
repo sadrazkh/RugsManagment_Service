@@ -1,3 +1,4 @@
+@using RugsManagment.Web.Support
 @model IReadOnlyList<RugsManagment.Application.DTOs.Tenants.TenantDto>
 @{
     ViewData["Title"] = "کارگاه‌ها";
@@ -7,15 +8,30 @@
     <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
             <h1 class="text-2xl font-bold">کارگاه‌ها</h1>
-            <p class="text-sm text-on-surface-variant">@Model.Count کارگاه ثبت‌شده</p>
+            <p class="text-sm text-on-surface-variant">@PersianFormat.Count(Model.Count) کارگاه ثبت‌شده</p>
         </div>
-        <a asp-action="Create" class="rounded-lg bg-primary px-4 py-2.5 font-semibold text-on-primary hover:opacity-90">+ کارگاه جدید</a>
+        <a asp-action="Create"
+           class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 font-semibold text-on-primary hover:bg-primary-hover">
+            <icon name="plus" class="h-5 w-5" />
+            کارگاه جدید
+        </a>
     </div>
 
     @if (Model.Count == 0)
     {
-        <div class="rounded-xl border border-dashed border-outline-variant bg-white p-10 text-center text-on-surface-variant">
-            هنوز کارگاهی ثبت نشده است. با «کارگاه جدید» اولین فروشنده را بسازید.
+        <div class="rounded-xl border border-dashed border-outline-variant bg-surface-container-lowest p-12 text-center">
+            <span class="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full bg-surface-container text-on-surface-variant">
+                <icon name="building" class="h-7 w-7" />
+            </span>
+            <p class="font-medium text-on-surface">هنوز کارگاهی ثبت نشده است</p>
+            <p class="mx-auto mt-1 max-w-sm text-sm text-on-surface-variant">
+                اولین فروشنده را بسازید تا حساب مدیر کارگاه و دادهٔ اولیهٔ آن ایجاد شود.
+            </p>
+            <a asp-action="Create"
+               class="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-5 font-semibold text-on-primary hover:bg-primary-hover">
+                <icon name="plus" class="h-5 w-5" />
+                ساخت اولین کارگاه
+            </a>
         </div>
     }
     else
@@ -23,34 +39,51 @@
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             @foreach (var t in Model)
             {
-                <div class="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
+                <div class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm transition hover:shadow-md">
                     <div class="flex items-start justify-between gap-3">
-                        <div class="min-w-0">
-                            <h2 class="truncate font-bold text-on-surface">@t.Name</h2>
-                            <p class="text-xs text-on-surface-variant" dir="ltr">@t.Slug</p>
+                        <div class="flex min-w-0 items-start gap-3">
+                            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-secondary-container text-on-secondary-container">
+                                <icon name="building" />
+                            </span>
+                            <div class="min-w-0">
+                                <h2 class="truncate font-bold text-on-surface">@t.Name</h2>
+                                <p class="truncate font-mono text-xs text-on-surface-variant" dir="ltr">@t.Slug</p>
+                            </div>
                         </div>
                         @if (t.IsActive)
                         {
-                            <span class="rounded-full bg-success/10 px-2.5 py-1 text-xs text-success">فعال</span>
+                            <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-success/12 px-2.5 py-1 text-xs text-success">
+                                <icon name="success" class="h-3.5 w-3.5" />
+                                فعال
+                            </span>
                         }
                         else
                         {
-                            <span class="rounded-full bg-error-container px-2.5 py-1 text-xs text-error">غیرفعال</span>
+                            <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-error-container px-2.5 py-1 text-xs text-on-error-container">
+                                <icon name="error" class="h-3.5 w-3.5" />
+                                غیرفعال
+                            </span>
                         }
                     </div>
+
                     <dl class="mt-4 space-y-1 text-sm text-on-surface-variant">
                         @if (!string.IsNullOrEmpty(t.ContactPhone))
                         {
-                            <div class="flex justify-between"><dt>تلفن</dt><dd dir="ltr">@t.ContactPhone</dd></div>
+                            <div class="flex justify-between gap-3"><dt>تلفن</dt><dd dir="ltr">@t.ContactPhone</dd></div>
                         }
                         @if (!string.IsNullOrEmpty(t.ContactEmail))
                         {
-                            <div class="flex justify-between"><dt>ایمیل</dt><dd dir="ltr">@t.ContactEmail</dd></div>
+                            <div class="flex justify-between gap-3"><dt>ایمیل</dt><dd class="truncate" dir="ltr">@t.ContactEmail</dd></div>
                         }
                     </dl>
-                    <form asp-action="ToggleActive" asp-route-id="@t.Id" method="post" class="mt-4">
+
+                    <form asp-action="ToggleActive" asp-route-id="@t.Id" method="post" class="mt-4"
+                          data-confirm="@(t.IsActive ? $"کارگاه «{t.Name}» غیرفعال شود؟" : $"کارگاه «{t.Name}» فعال شود؟")"
+                          data-confirm-message="@(t.IsActive ? "کاربران این کارگاه تا فعال‌سازی مجدد نمی‌توانند وارد شوند." : "کاربران این کارگاه دوباره می‌توانند وارد شوند.")"
+                          data-confirm-label="@(t.IsActive ? "غیرفعال کن" : "فعال کن")">
                         @Html.AntiForgeryToken()
-                        <button type="submit" class="w-full rounded-lg border border-outline-variant px-3 py-2 text-sm hover:bg-surface-container">
+                        <button type="submit"
+                                class="inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-outline-variant px-3 text-sm hover:bg-surface-container">
                             @(t.IsActive ? "غیرفعال کردن" : "فعال کردن")
                         </button>
                     </form>

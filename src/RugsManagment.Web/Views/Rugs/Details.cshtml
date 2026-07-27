@@ -6,11 +6,12 @@
     ViewData["Title"] = string.IsNullOrEmpty(Model.Title) ? Model.Sku : Model.Title;
     var st = DisplayHelpers.RugStatus(Model.Status);
     var labels = ViewData["CustomFieldLabels"] as Dictionary<string, string> ?? new();
+
     Dictionary<string, JsonElement> metadata = new();
     if (!string.IsNullOrWhiteSpace(Model.MetadataJson))
     {
         try { metadata = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(Model.MetadataJson) ?? new(); }
-        catch { }
+        catch { /* متادیتای خراب نباید صفحه را بشکند */ }
     }
 }
 
@@ -18,43 +19,69 @@
     <!-- سربرگ -->
     <div class="flex flex-wrap items-start justify-between gap-3">
         <div class="flex items-center gap-3">
-            <a asp-action="Index" class="rounded-lg border border-outline-variant px-3 py-1.5 text-sm hover:bg-surface-container">→</a>
+            @* در RTL «بازگشت» به سمت راست اشاره می‌کند *@
+            <a asp-action="Index"
+               class="grid h-11 w-11 place-items-center rounded-lg border border-outline-variant hover:bg-surface-container">
+                <icon name="arrow-right" label="بازگشت به فهرست فرش‌ها" />
+            </a>
             <div>
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2">
                     <h1 class="text-2xl font-bold">@ViewData["Title"]</h1>
-                    <span class="rounded-full px-2.5 py-1 text-xs @st.Css">@st.Label</span>
+                    <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs @st.Css">
+                        <icon name="@st.Icon" class="h-3.5 w-3.5" />
+                        @st.Label
+                    </span>
                 </div>
-                <div class="text-sm text-on-surface-variant" dir="ltr">@Model.Sku</div>
+                <div class="font-mono text-sm text-on-surface-variant" dir="ltr">@Model.Sku</div>
             </div>
         </div>
-        <a asp-action="Edit" asp-route-id="@Model.Id" class="rounded-lg bg-primary px-4 py-2.5 font-semibold text-on-primary hover:opacity-90">ویرایش</a>
+
+        <a asp-action="Edit" asp-route-id="@Model.Id"
+           class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 font-semibold text-on-primary hover:bg-primary-hover">
+            <icon name="edit" class="h-5 w-5" />
+            ویرایش
+        </a>
     </div>
 
     <div class="grid gap-5 lg:grid-cols-3">
-        <!-- ستون راست: اطلاعات و گردش کار -->
+        <!-- ستون راست: مشخصات -->
         <div class="space-y-5 lg:col-span-2">
-            <!-- مشخصات -->
-            <section class="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
-                <h2 class="mb-4 text-sm font-semibold text-primary">مشخصات</h2>
+            <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
+                <h3 class="mb-4 flex items-center gap-2 text-sm font-semibold text-primary">
+                    <icon name="info" class="h-4 w-4" />
+                    مشخصات
+                </h3>
                 <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
                     <div><dt class="text-on-surface-variant">اصالت</dt><dd>@(Model.Origin ?? "—")</dd></div>
                     <div><dt class="text-on-surface-variant">طرح</dt><dd>@(Model.Pattern ?? "—")</dd></div>
                     <div><dt class="text-on-surface-variant">جنس</dt><dd>@(Model.Material ?? "—")</dd></div>
-                    <div><dt class="text-on-surface-variant">رجشمار</dt><dd dir="ltr">@(Model.KnotDensity?.ToString() ?? "—")</dd></div>
-                    <div><dt class="text-on-surface-variant">ابعاد</dt><dd dir="ltr">@DisplayHelpers.Number(Model.WidthMeters) × @DisplayHelpers.Number(Model.LengthMeters)</dd></div>
-                    <div><dt class="text-on-surface-variant">مساحت</dt><dd dir="ltr">@DisplayHelpers.Number(Model.AreaSquareMeters) م²</dd></div>
+                    <div>
+                        <dt class="text-on-surface-variant">رجشمار</dt>
+                        <dd data-numeric>@(Model.KnotDensity.HasValue ? PersianFormat.Count(Model.KnotDensity.Value) : "—")</dd>
+                    </div>
+                    <div>
+                        <dt class="text-on-surface-variant">ابعاد</dt>
+                        <dd data-numeric>@PersianFormat.Number(Model.WidthMeters) × @PersianFormat.Number(Model.LengthMeters) متر</dd>
+                    </div>
+                    <div>
+                        <dt class="text-on-surface-variant">مساحت</dt>
+                        <dd data-numeric>@PersianFormat.Number(Model.AreaSquareMeters) م²</dd>
+                    </div>
                 </dl>
+
                 @if (!string.IsNullOrWhiteSpace(Model.Notes))
                 {
                     <div class="mt-4 rounded-lg bg-surface-container px-4 py-3 text-sm">@Model.Notes</div>
                 }
             </section>
 
-            <!-- فیلدهای سفارشی -->
             @if (metadata.Count > 0)
             {
-                <section class="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
-                    <h2 class="mb-4 text-sm font-semibold text-primary">مشخصات سفارشی</h2>
+                <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
+                    <h3 class="mb-4 flex items-center gap-2 text-sm font-semibold text-primary">
+                        <icon name="settings" class="h-4 w-4" />
+                        مشخصات سفارشی
+                    </h3>
                     <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
                         @foreach (var kv in metadata)
                         {
@@ -66,29 +93,41 @@
                     </dl>
                 </section>
             }
-
         </div>
 
-        <!-- ستون چپ: هزینه و پنل ثبت -->
+        <!-- ستون چپ: مالی و گردش کار -->
         <div class="space-y-5">
-            <section class="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
-                <h2 class="mb-4 text-sm font-semibold text-primary">خلاصهٔ مالی</h2>
-                <dl class="space-y-2 text-sm">
-                    <div class="flex justify-between"><dt class="text-on-surface-variant">قیمت خرید</dt><dd dir="ltr">@DisplayHelpers.Money(Model.Costs.PurchaseCost)</dd></div>
-                    <div class="flex justify-between"><dt class="text-on-surface-variant">مجموع هزینهٔ مراحل</dt><dd dir="ltr">@DisplayHelpers.Money(Model.Costs.TotalProcessCost)</dd></div>
-                    <div class="flex justify-between border-t border-outline-variant pt-2 font-semibold"><dt>سرمایه‌گذاری کل</dt><dd dir="ltr">@DisplayHelpers.Money(Model.Costs.TotalInvestment)</dd></div>
-                    <div class="flex justify-between"><dt class="text-on-surface-variant">قیمت فروش هدف</dt><dd dir="ltr">@DisplayHelpers.Money(Model.Costs.TargetSalePrice)</dd></div>
+            <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
+                <h3 class="mb-4 text-sm font-semibold text-primary">خلاصهٔ مالی</h3>
+                <dl class="space-y-2 text-sm" data-numeric>
+                    <div class="flex justify-between gap-3">
+                        <dt class="text-on-surface-variant">قیمت خرید</dt>
+                        <dd>@PersianFormat.MoneyWithUnit(Model.Costs.PurchaseCost)</dd>
+                    </div>
+                    <div class="flex justify-between gap-3">
+                        <dt class="text-on-surface-variant">مجموع هزینهٔ مراحل</dt>
+                        <dd>@PersianFormat.MoneyWithUnit(Model.Costs.TotalProcessCost)</dd>
+                    </div>
+                    <div class="flex justify-between gap-3 border-t border-outline-variant pt-2 font-semibold">
+                        <dt>سرمایه‌گذاری کل</dt>
+                        <dd>@PersianFormat.MoneyWithUnit(Model.Costs.TotalInvestment)</dd>
+                    </div>
+                    <div class="flex justify-between gap-3">
+                        <dt class="text-on-surface-variant">قیمت فروش هدف</dt>
+                        <dd>@PersianFormat.MoneyWithUnit(Model.Costs.TargetSalePrice)</dd>
+                    </div>
                     @if (Model.Costs.EstimatedMargin.HasValue)
                     {
-                        <div class="flex justify-between font-semibold @(Model.Costs.EstimatedMargin >= 0 ? "text-success" : "text-error")">
-                            <dt>سود تخمینی</dt><dd dir="ltr">@DisplayHelpers.Money(Model.Costs.EstimatedMargin)</dd>
+                        <div class="flex justify-between gap-3 font-semibold @(Model.Costs.EstimatedMargin >= 0 ? "text-success" : "text-error")">
+                            <dt>سود تخمینی</dt>
+                            <dd>@PersianFormat.MoneyWithUnit(Model.Costs.EstimatedMargin)</dd>
                         </div>
                     }
                 </dl>
             </section>
 
-            <!-- جزیرهٔ گردش کار: تایم‌لاین، حرکت مراحل با مودال، ویرایش مسیر -->
-            <div data-island="rug-workflow" data-props='@Json.Serialize(new { rugId = Model.Id })'></div>
+            @* جزیرهٔ گردش کار: تایم‌لاین، حرکت مراحل با مودال، ویرایش مسیر *@
+            <div data-island="rug-workflow" data-skeleton="20rem" data-props='@Json.Serialize(new { rugId = Model.Id })'></div>
         </div>
     </div>
 </div>

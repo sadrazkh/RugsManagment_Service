@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using RugsManagment.Application.Abstractions.Persistence;
 
 namespace RugsManagment.Web.Controllers.Api;
 
@@ -25,6 +26,8 @@ public sealed class ApiExceptionFilter : IExceptionFilter
         {
             KeyNotFoundException e => (StatusCodes.Status404NotFound, e.Message),
             UnauthorizedAccessException e => (StatusCodes.Status403Forbidden, e.Message),
+            ConcurrencyConflictException e => (StatusCodes.Status409Conflict, e.Message),
+            DuplicateKeyException e => (StatusCodes.Status409Conflict, e.Message),
             InvalidOperationException e => (StatusCodes.Status400BadRequest, e.Message),
             ArgumentException e => (StatusCodes.Status400BadRequest, e.Message),
             _ => (0, string.Empty)

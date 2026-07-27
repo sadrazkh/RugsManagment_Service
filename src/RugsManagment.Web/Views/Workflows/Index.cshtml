@@ -14,14 +14,32 @@
         </div>
         @if (isAdmin)
         {
-            <a asp-action="Create" class="rounded-lg bg-primary px-4 py-2.5 font-semibold text-on-primary hover:opacity-90">+ قالب جدید</a>
+            <a asp-action="Create"
+               class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 font-semibold text-on-primary hover:bg-primary-hover">
+                <icon name="plus" class="h-5 w-5" />
+                قالب جدید
+            </a>
         }
     </div>
 
     @if (Model.Count == 0)
     {
-        <div class="rounded-xl border border-dashed border-outline-variant bg-white p-10 text-center text-on-surface-variant">
-            هنوز قالبی تعریف نشده است.
+        <div class="rounded-xl border border-dashed border-outline-variant bg-surface-container-lowest p-12 text-center">
+            <span class="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full bg-surface-container text-on-surface-variant">
+                <icon name="workflow" class="h-7 w-7" />
+            </span>
+            <p class="font-medium text-on-surface">هنوز قالبی تعریف نشده است</p>
+            <p class="mx-auto mt-1 max-w-sm text-sm text-on-surface-variant">
+                یک مسیر استاندارد (مثلاً قالیشویی ← رفوگری ← دارکشی) بسازید تا هنگام ثبت فرش فقط انتخابش کنید.
+            </p>
+            @if (isAdmin)
+            {
+                <a asp-action="Create"
+                   class="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-5 font-semibold text-on-primary hover:bg-primary-hover">
+                    <icon name="plus" class="h-5 w-5" />
+                    ساخت اولین قالب
+                </a>
+            }
         </div>
     }
     else
@@ -29,10 +47,16 @@
         <div class="grid gap-4 md:grid-cols-2">
             @foreach (var t in Model)
             {
-                <div class="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
+                <div class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm transition hover:shadow-md">
                     <div class="flex items-start justify-between gap-3">
-                        <div>
-                            <h2 class="font-bold">@t.Name @if (t.IsDefault) { <span class="ms-1 rounded-full bg-secondary-container px-2 py-0.5 text-xs text-on-secondary-container">پیش‌فرض</span> }</h2>
+                        <div class="min-w-0">
+                            <h2 class="flex flex-wrap items-center gap-2 font-bold">
+                                @t.Name
+                                @if (t.IsDefault)
+                                {
+                                    <span class="rounded-full bg-secondary-container px-2 py-0.5 text-xs font-normal text-on-secondary-container">پیش‌فرض</span>
+                                }
+                            </h2>
                             @if (!string.IsNullOrEmpty(t.Description))
                             {
                                 <p class="text-sm text-on-surface-variant">@t.Description</p>
@@ -40,16 +64,26 @@
                         </div>
                         @if (isAdmin)
                         {
-                            <a asp-action="Edit" asp-route-id="@t.Id" class="rounded-lg border border-outline-variant px-3 py-1.5 text-xs hover:bg-surface-container">ویرایش</a>
+                            <a asp-action="Edit" asp-route-id="@t.Id"
+                               class="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border border-outline-variant px-3 text-xs hover:bg-surface-container">
+                                <icon name="edit" class="h-4 w-4" />
+                                ویرایش
+                            </a>
                         }
                     </div>
+
+                    @* مسیر مراحل — در RTL جهت جریان از راست به چپ است *@
                     <ol class="mt-4 flex flex-wrap items-center gap-1.5 text-sm">
-                        @foreach (var s in t.Steps)
+                        @for (var i = 0; i < t.Steps.Count; i++)
                         {
-                            <li class="rounded-lg bg-surface-container px-2.5 py-1 @(s.IsOptional ? "border border-dashed border-outline" : "")">@s.StepNameFa</li>
-                            @if (s.OrderIndex < t.Steps.Count - 1)
+                            var s = t.Steps[i];
+                            <li class="rounded-lg bg-surface-container px-2.5 py-1 @(s.IsOptional ? "border border-dashed border-outline" : "")"
+                                title="@(s.IsOptional ? "مرحلهٔ اختیاری" : "مرحلهٔ اجباری")">
+                                @s.StepNameFa
+                            </li>
+                            @if (i < t.Steps.Count - 1)
                             {
-                                <span class="text-on-surface-variant">←</span>
+                                <icon name="arrow-left" class="h-4 w-4 text-on-surface-variant" />
                             }
                         }
                     </ol>

@@ -6,24 +6,32 @@
  */
 import { onMounted, ref } from 'vue'
 import { api } from '@/lib/api'
+import { confirmDialog, toast, toastAfterReload } from '@/lib/ui'
 
 const busy = ref(false)
-const error = ref('')
 
 async function advance(rugId: string, stepId: string) {
   if (busy.value) return
-  if (!confirm('مرحلهٔ جاری تکمیل و به مرحلهٔ بعد بروید؟ (هزینه را می‌توانید در جزئیات ثبت کنید)')) return
+
+  const ok = await confirmDialog({
+    title: 'مرحلهٔ جاری تکمیل شود؟',
+    message: 'فرش به مرحلهٔ بعد می‌رود. هزینه را می‌توانید بعداً در صفحهٔ جزئیات ثبت کنید.',
+    confirmLabel: 'تکمیل و ادامه',
+  })
+  if (!ok) return
+
   busy.value = true
   try {
     await api.post(`/api/rugs/${rugId}/steps/${stepId}/advance`, {
       serviceProviderId: null, manualCostOverride: null, pricingModel: null, unitRate: null,
       pricingConfigJson: null, fieldValuesJson: null, notes: null, markCompleted: true,
     })
+    // پیام بعد از بارگذاری مجدد نمایش داده می‌شود تا کاربر آن را روی دادهٔ تازه ببیند
+    toastAfterReload('مرحله تکمیل شد.')
     window.location.reload()
   } catch (e) {
-    error.value = (e as Error).message
     busy.value = false
-    alert(error.value)
+    toast.error((e as Error).message)
   }
 }
 
@@ -31,12 +39,13 @@ onMounted(() => {
   document.querySelectorAll<HTMLElement>('[data-advance-rug]').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.preventDefault()
-      advance(btn.dataset.advanceRug!, btn.dataset.advanceStep!)
+      void advance(btn.dataset.advanceRug!, btn.dataset.advanceStep!)
     })
   })
 })
 </script>
 
 <template>
-  <span v-if="error" class="hidden">{{ error }}</span>
+  <!-- این جزیره فقط رفتار اضافه می‌کند و چیزی رندر نمی‌کند -->
+  <span class="hidden" />
 </template>

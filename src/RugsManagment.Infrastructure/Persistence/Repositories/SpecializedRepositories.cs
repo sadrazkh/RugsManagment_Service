@@ -52,11 +52,28 @@ public class RugRepository(AppDbContext db) : Repository<Rug>(db), IRugRepositor
         return await query.OrderByDescending(r => r.CreatedAt).ToListAsync(cancellationToken);
     }
 
-    /// <summary>SKU خودکار بر اساس تعداد فرش‌های همان کارگاه در ماه جاری</summary>
+    /// <summary>
+    /// SKU خودکار به شکل RUG-yyyyMM-NNNN.
+    /// شماره از «بزرگ‌ترین شمارهٔ موجود در همان ماه و همان کارگاه» گرفته می‌شود، نه از تعداد کل رکوردها؛
+    /// در نتیجه حذف یک فرش باعث تکرار SKU نمی‌شود.
+    /// (ایندکس یکتای TenantId+Sku آخرین خط دفاع در برابر ثبت هم‌زمان است — لایهٔ سرویس روی خطا دوباره تلاش می‌کند.)
+    /// </summary>
     public async Task<string> GenerateNextSkuAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
-        var count = await Db.Rugs.CountAsync(r => r.TenantId == tenantId, cancellationToken);
-        return $"RUG-{DateTime.UtcNow:yyyyMM}-{count + 1:D4}";
+        var prefix = $"RUG-{DateTime.UtcNow:yyyyMM}-";
+
+        var existing = await Db.Rugs
+            .AsNoTracking()
+            .Where(r => r.TenantId == tenantId && r.Sku.StartsWith(prefix))
+            .Select(r => r.Sku)
+            .ToListAsync(cancellationToken);
+
+        var maxSequence = existing
+            .Select(sku => int.TryParse(sku[prefix.Length..], out var n) ? n : 0)
+            .DefaultIfEmpty(0)
+            .Max();
+
+        return prefix + (maxSequence + 1).ToString("D4");
     }
 }
 

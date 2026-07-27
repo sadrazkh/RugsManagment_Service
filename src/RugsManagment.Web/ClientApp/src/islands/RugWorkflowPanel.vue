@@ -7,7 +7,8 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import { api } from '@/lib/api'
-import { formatThousands } from '@/lib/money'
+import { faMoney, faNumber } from '@/lib/format'
+import AppIcon from '@/components/AppIcon.vue'
 import CostRuleEditor from '@/components/CostRuleEditor.vue'
 import type { Rug } from '@/lib/types'
 
@@ -147,7 +148,7 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
+  <div class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
     <div class="mb-4 flex items-center justify-between">
       <h2 class="text-sm font-semibold text-primary">گردش کار</h2>
       <button v-if="!editingPath && !loading" @click="startEditPath" class="text-xs text-primary hover:underline">ویرایش مسیر</button>
@@ -164,10 +165,15 @@ onMounted(load)
         <p class="text-xs text-on-surface-variant">مراحل تمام‌شده حفظ می‌شوند؛ فقط مراحل باقی‌مانده را بازچینی کنید.</p>
         <VueDraggable v-model="pathRows" :animation="150" handle=".dh" class="space-y-2">
           <div v-for="(r, i) in pathRows" :key="r.uid" class="flex items-center gap-2 rounded-lg border border-outline-variant px-3 py-2">
-            <span class="dh cursor-grab text-on-surface-variant">⠿</span>
-            <span class="flex-1">{{ i + 1 }}. {{ r.stepNameFa }}</span>
-            <label class="flex items-center gap-1 text-xs"><input v-model="r.isOptional" type="checkbox" class="h-3.5 w-3.5" /> اختیاری</label>
-            <button @click="removePathStep(r.uid)" class="text-error">✕</button>
+            <span class="dh cursor-grab text-on-surface-variant" aria-hidden="true">⋮⋮</span>
+            <span class="flex-1">{{ faNumber(i + 1) }}. {{ r.stepNameFa }}</span>
+            <label class="flex min-h-11 items-center gap-1 text-xs">
+              <input v-model="r.isOptional" type="checkbox" class="h-4 w-4" /> اختیاری
+            </label>
+            <button type="button" class="grid h-11 w-11 place-items-center rounded-lg text-error hover:bg-error-container"
+                    @click="removePathStep(r.uid)">
+              <AppIcon name="close" class="h-4 w-4" :label="`حذف مرحلهٔ ${r.stepNameFa}`" />
+            </button>
           </div>
         </VueDraggable>
         <div class="flex flex-wrap gap-1.5">
@@ -201,29 +207,43 @@ onMounted(load)
               class="flex items-center justify-between gap-2 rounded-lg border px-3 py-2.5"
               :class="s.status === 1 ? 'border-primary bg-primary/5' : 'border-outline-variant'">
             <div class="flex items-center gap-2">
-              <span class="grid h-7 w-7 place-items-center rounded-full bg-surface-container text-sm">{{ s.orderIndex + 1 }}</span>
+              <span class="grid h-7 w-7 place-items-center rounded-full bg-surface-container text-sm" data-numeric>{{ faNumber(s.orderIndex + 1) }}</span>
               <span class="font-medium">{{ s.stepNameFa }}<span v-if="s.isOptional" class="text-xs text-on-surface-variant"> (اختیاری)</span></span>
             </div>
             <div class="flex items-center gap-2">
-              <span v-if="s.effectiveCost > 0" class="text-xs" dir="ltr">{{ formatThousands(s.effectiveCost) }}</span>
+              <span v-if="s.effectiveCost > 0" class="text-xs" data-numeric>{{ faMoney(s.effectiveCost) }}</span>
               <span class="rounded-full px-2 py-0.5 text-xs" :class="statusCss[s.status]">{{ statusLabel[s.status] }}</span>
             </div>
           </li>
         </ol>
 
         <div v-if="currentStep" class="mt-4 flex flex-wrap gap-2">
-          <button :disabled="busy" @click="openForward" class="flex-1 rounded-lg bg-primary px-4 py-2.5 font-semibold text-on-primary hover:opacity-90 disabled:opacity-60">تکمیل مرحله ←</button>
-          <button v-if="currentStep.isOptional" :disabled="busy" @click="skipCurrent" class="rounded-lg border border-outline-variant px-4 py-2.5 hover:bg-surface-container">رد کردن</button>
-          <button :disabled="busy" @click="openBack" class="rounded-lg border border-outline-variant px-4 py-2.5 text-on-surface-variant hover:bg-surface-container">→ مرحلهٔ قبل</button>
+          <button :disabled="busy" @click="openForward"
+                  class="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 font-semibold text-on-primary hover:bg-primary-hover">
+            تکمیل مرحله
+            <AppIcon name="arrow-left" class="h-4 w-4" />
+          </button>
+          <button v-if="currentStep.isOptional" :disabled="busy" @click="skipCurrent"
+                  class="inline-flex min-h-11 items-center rounded-lg border border-outline-variant px-4 hover:bg-surface-container">
+            رد کردن
+          </button>
+          <button :disabled="busy" @click="openBack"
+                  class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-4 text-on-surface-variant hover:bg-surface-container">
+            <AppIcon name="arrow-right" class="h-4 w-4" />
+            مرحلهٔ قبل
+          </button>
         </div>
-        <div v-else-if="!noPath" class="mt-4 rounded-lg bg-success/10 px-4 py-3 text-center text-sm text-success">همهٔ مراحل تمام شده است.</div>
+        <div v-else-if="!noPath" class="mt-4 flex items-center justify-center gap-2 rounded-lg bg-success/10 px-4 py-3 text-center text-sm text-success">
+          <AppIcon name="success" class="h-5 w-5" />
+          همهٔ مراحل تمام شده است.
+        </div>
       </template>
     </template>
   </div>
 
   <!-- مودال حرکت -->
   <div v-if="modal.open" class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" @click.self="modal.open = false">
-    <div class="w-full max-w-md rounded-2xl bg-white p-5 shadow-lg">
+    <div class="w-full max-w-md rounded-2xl bg-surface-container-lowest p-5 shadow-lg">
       <template v-if="modal.kind === 'forward'">
         <h3 class="mb-1 text-lg font-bold">تکمیل مرحله: {{ currentStep?.stepNameFa }}</h3>
         <p class="mb-4 text-sm text-on-surface-variant">جزئیات این مرحله را وارد کنید سپس به مرحلهٔ بعد بروید.</p>
