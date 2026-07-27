@@ -72,8 +72,9 @@ function descriptor(e: LabelElement): string {
 
 async function load() {
   try {
+    // فقط چند فرش نمونه برای پیش‌نمایش لازم است، نه کل انبار
     const [rugList, cf] = await Promise.all([
-      api.get<Rug[]>('/api/rugs'),
+      api.get<Rug[]>('/api/rugs/samples?count=20'),
       api.get<{ key: string; label: string }[]>('/api/lookups/custom-fields'),
     ])
     rugs.value = rugList

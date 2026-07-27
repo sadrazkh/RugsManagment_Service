@@ -71,3 +71,39 @@ export interface Rug {
   workflowSteps: RugWorkflowStep[]
   costs: RugCostSummary
 }
+
+/**
+ * ردیف سبک فهرست فرش‌ها — معادل RugListItemDto در سرور.
+ * برخلاف Rug، مراحل را همراه ندارد؛ فقط چیزی که فهرست نشان می‌دهد.
+ */
+export interface RugListItem {
+  id: string
+  sku: string
+  title?: string
+  origin?: string
+  pattern?: string
+  widthMeters: number
+  lengthMeters: number
+  areaSquareMeters: number
+  status: number
+  imageUrl?: string
+  batchId?: string
+  batchName?: string
+  currentStepNameFa?: string
+  activeStepId?: string
+  totalInvestment: number
+  completedStepCount: number
+  totalStepCount: number
+  createdAt: string
+}
+
+/** یک صفحه از نتایج — معادل PagedResult<T> در سرور. */
+export interface PagedResult<T> {
+  items: T[]
+  totalCount: number
+  page: number
+  pageSize: number
+  totalPages: number
+  hasPrevious: boolean
+  hasNext: boolean
+}

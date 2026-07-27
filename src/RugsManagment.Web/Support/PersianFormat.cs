@@ -94,6 +94,30 @@ public static class PersianFormat
     public static string Count(int value)
         => ToPersianDigits(value.ToString("#,0", CultureInfo.InvariantCulture));
 
+    /// <summary>
+    /// شروع روزِ انتخاب‌شده به وقت ایران، به‌صورت لحظهٔ UTC.
+    ///
+    /// چرا لازم است: وقتی کاربر در فیلتر «از تاریخ» یک روز را انتخاب می‌کند منظورش
+    /// ابتدای همان روز به وقت ایران است، نه نیمه‌شب منطقهٔ زمانی سرور. ضمناً پستگرس
+    /// برای ستون timestamptz فقط offset صفر (UTC) می‌پذیرد.
+    /// </summary>
+    public static DateTimeOffset? IranDayStartUtc(DateTimeOffset? value)
+    {
+        if (!value.HasValue) return null;
+        var day = value.Value.Date;
+        var offset = IranTimeZone.GetUtcOffset(day);
+        return new DateTimeOffset(day, offset).ToUniversalTime();
+    }
+
+    /// <summary>
+    /// پایان روزِ انتخاب‌شده به وقت ایران (لحظهٔ UTC) — تا فیلتر «تا تاریخ» شاملِ خود آن روز باشد.
+    /// </summary>
+    public static DateTimeOffset? IranDayEndUtc(DateTimeOffset? value)
+    {
+        var start = IranDayStartUtc(value);
+        return start?.AddDays(1).AddTicks(-1);
+    }
+
     // ─────────────────────────────────────────────────────────
     private static DateTime ToIranTime(DateTimeOffset value)
         => TimeZoneInfo.ConvertTime(value, IranTimeZone).DateTime;

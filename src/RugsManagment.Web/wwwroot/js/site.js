@@ -166,7 +166,47 @@
     }
 
     // ═══════════════════════════════════════════════════════
-    // ۵) Service Worker برای PWA
+    // ۵) جستجوی زنده با تأخیر (debounce)
+    // ═══════════════════════════════════════════════════════
+    // ورودی‌های [data-autosubmit] بعد از توقف تایپ، فرم را خودشان ارسال می‌کنند.
+    // فرم GET است، پس نتیجه در آدرس می‌نشیند و دکمهٔ back درست کار می‌کند.
+    function initAutoSubmit() {
+        var DELAY = 450;
+
+        document.querySelectorAll('[data-autosubmit]').forEach(function (input) {
+            var form = input.form;
+            if (!form) return;
+
+            var timer = null;
+            var initialValue = input.value;
+
+            function submitNow() {
+                // ارسال بی‌مورد وقتی مقدار عوض نشده (مثلاً کاربر فقط کلیک کرده)
+                if (input.value === initialValue) return;
+                form.submit();
+            }
+
+            input.addEventListener('input', function () {
+                window.clearTimeout(timer);
+                timer = window.setTimeout(submitNow, DELAY);
+            });
+
+            // Enter نباید منتظر تأخیر بماند
+            input.addEventListener('keydown', function (event) {
+                if (event.key === 'Enter') window.clearTimeout(timer);
+                // Escape جستجو را پاک و فهرست کامل را برمی‌گرداند
+                if (event.key === 'Escape' && input.value !== '') {
+                    event.preventDefault();
+                    window.clearTimeout(timer);
+                    input.value = '';
+                    form.submit();
+                }
+            });
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // ۶) Service Worker برای PWA
     // ═══════════════════════════════════════════════════════
     function initServiceWorker() {
         if (!('serviceWorker' in navigator)) return;
@@ -180,6 +220,7 @@
         initMobileNav();
         initServerToasts();
         initFormConfirms();
+        initAutoSubmit();
         initServiceWorker();
     }
 

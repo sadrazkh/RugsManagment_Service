@@ -1,20 +1,55 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RugsManagment.Application.DTOs.Rugs;
 using RugsManagment.Application.Services;
 using RugsManagment.Domain.Enums;
 using RugsManagment.Web.Auth;
+using RugsManagment.Web.Models.Rugs;
+using RugsManagment.Web.Support;
 
 namespace RugsManagment.Web.Controllers;
 
 /// <summary>صفحات فرش (لیست/جزئیات/ثبت/ویرایش). فرم‌های تعاملی جزیرهٔ Vue هستند.</summary>
 [Authorize(Roles = $"{nameof(UserRole.TenantAdmin)},{nameof(UserRole.Operator)}")]
-public class RugsController(IRugManagementService rugs, ICustomFieldService customFields) : Controller
+public class RugsController(
+    IRugManagementService rugs,
+    ICustomFieldService customFields,
+    IRugBatchService batches,
+    ILookupService lookups) : Controller
 {
-    public async Task<IActionResult> Index(RugStatus? status, CancellationToken ct)
+    /// <summary>
+    /// فهرست فرش‌ها. همهٔ فیلترها از query string می‌آیند تا آدرس صفحه قابل اشتراک،
+    /// bookmark و بازگشت با دکمهٔ back مرورگر باشد.
+    /// </summary>
+    public async Task<IActionResult> Index([FromQuery] RugQuery query, CancellationToken ct)
     {
-        ViewData["StatusFilter"] = status;
-        var list = await rugs.ListAsync(User.RequireTenantId(), status, ct);
-        return View(list);
+        var tenantId = User.RequireTenantId();
+
+        // کاربر یک «روز» انتخاب می‌کند، نه یک لحظه: بازه را به ابتدای و انتهای همان روز
+        // به وقت ایران می‌بریم تا «تا تاریخ» شامل خود آن روز هم بشود.
+        var displayQuery = query.Sanitized();
+        var searchQuery = displayQuery with
+        {
+            CreatedFrom = PersianFormat.IranDayStartUtc(query.CreatedFrom),
+            CreatedTo = PersianFormat.IranDayEndUtc(query.CreatedTo)
+        };
+
+        // پشت سر هم، نه Task.WhenAll: هر سه سرویس یک DbContext اسکوپ‌شده را share می‌کنند
+        // و EF Core اجازهٔ دو عملیات هم‌زمان روی یک context را نمی‌دهد.
+        var result = await rugs.SearchAsync(tenantId, searchQuery, ct);
+
+        // اگر کاربر روی صفحه‌ای فراتر از آخرین صفحه باشد (مثلاً بعد از حذف)، به آخرین صفحه برگرد
+        if (displayQuery.Page > result.TotalPages && result.TotalCount > 0)
+            return RedirectToAction(nameof(Index), BuildRoute(displayQuery with { Page = result.TotalPages }));
+
+        return View(new RugListViewModel
+        {
+            Result = result,
+            // کوئریِ نمایشی (با تاریخ‌های اصلیِ کاربر) تا فرم و لینک‌ها همان چیزی را نشان دهند که انتخاب کرده
+            Query = displayQuery,
+            Batches = await batches.ListAsync(tenantId, ct),
+            StepTypes = await lookups.StepTypesAsync(ct)
+        });
     }
 
     public async Task<IActionResult> Details(Guid id, CancellationToken ct)
@@ -40,4 +75,19 @@ public class RugsController(IRugManagementService rugs, ICustomFieldService cust
         ViewData["RugId"] = id;
         return View();
     }
+
+    /// <summary>کوئری را به route value تبدیل می‌کند (فقط برای redirect داخلی این کنترلر).</summary>
+    private static object BuildRoute(RugQuery query) => new
+    {
+        search = query.Search,
+        status = query.Status,
+        batchId = query.BatchId,
+        stepTypeId = query.StepTypeId,
+        createdFrom = query.CreatedFrom?.ToString("yyyy-MM-dd"),
+        createdTo = query.CreatedTo?.ToString("yyyy-MM-dd"),
+        sortBy = query.SortBy,
+        descending = query.Descending,
+        page = query.Page,
+        pageSize = query.PageSize
+    };
 }

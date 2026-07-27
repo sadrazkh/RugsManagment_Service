@@ -10,9 +10,23 @@ namespace RugsManagment.Web.Controllers.Api;
 [Route("api/rugs")]
 public class RugsApiController(IRugManagementService rugs) : ApiControllerBase
 {
+    /// <summary>
+    /// فهرست صفحه‌بندی‌شده با جستجو، فیلتر و مرتب‌سازی — همان کوئریِ صفحهٔ فرش‌ها.
+    /// </summary>
     [HttpGet]
-    public async Task<IActionResult> List([FromQuery] RugStatus? status, CancellationToken ct)
-        => Ok(await rugs.ListAsync(User.RequireTenantId(), status, ct));
+    public async Task<IActionResult> List([FromQuery] RugQuery query, CancellationToken ct)
+        => Ok(await rugs.SearchAsync(User.RequireTenantId(), query, ct));
+
+    /// <summary>
+    /// چند فرش کامل (با مراحل و متادیتا) برای پیش‌نمایش — مثلاً در طراح برچسب.
+    /// عمداً محدود است تا هرگز کل انبار لود نشود.
+    /// </summary>
+    [HttpGet("samples")]
+    public async Task<IActionResult> Samples([FromQuery] int count, CancellationToken ct)
+    {
+        var all = await rugs.ListAsync(User.RequireTenantId(), null, ct);
+        return Ok(all.Take(Math.Clamp(count <= 0 ? 20 : count, 1, 50)).ToList());
+    }
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> Get(Guid id, CancellationToken ct)

@@ -1,6 +1,7 @@
 using RugsManagment.Application.Abstractions;
 using RugsManagment.Application.Abstractions.Persistence;
 using RugsManagment.Application.Abstractions.Services;
+using RugsManagment.Application.DTOs.Common;
 using RugsManagment.Application.DTOs.Rugs;
 using RugsManagment.Application.Mapping;
 using RugsManagment.Domain.Entities;
@@ -12,6 +13,9 @@ namespace RugsManagment.Application.Services;
 public interface IRugManagementService
 {
     Task<IReadOnlyList<RugDto>> ListAsync(Guid tenantId, RugStatus? status, CancellationToken ct = default);
+
+    /// <summary>فهرست صفحه‌بندی‌شده با جستجو، فیلتر و مرتب‌سازی — مسیر اصلی صفحهٔ فرش‌ها.</summary>
+    Task<PagedResult<RugListItemDto>> SearchAsync(Guid tenantId, RugQuery query, CancellationToken ct = default);
     Task<RugDto?> GetAsync(Guid tenantId, Guid rugId, CancellationToken ct = default);
     Task<RugDto> CreateAsync(Guid tenantId, CreateRugRequest request, CancellationToken ct = default);
     Task<RugDto> UpdateAsync(Guid tenantId, Guid rugId, UpdateRugRequest request, CancellationToken ct = default);
@@ -43,6 +47,9 @@ public sealed class RugManagementService(
         var list = await rugs.ListByTenantAsync(tenantId, status, ct);
         return list.Select(r => r.ToDto(workflowEngine)).ToList();
     }
+
+    public Task<PagedResult<RugListItemDto>> SearchAsync(Guid tenantId, RugQuery query, CancellationToken ct = default)
+        => rugs.SearchAsync(tenantId, query, ct);
 
     public async Task<RugDto?> GetAsync(Guid tenantId, Guid rugId, CancellationToken ct = default)
     {
