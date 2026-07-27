@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using RugsManagment.Application.Abstractions.Persistence;
 using RugsManagment.Application.Common;
 using RugsManagment.Application.DTOs.Common;
+using RugsManagment.Application.DTOs.Providers;
 using RugsManagment.Application.DTOs.Rugs;
 using RugsManagment.Domain.Entities;
 using RugsManagment.Domain.Enums;
@@ -319,4 +320,77 @@ public class ServiceProviderRepository(AppDbContext db) : Repository<ServiceProv
             .Where(p => p.TenantId == tenantId && p.IsActive)
             .OrderBy(p => p.Name)
             .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<ServiceProvider>> ListAllWithRatesAsync(
+        Guid tenantId, CancellationToken cancellationToken = default)
+        => await Db.ServiceProviders.AsNoTracking()
+            .Include(p => p.Rates).ThenInclude(r => r.ProcessStepType)
+            .Where(p => p.TenantId == tenantId)
+            // فعال‌ها اول، بعد بر اساس نام
+            .OrderByDescending(p => p.IsActive).ThenBy(p => p.Name)
+            .ToListAsync(cancellationToken);
+
+    public async Task<ServiceProvider?> GetWithRatesAsync(
+        Guid id, Guid tenantId, CancellationToken cancellationToken = default)
+        => await Db.ServiceProviders
+            .Include(p => p.Rates).ThenInclude(r => r.ProcessStepType)
+            .FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId, cancellationToken);
+
+    /// <summary>
+    /// مانده‌حساب همهٔ طرف‌ها در یک کوئری.
+    /// فرمول هزینهٔ هر مرحله دقیقاً همان WorkflowEngine.CalculateRugCosts است.
+    /// </summary>
+    public async Task<IReadOnlyList<ProviderBalanceDto>> ListBalancesAsync(
+        Guid tenantId, CancellationToken cancellationToken = default)
+        => await Db.ServiceProviders.AsNoTracking()
+            .Where(p => p.TenantId == tenantId)
+            .OrderByDescending(p => p.IsActive).ThenBy(p => p.Name)
+            .Select(p => new ProviderBalanceDto(
+                p.Id,
+                p.Name,
+                p.IsActive,
+                p.Phone,
+                Db.RugWorkflowSteps
+                    .Where(s => s.ServiceProviderId == p.Id && s.Status == WorkflowStepStatus.Completed)
+                    .Sum(s => (s.ManualCostOverride ?? s.CalculatedCost ?? 0) + (s.Adjustment ?? 0) < 0
+                        ? 0
+                        : (s.ManualCostOverride ?? s.CalculatedCost ?? 0) + (s.Adjustment ?? 0)),
+                Db.RugWorkflowSteps
+                    .Where(s => s.ServiceProviderId == p.Id && s.Status == WorkflowStepStatus.InProgress)
+                    .Sum(s => (s.ManualCostOverride ?? s.CalculatedCost ?? 0) + (s.Adjustment ?? 0) < 0
+                        ? 0
+                        : (s.ManualCostOverride ?? s.CalculatedCost ?? 0) + (s.Adjustment ?? 0)),
+                Db.ProviderPayments.Where(x => x.ServiceProviderId == p.Id).Sum(x => x.Amount),
+                Db.RugWorkflowSteps.Count(s => s.ServiceProviderId == p.Id && s.Status == WorkflowStepStatus.Completed),
+                Db.RugWorkflowSteps.Count(s => s.ServiceProviderId == p.Id && s.Status == WorkflowStepStatus.InProgress),
+                Db.ProviderPayments.Where(x => x.ServiceProviderId == p.Id)
+                    .OrderByDescending(x => x.PaidAt)
+                    .Select(x => (DateTimeOffset?)x.PaidAt)
+                    .FirstOrDefault()))
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<ProviderWorkItemDto>> ListWorkAsync(
+        Guid tenantId, Guid providerId, CancellationToken cancellationToken = default)
+        => await Db.RugWorkflowSteps.AsNoTracking()
+            .Where(s => s.ServiceProviderId == providerId
+                        && s.Rug.TenantId == tenantId
+                        && (s.Status == WorkflowStepStatus.Completed || s.Status == WorkflowStepStatus.InProgress))
+            // تازه‌ترین کار اول؛ مراحل بدون تاریخ تکمیل (در جریان) بالای فهرست
+            .OrderByDescending(s => s.CompletedAt ?? s.StartedAt)
+            .Select(s => new ProviderWorkItemDto(
+                s.Id,
+                s.RugId,
+                s.Rug.Sku,
+                s.Rug.Title,
+                s.ProcessStepType.NameFa,
+                s.CompletedAt,
+                s.Status,
+                (s.ManualCostOverride ?? s.CalculatedCost ?? 0) + (s.Adjustment ?? 0) < 0
+                    ? 0
+                    : (s.ManualCostOverride ?? s.CalculatedCost ?? 0) + (s.Adjustment ?? 0)))
+            .ToListAsync(cancellationToken);
+
+    public async Task<bool> HasWorkHistoryAsync(Guid providerId, CancellationToken cancellationToken = default)
+        => await Db.RugWorkflowSteps.AnyAsync(s => s.ServiceProviderId == providerId, cancellationToken)
+           || await Db.ProviderPayments.AnyAsync(p => p.ServiceProviderId == providerId, cancellationToken);
 }

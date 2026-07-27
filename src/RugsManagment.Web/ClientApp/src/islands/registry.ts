@@ -14,4 +14,6 @@ export const islands: Record<string, () => Promise<{ default: unknown }>> = {
   'label-print': () => import('./LabelPrint.vue'),
   'pwa-install': () => import('./PwaInstall.vue'),
   'custom-fields-manager': () => import('./CustomFieldsManager.vue'),
+  'providers-manager': () => import('./ProvidersManager.vue'),
+  'provider-statement': () => import('./ProviderStatement.vue'),
 }

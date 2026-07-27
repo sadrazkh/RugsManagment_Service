@@ -104,7 +104,42 @@ public class ServiceProviderConfiguration : IEntityTypeConfiguration<ServiceProv
     public void Configure(EntityTypeBuilder<ServiceProvider> builder)
     {
         builder.Property(p => p.Name).HasMaxLength(200).IsRequired();
+        builder.Property(p => p.Specialty).HasMaxLength(200);
+        builder.Property(p => p.Phone).HasMaxLength(40);
+        builder.HasIndex(p => new { p.TenantId, p.Name });
         builder.HasOne(p => p.Tenant).WithMany().HasForeignKey(p => p.TenantId);
+
+        builder.HasMany(p => p.Rates).WithOne(r => r.ServiceProvider)
+            .HasForeignKey(r => r.ServiceProviderId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasMany(p => p.Payments).WithOne(x => x.ServiceProvider)
+            .HasForeignKey(x => x.ServiceProviderId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+/// <summary>نرخ توافقی هر طرف برای هر نوع مرحله — حداکثر یک ردیف برای هر ترکیب.</summary>
+public class ServiceProviderRateConfiguration : IEntityTypeConfiguration<ServiceProviderRate>
+{
+    public void Configure(EntityTypeBuilder<ServiceProviderRate> builder)
+    {
+        builder.HasIndex(r => new { r.ServiceProviderId, r.ProcessStepTypeId }).IsUnique();
+        builder.Property(r => r.UnitRate).HasPrecision(18, 2);
+
+        builder.HasOne(r => r.ProcessStepType).WithMany()
+            .HasForeignKey(r => r.ProcessStepTypeId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+/// <summary>پرداخت‌ها به طرف خدمات — پرکاربردترین کوئری «پرداخت‌های یک طرف به ترتیب تاریخ» است.</summary>
+public class ProviderPaymentConfiguration : IEntityTypeConfiguration<ProviderPayment>
+{
+    public void Configure(EntityTypeBuilder<ProviderPayment> builder)
+    {
+        builder.HasIndex(p => new { p.ServiceProviderId, p.PaidAt });
+        builder.Property(p => p.Amount).HasPrecision(18, 2);
+        builder.Property(p => p.Reference).HasMaxLength(120);
+
+        builder.HasOne(p => p.Tenant).WithMany()
+            .HasForeignKey(p => p.TenantId).OnDelete(DeleteBehavior.Cascade);
     }
 }
 

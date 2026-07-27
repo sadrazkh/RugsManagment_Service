@@ -1,0 +1,22 @@
+@{
+    var providerId = (Guid)ViewData["ProviderId"]!;
+    var providerName = ViewData["ProviderName"] as string ?? "طرف خدمات";
+    ViewData["Title"] = $"صورت‌حساب {providerName}";
+}
+<div class="space-y-5">
+    <div class="flex items-center gap-3">
+        @* در RTL «بازگشت» به سمت راست اشاره می‌کند *@
+        <a asp-action="Index"
+           class="grid h-11 w-11 place-items-center rounded-lg border border-outline-variant hover:bg-surface-container">
+            <icon name="arrow-right" label="بازگشت به فهرست طرف‌های خدمات" />
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold">@providerName</h1>
+            <p class="text-sm text-on-surface-variant">صورت‌حساب و تسویه</p>
+        </div>
+    </div>
+
+    <div data-island="provider-statement"
+         data-skeleton="26rem"
+         data-props='@Json.Serialize(new { providerId, providerName })'></div>
+</div>

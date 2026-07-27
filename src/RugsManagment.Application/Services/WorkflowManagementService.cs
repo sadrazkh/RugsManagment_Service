@@ -123,16 +123,14 @@ public sealed class WorkflowManagementService(
     public async Task<ServiceProviderDto> CreateProviderAsync(
         Guid tenantId, CreateServiceProviderRequest request, CancellationToken ct = default)
     {
+        // نرخ‌ها اینجا ست نمی‌شوند؛ در صفحهٔ «طرف‌های خدمات» مدیریت می‌شوند
         var provider = new ServiceProvider
         {
             TenantId = tenantId,
             Name = request.Name,
             Specialty = request.Specialty,
             Phone = request.Phone,
-            Address = request.Address,
-            SupportedStepTypeCodesJson = request.SupportedStepTypeCodes is null
-                ? null
-                : System.Text.Json.JsonSerializer.Serialize(request.SupportedStepTypeCodes)
+            Address = request.Address
         };
 
         await providers.AddAsync(provider, ct);

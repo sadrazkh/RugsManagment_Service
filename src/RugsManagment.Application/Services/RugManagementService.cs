@@ -40,6 +40,7 @@ public sealed class RugManagementService(
     IWorkflowTemplateRepository templates,
     IWorkflowEngine workflowEngine,
     IRepository<RugWorkflowStep> rugSteps,
+    IServiceProviderService providerRates,
     IUnitOfWork unitOfWork) : IRugManagementService
 {
     public async Task<IReadOnlyList<RugDto>> ListAsync(Guid tenantId, RugStatus? status, CancellationToken ct = default)
@@ -158,6 +159,7 @@ public sealed class RugManagementService(
         var rug = await rugs.GetWithWorkflowAsync(rugId, tenantId, ct)
             ?? throw new KeyNotFoundException("فرش یافت نشد.");
 
+        request = await ApplyProviderRateAsync(tenantId, rug, stepId, request, ct);
         await workflowEngine.AdvanceStepAsync(rug, stepId, ToAdvanceRequest(request), ct);
 
         rug.UpdatedAt = DateTimeOffset.UtcNow;
@@ -172,6 +174,7 @@ public sealed class RugManagementService(
         var rug = await rugs.GetWithWorkflowAsync(rugId, tenantId, ct)
             ?? throw new KeyNotFoundException("فرش یافت نشد.");
 
+        request = await ApplyProviderRateAsync(tenantId, rug, stepId, request, ct);
         await workflowEngine.UpdateStepPricingAsync(rug, stepId, ToAdvanceRequest(request with { MarkCompleted = false }), ct);
 
         rug.UpdatedAt = DateTimeOffset.UtcNow;
@@ -346,6 +349,33 @@ public sealed class RugManagementService(
         }
         await unitOfWork.SaveChangesAsync(ct);
         return new BulkOperationResultDto(ok, errors.Count, errors);
+    }
+
+    /// <summary>
+    /// اگر مرحله به یک طرف خدمات نسبت داده شده و اپراتور نرخ یا مبلغ دستی نداده،
+    /// نرخ توافقیِ همان طرف برای همان نوع مرحله اعمال می‌شود.
+    ///
+    /// ترتیب اولویت (از قوی به ضعیف):
+    ///   مبلغ دستی ← نرخ صریحِ همین ثبت ← نرخ توافقی طرف ← نرخ پیش‌فرض نوع مرحله
+    /// </summary>
+    private async Task<AdvanceRugStepRequest> ApplyProviderRateAsync(
+        Guid tenantId, Rug rug, Guid stepId, AdvanceRugStepRequest request, CancellationToken ct)
+    {
+        // اپراتور صریحاً تصمیم گرفته — دست نمی‌زنیم
+        if (request.ManualCostOverride.HasValue || request.UnitRate.HasValue || request.PricingModel.HasValue)
+            return request;
+
+        var step = rug.WorkflowSteps.FirstOrDefault(s => s.Id == stepId);
+        if (step is null) return request;
+
+        // طرفِ همین ثبت، وگرنه طرفی که قبلاً روی مرحله نشسته
+        var providerId = request.ServiceProviderId ?? step.ServiceProviderId;
+        if (providerId is null) return request;
+
+        var rate = await providerRates.FindRateAsync(tenantId, providerId.Value, step.ProcessStepTypeId, ct);
+        if (rate is null) return request;
+
+        return request with { PricingModel = rate.PricingModel, UnitRate = rate.UnitRate };
     }
 
     private static AdvanceStepRequest ToAdvanceRequest(AdvanceRugStepRequest request) => new(

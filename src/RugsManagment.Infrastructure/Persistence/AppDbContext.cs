@@ -19,6 +19,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<RugBatch> RugBatches => Set<RugBatch>();
     public DbSet<RugWorkflowStep> RugWorkflowSteps => Set<RugWorkflowStep>();
     public DbSet<RugImage> RugImages => Set<RugImage>();
+    public DbSet<ServiceProviderRate> ServiceProviderRates => Set<ServiceProviderRate>();
+    public DbSet<ProviderPayment> ProviderPayments => Set<ProviderPayment>();
     public DbSet<CustomFieldDefinition> CustomFieldDefinitions => Set<CustomFieldDefinition>();
     public DbSet<LabelTemplate> LabelTemplates => Set<LabelTemplate>();
 

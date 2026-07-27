@@ -56,15 +56,15 @@ public static class EntityMappers
         step.OverridePricingModel,
         step.OverrideUnitRate);
 
-    public static ServiceProviderDto ToDto(this ServiceProvider sp)
-    {
-        var codes = string.IsNullOrWhiteSpace(sp.SupportedStepTypeCodesJson)
-            ? Array.Empty<string>()
-            : JsonSerializer.Deserialize<string[]>(sp.SupportedStepTypeCodesJson) ?? [];
-
-        return new ServiceProviderDto(
-            sp.Id, sp.Name, sp.Specialty, sp.Phone, sp.Address, sp.IsActive, codes);
-    }
+    /// <summary>
+    /// «مراحلی که این طرف انجام می‌دهد» از نرخ‌های تعریف‌شده مشتق می‌شود، نه از یک فهرست جدا:
+    /// نرخ داشتن برای یک نوع مرحله یعنی همان کار را انجام می‌دهد.
+    /// </summary>
+    public static ServiceProviderDto ToDto(this ServiceProvider sp) => new(
+        sp.Id, sp.Name, sp.Specialty, sp.Phone, sp.Address, sp.IsActive,
+        sp.Rates.Select(r => r.ProcessStepType?.Code ?? string.Empty)
+            .Where(code => code.Length > 0)
+            .ToList());
 
     /// <summary>فرش کامل با مراحل و خلاصهٔ هزینه — برای صفحهٔ جزئیات</summary>
     public static RugDto ToDto(this Rug rug, IWorkflowEngine workflowEngine)
