@@ -27,6 +27,13 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV ASPNETCORE_URLS=http://+:80
+
+# مسیرهای ماندگار — باید به volume «/data» اشاره کنند وگرنه با هر دیپلوی پاک می‌شوند.
+# اینجا (و نه در appsettings) تنظیم می‌شوند چون مسیر مطلقِ لینوکسی فقط داخل کانتینر معنا دارد؛
+# روی ویندوزِ توسعه‌دهنده به C:\data تبدیل می‌شد. در CapRover قابل بازنویسی‌اند.
+ENV Storage__ImagePath=/data/uploads
+ENV DataProtection__KeyPath=/data/protection-keys
+
 EXPOSE 80
 COPY --from=backend /publish ./
 ENTRYPOINT ["dotnet", "RugsManagment.Web.dll"]

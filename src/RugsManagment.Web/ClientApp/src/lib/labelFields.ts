@@ -28,6 +28,7 @@ export interface LabelLayout {
 
 export const STATIC_FIELDS: LabelField[] = [
   { key: 'sku', label: 'کد (SKU)' },
+  { key: 'url', label: 'لینک صفحهٔ فرش' },
   { key: 'title', label: 'عنوان' },
   { key: 'origin', label: 'اصالت' },
   { key: 'pattern', label: 'طرح' },
@@ -54,6 +55,8 @@ export function resolveField(rug: Rug, key: string): string {
   const num = (v?: number) => (v == null ? '—' : formatThousands(v))
   switch (key) {
     case 'sku': return rug.sku
+    // آدرس کامل، چون QR ممکن است با گوشی‌ای اسکن شود که این صفحه را باز نکرده است
+    case 'url': return `${window.location.origin}/Rugs/Details/${rug.id}`
     case 'title': return rug.title || '—'
     case 'origin': return rug.origin || '—'
     case 'pattern': return rug.pattern || '—'

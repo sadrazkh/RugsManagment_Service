@@ -109,6 +109,26 @@ public class ServiceProviderConfiguration : IEntityTypeConfiguration<ServiceProv
 }
 
 /// <summary>
+/// عکس‌های فرش — با حذف فرش، رکوردها هم می‌روند (فایل‌ها را سرویس پاک می‌کند).
+/// ایندکس ترکیبی چون گالری همیشه «عکس‌های یک فرش به ترتیب» خوانده می‌شود.
+/// </summary>
+public class RugImageConfiguration : IEntityTypeConfiguration<RugImage>
+{
+    public void Configure(EntityTypeBuilder<RugImage> builder)
+    {
+        builder.HasIndex(i => new { i.RugId, i.SortOrder });
+        builder.Property(i => i.FileName).HasMaxLength(120).IsRequired();
+        builder.Property(i => i.ThumbnailFileName).HasMaxLength(120);
+        builder.Property(i => i.ContentType).HasMaxLength(60).IsRequired();
+
+        builder.HasOne(i => i.Rug).WithMany(r => r.Images)
+            .HasForeignKey(i => i.RugId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(i => i.Tenant).WithMany()
+            .HasForeignKey(i => i.TenantId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+/// <summary>
 /// مرحلهٔ فرش — پرترافیک‌ترین موجودیت برای ویرایش هم‌زمان (دو اپراتور، یک فرش).
 /// کنترل هم‌زمانی با xmin تا ثبت هزینهٔ یکی، ثبت دیگری را بی‌صدا پاک نکند.
 /// </summary>

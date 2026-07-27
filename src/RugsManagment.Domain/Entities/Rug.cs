@@ -51,6 +51,9 @@ public class Rug : BaseEntity, ITenantScoped
     /// <summary>کپی زندهٔ مراحل این فرش — با پیش بردن مرحله وضعیت‌ها عوض می‌شود</summary>
     public ICollection<RugWorkflowStep> WorkflowSteps { get; set; } = [];
 
+    /// <summary>گالری عکس‌های فرش به ترتیب SortOrder</summary>
+    public ICollection<RugImage> Images { get; set; } = [];
+
     /// <summary>مساحت متر مربع — فقط محاسباتی، در دیتابیس ذخیره نمی‌شود</summary>
     public decimal AreaSquareMeters => WidthMeters * LengthMeters;
 }

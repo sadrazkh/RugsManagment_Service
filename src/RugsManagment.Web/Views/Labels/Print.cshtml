@@ -1,0 +1,36 @@
+@using RugsManagment.Application.DTOs.Labels
+@{
+    ViewData["Title"] = "چاپ برچسب";
+    var templates = (IReadOnlyList<LabelTemplateDto>)ViewData["Templates"]!;
+    var selectedTemplateId = (Guid)ViewData["SelectedTemplateId"]!;
+    var rugIds = (Guid[])ViewData["RugIds"]!;
+}
+
+<div class="space-y-4">
+    <div class="flex items-center gap-3" data-no-print>
+        @* در RTL «بازگشت» به سمت راست اشاره می‌کند *@
+        <a asp-controller="Rugs" asp-action="Index"
+           class="grid h-11 w-11 place-items-center rounded-lg border border-outline-variant hover:bg-surface-container">
+            <icon name="arrow-right" label="بازگشت به فهرست فرش‌ها" />
+        </a>
+        <h1 class="text-2xl font-bold">چاپ برچسب</h1>
+    </div>
+
+    <div data-island="label-print"
+         data-skeleton="24rem"
+         data-props='@Json.Serialize(new
+                     {
+                         rugIds,
+                         templateId = selectedTemplateId,
+                         templates = templates.Select(t => new
+                         {
+                             id = t.Id,
+                             name = t.Name,
+                             widthMm = t.WidthMm,
+                             heightMm = t.HeightMm,
+                             mode = (int)t.Mode,
+                             elementsJson = t.ElementsJson,
+                             htmlContent = t.HtmlContent
+                         })
+                     })'></div>
+</div>

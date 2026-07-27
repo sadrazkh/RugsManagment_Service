@@ -64,6 +64,14 @@ async function addToGroup() {
   })
 }
 
+/** رفتن به صفحهٔ چاپ با فرش‌های انتخاب‌شده — بدون تغییر داده، پس تأیید لازم نیست. */
+function printLabels() {
+  if (count.value === 0) return
+  const params = new URLSearchParams()
+  for (const id of selected.value) params.append('rugIds', id)
+  window.location.href = `/Labels/Print?${params}`
+}
+
 async function run(fn: () => Promise<void>) {
   busy.value = true
   try {
@@ -133,6 +141,15 @@ onMounted(async () => {
         >
           <AppIcon name="package" class="h-4 w-4" />
           افزودن به گروه
+        </button>
+
+        <button
+          type="button"
+          class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-4 text-sm hover:bg-surface-container"
+          @click="printLabels"
+        >
+          <AppIcon name="printer" class="h-4 w-4" />
+          چاپ برچسب
         </button>
 
         <button

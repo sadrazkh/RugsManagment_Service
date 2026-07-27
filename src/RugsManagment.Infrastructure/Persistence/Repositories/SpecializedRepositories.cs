@@ -33,6 +33,7 @@ public class RugRepository(AppDbContext db) : Repository<Rug>(db), IRugRepositor
     public async Task<Rug?> GetWithWorkflowAsync(Guid id, Guid tenantId, CancellationToken cancellationToken = default)
         => await Db.Rugs
             .Include(r => r.Batch)
+            .Include(r => r.Images.OrderBy(i => i.SortOrder))
             .Include(r => r.WorkflowSteps.OrderBy(s => s.OrderIndex))
                 .ThenInclude(s => s.ProcessStepType)
             .Include(r => r.WorkflowSteps)
@@ -168,7 +169,12 @@ public class RugRepository(AppDbContext db) : Repository<Rug>(db), IRugRepositor
             r.LengthMeters,
             r.WidthMeters * r.LengthMeters,
             r.Status,
-            r.ImageUrl,
+            // بندانگشتیِ عکس شاخص؛ اگر نسخهٔ بندانگشتی نداشت، خودِ تصویر
+            r.Images
+                .Where(i => i.IsPrimary)
+                .Select(i => "/media/rugs/" + r.Id.ToString() + "/" +
+                             (i.ThumbnailFileName != null ? i.ThumbnailFileName : i.FileName))
+                .FirstOrDefault(),
             r.BatchId,
             r.Batch != null ? r.Batch.Name : null,
             r.WorkflowSteps

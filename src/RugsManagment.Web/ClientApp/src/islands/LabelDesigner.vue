@@ -47,7 +47,9 @@ function add(type: ElementType) {
   if (type === 'text') Object.assign(base, { text: 'متن' })
   if (type === 'field') Object.assign(base, { field: 'sku', prefix: true })
   if (type === 'divider') Object.assign(base, { colSpan: cols })
-  if (type === 'qr') Object.assign(base, { source: '{{sku}}', align: 'center' })
+  // QR پیش‌فرض به صفحهٔ فرش لینک می‌دهد تا اسکن با موبایل مستقیم آن را باز کند.
+  // بارکد برعکس: خوانندهٔ بارکد انبار معمولاً کد کالا را می‌خواهد، نه آدرس.
+  if (type === 'qr') Object.assign(base, { source: '{{url}}', align: 'center' })
   if (type === 'barcode') Object.assign(base, { source: '{{sku}}', colSpan: cols, align: 'center' })
   if (type === 'table') Object.assign(base, { fields: ['sku', 'dimensions', 'pattern'], colSpan: cols })
   layout.value.elements.push(base)
@@ -91,7 +93,7 @@ async function load() {
         { id: 'e' + ++counter, type: 'divider', colSpan: 2 },
         { id: 'e' + ++counter, type: 'field', colSpan: 1, field: 'sku', prefix: true, fontSize: 12, align: 'right' },
         { id: 'e' + ++counter, type: 'field', colSpan: 1, field: 'dimensions', prefix: true, fontSize: 12, align: 'right' },
-        { id: 'e' + ++counter, type: 'qr', colSpan: 2, source: '{{sku}}', align: 'center' },
+        { id: 'e' + ++counter, type: 'qr', colSpan: 2, source: '{{url}}', align: 'center' },
       ]
     }
   } catch (e) { error.value = (e as Error).message }

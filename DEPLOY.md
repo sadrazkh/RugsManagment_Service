@@ -29,6 +29,7 @@ Host=srv-captain--postgres;Port=5432;Database=rugs_management;Username=postgres;
 |------|-------|
 | `ConnectionStrings__DefaultConnection` | رشتهٔ اتصال بالا |
 | `DataProtection__KeyPath` | `/data/protection-keys` |
+| `Storage__ImagePath` | `/data/uploads` — محل ذخیرهٔ عکس فرش‌ها |
 | `ASPNETCORE_ENVIRONMENT` | `Production` (پیش‌فرض ایمیج همین است) |
 | `Jwt__Secret` *(اختیاری)* | یک رشتهٔ تصادفی ۳۲+ کاراکتری |
 
@@ -41,7 +42,13 @@ Host=srv-captain--postgres;Port=5432;Database=rugs_management;Username=postgres;
 - **Path in App:** `/data`
 - **Label:** `rugs-data`
 
-این باعث می‌شود کلیدهای Data Protection بین دیپلوی‌ها حفظ شوند (وگرنه هر بار همه از حساب خارج می‌شوند).
+این دو چیز را بین دیپلوی‌ها حفظ می‌کند:
+
+- **کلیدهای Data Protection** (`/data/protection-keys`) — وگرنه هر بار همهٔ کاربران از حساب خارج می‌شوند.
+- **عکس‌های فرش** (`/data/uploads`) — وگرنه با هر دیپلوی همهٔ عکس‌ها پاک می‌شوند.
+
+> ⚠️ اگر این دایرکتوری ماندگار را تنظیم نکنید، عکس‌های آپلودشده با اولین redeploy از بین می‌روند
+> (رکورد در دیتابیس می‌ماند ولی فایل نیست و تصویر شکسته نمایش داده می‌شود).
 
 ### پورت و HTTPS
 

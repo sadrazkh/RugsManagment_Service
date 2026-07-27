@@ -23,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<IWorkflowManagementService, WorkflowManagementService>();
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IRugBatchService, RugBatchService>();
+        services.AddScoped<IRugImageService, RugImageService>();
         return services;
     }
 }

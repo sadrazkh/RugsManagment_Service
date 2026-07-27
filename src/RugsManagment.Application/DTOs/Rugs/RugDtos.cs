@@ -26,7 +26,9 @@ public record RugDto(
     int CurrentStepIndex,
     IReadOnlyList<RugWorkflowStepDto> WorkflowSteps,
     RugCostSummaryDto Costs,
-    string? MetadataJson = null);
+    string? MetadataJson = null,
+    /// <summary>گالری عکس‌ها به ترتیب نمایش؛ خالی یعنی هنوز عکسی آپلود نشده</summary>
+    IReadOnlyList<RugImageDto>? Images = null);
 
 public record RugWorkflowStepDto(
     Guid Id,

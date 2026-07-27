@@ -23,6 +23,41 @@ public class LabelsController(ILabelTemplateService labels) : Controller
         return View();
     }
 
+    /// <summary>
+    /// صفحهٔ چاپ برچسب برای یک یا چند فرش.
+    ///
+    /// آدرس قابل اشتراک است تا اپراتور بتواند همان صفحه را دوباره باز و چاپ کند.
+    /// اگر قالبی انتخاب نشده باشد، اولین قالب کارگاه استفاده می‌شود.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> Print(
+        [FromQuery] Guid[] rugIds, [FromQuery] Guid? templateId, CancellationToken ct)
+    {
+        var tenantId = User.RequireTenantId();
+        var templates = await labels.ListAsync(tenantId, ct);
+
+        if (templates.Count == 0)
+        {
+            TempData["Toast"] = "برای چاپ ابتدا یک قالب برچسب بسازید.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (rugIds.Length == 0)
+        {
+            TempData["Toast"] = "فرشی برای چاپ انتخاب نشده است.";
+            return RedirectToAction("Index", "Rugs");
+        }
+
+        var selected = templateId.HasValue
+            ? templates.FirstOrDefault(t => t.Id == templateId.Value) ?? templates[0]
+            : templates[0];
+
+        ViewData["Templates"] = templates;
+        ViewData["SelectedTemplateId"] = selected.Id;
+        ViewData["RugIds"] = rugIds;
+        return View("Print");
+    }
+
     [HttpPost]
     [Authorize(Roles = nameof(UserRole.TenantAdmin))]
     [ValidateAntiForgeryToken]

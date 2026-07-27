@@ -3,10 +3,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RugsManagment.Application.Abstractions;
 using RugsManagment.Application.Abstractions.Persistence;
+using RugsManagment.Application.Abstractions.Services;
 using RugsManagment.Application.Services;
 using RugsManagment.Infrastructure.Identity;
 using RugsManagment.Infrastructure.Persistence;
 using RugsManagment.Infrastructure.Persistence.Repositories;
+using RugsManagment.Infrastructure.Storage;
 
 namespace RugsManagment.Infrastructure;
 
@@ -37,6 +39,9 @@ public static class DependencyInjection
         services.AddScoped<IServiceProviderRepository, ServiceProviderRepository>();
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IProcessStepTypeLookup, ProcessStepTypeLookup>();
+
+        // ذخیره‌سازی تصاویر روی دیسک — مسیر از Storage:ImagePath خوانده می‌شود
+        services.AddSingleton<IImageStorage, LocalImageStorage>();
 
         return services;
     }

@@ -94,7 +94,23 @@ public static class EntityMappers
             rug.CurrentStepIndex,
             rug.WorkflowSteps.OrderBy(s => s.OrderIndex).Select(s => s.ToDto()).ToList(),
             costs.ToDto(),
-            rug.MetadataJson);
+            rug.MetadataJson,
+            rug.Images.OrderBy(i => i.SortOrder).Select(i => i.ToDto()).ToList());
+    }
+
+    /// <summary>
+    /// آدرس‌ها از مسیر کنترلر media ساخته می‌شوند، نه از مسیر فایل سیستمی:
+    /// فایل‌ها بیرون از wwwroot هستند و با بررسی مالکیت کارگاه سرو می‌شوند.
+    /// </summary>
+    public static RugImageDto ToDto(this RugImage image)
+    {
+        var url = $"/media/rugs/{image.RugId}/{image.FileName}";
+        var thumbnail = string.IsNullOrEmpty(image.ThumbnailFileName)
+            ? url
+            : $"/media/rugs/{image.RugId}/{image.ThumbnailFileName}";
+
+        return new RugImageDto(
+            image.Id, url, thumbnail, image.Width, image.Height, image.SizeBytes, image.SortOrder, image.IsPrimary);
     }
 
     public static CustomFieldDefinitionDto ToDto(this CustomFieldDefinition f) => new(

@@ -5,11 +5,13 @@
 export const islands: Record<string, () => Promise<{ default: unknown }>> = {
   'rug-form': () => import('./RugForm.vue'),
   'rug-workflow': () => import('./RugWorkflowPanel.vue'),
+  'rug-gallery': () => import('./RugGallery.vue'),
   'workflow-template-editor': () => import('./WorkflowTemplateEditor.vue'),
   'list-quick-advance': () => import('./ListQuickAdvance.vue'),
   'rug-bulk-toolbar': () => import('./RugBulkToolbar.vue'),
   'group-detail': () => import('./GroupDetail.vue'),
   'label-designer': () => import('./LabelDesigner.vue'),
+  'label-print': () => import('./LabelPrint.vue'),
   'pwa-install': () => import('./PwaInstall.vue'),
   'custom-fields-manager': () => import('./CustomFieldsManager.vue'),
 }

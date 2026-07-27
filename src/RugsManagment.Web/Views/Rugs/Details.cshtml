@@ -36,16 +36,26 @@
             </div>
         </div>
 
-        <a asp-action="Edit" asp-route-id="@Model.Id"
-           class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 font-semibold text-on-primary hover:bg-primary-hover">
-            <icon name="edit" class="h-5 w-5" />
-            ویرایش
-        </a>
+        <div class="flex flex-wrap gap-2">
+            <a asp-controller="Labels" asp-action="Print" asp-route-rugIds="@Model.Id"
+               class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-4 hover:bg-surface-container">
+                <icon name="printer" class="h-5 w-5" />
+                چاپ برچسب
+            </a>
+            <a asp-action="Edit" asp-route-id="@Model.Id"
+               class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 font-semibold text-on-primary hover:bg-primary-hover">
+                <icon name="edit" class="h-5 w-5" />
+                ویرایش
+            </a>
+        </div>
     </div>
 
     <div class="grid gap-5 lg:grid-cols-3">
         <!-- ستون راست: مشخصات -->
         <div class="space-y-5 lg:col-span-2">
+            @* گالری عکس — آپلود، ترتیب و انتخاب عکس شاخص *@
+            <div data-island="rug-gallery" data-skeleton="16rem" data-props='@Json.Serialize(new { rugId = Model.Id })'></div>
+
             <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
                 <h3 class="mb-4 flex items-center gap-2 text-sm font-semibold text-primary">
                     <icon name="info" class="h-4 w-4" />

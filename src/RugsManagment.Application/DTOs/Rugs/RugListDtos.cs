@@ -18,7 +18,8 @@ public record RugListItemDto(
     decimal LengthMeters,
     decimal AreaSquareMeters,
     RugStatus Status,
-    string? ImageUrl,
+    /// <summary>بندانگشتیِ عکس شاخص؛ null یعنی فرش هنوز عکسی ندارد</summary>
+    string? ThumbnailUrl,
     Guid? BatchId,
     string? BatchName,
     string? CurrentStepNameFa,

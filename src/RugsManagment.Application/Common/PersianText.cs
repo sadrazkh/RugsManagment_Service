@@ -24,6 +24,24 @@ public static class PersianText
     public const string PersianKaf = "ک";
 
     /// <summary>
+    /// ارقام لاتین را به فارسی تبدیل می‌کند — برای پیام‌هایی که از لایهٔ Application
+    /// به کاربر نشان داده می‌شوند و باید با بقیهٔ اعداد رابط کاربری هماهنگ باشند.
+    /// </summary>
+    public static string ToPersianDigits(string value)
+    {
+        if (string.IsNullOrEmpty(value)) return value;
+
+        return string.Create(value.Length, value, static (span, source) =>
+        {
+            for (var i = 0; i < source.Length; i++)
+            {
+                var c = source[i];
+                span[i] = c is >= '0' and <= '9' ? (char)(c - '0' + '۰') : c;
+            }
+        });
+    }
+
+    /// <summary>
     /// ارقام فارسی/عربی را به لاتین و حروف عربی را به فارسی تبدیل می‌کند،
     /// فاصله‌های اضافه را جمع می‌کند و «نیم‌فاصله» را به فاصلهٔ ساده می‌برد.
     /// </summary>
