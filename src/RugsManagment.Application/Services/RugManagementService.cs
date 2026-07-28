@@ -1,6 +1,7 @@
 using RugsManagment.Application.Abstractions;
 using RugsManagment.Application.Abstractions.Persistence;
 using RugsManagment.Application.Abstractions.Services;
+using RugsManagment.Application.Common;
 using RugsManagment.Application.DTOs.Common;
 using RugsManagment.Application.DTOs.Rugs;
 using RugsManagment.Application.Mapping;
@@ -165,7 +166,15 @@ public sealed class RugManagementService(
         var rug = await rugs.GetWithWorkflowAsync(rugId, tenantId, ct)
             ?? throw new KeyNotFoundException("فرش یافت نشد.");
 
-        var stepName = rug.WorkflowSteps.FirstOrDefault(s => s.Id == stepId)?.ProcessStepType?.NameFa ?? "مرحله";
+        var target = rug.WorkflowSteps.FirstOrDefault(s => s.Id == stepId);
+        var stepName = target?.ProcessStepType?.NameFa ?? "مرحله";
+
+        // مقادیر فرم داینامیک در برابر اسکیمای همان نوع مرحله سنجیده و پاک می‌شوند
+        request = request with
+        {
+            FieldValuesJson = StepFieldSchema.ValidateValues(
+                target?.ProcessStepType?.FieldSchemaJson, request.FieldValuesJson)
+        };
 
         request = await ApplyProviderRateAsync(tenantId, rug, stepId, request, ct);
         await workflowEngine.AdvanceStepAsync(rug, stepId, ToAdvanceRequest(request), ct);

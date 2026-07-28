@@ -48,7 +48,7 @@ public class RugsController(
             // کوئریِ نمایشی (با تاریخ‌های اصلیِ کاربر) تا فرم و لینک‌ها همان چیزی را نشان دهند که انتخاب کرده
             Query = displayQuery,
             Batches = await batches.ListAsync(tenantId, ct),
-            StepTypes = await lookups.StepTypesAsync(ct)
+            StepTypes = await lookups.StepTypesAsync(tenantId, ct)
         });
     }
 

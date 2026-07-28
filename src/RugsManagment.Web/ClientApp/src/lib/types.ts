@@ -49,6 +49,8 @@ export interface RugWorkflowStep {
   completedAt?: string
   /** کاربری که این مرحله را تکمیل کرد */
   completedByName?: string
+  /** مقادیر فرم داینامیک این مرحله */
+  fieldValuesJson?: string
 }
 
 export interface Rug {

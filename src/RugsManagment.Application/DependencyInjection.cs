@@ -30,6 +30,7 @@ public static class DependencyInjection
         services.AddScoped<ITenantSettingsService, TenantSettingsService>();
         services.AddScoped<IActivityLogService, ActivityLogService>();
         services.AddScoped<IProfileService, ProfileService>();
+        services.AddScoped<IStepTypeService, StepTypeService>();
         return services;
     }
 }

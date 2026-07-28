@@ -14,7 +14,7 @@ public class LookupsApiController(ILookupService lookups, ICustomFieldService cu
 
     [HttpGet("step-types")]
     public async Task<IActionResult> StepTypes(CancellationToken ct)
-        => Ok(await lookups.StepTypesAsync(ct));
+        => Ok(await lookups.StepTypesAsync(User.RequireTenantId(), ct));
 
     [HttpGet("service-providers")]
     public async Task<IActionResult> ServiceProviders(CancellationToken ct)

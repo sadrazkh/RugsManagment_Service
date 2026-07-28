@@ -20,6 +20,9 @@ public class SettingsController(
 {
     public IActionResult CustomFields() => View();
 
+    /// <summary>کاتالوگ انواع مرحله — مرحله‌های اختصاصی کارگاه و فرم داینامیک هر کدام.</summary>
+    public IActionResult StepTypes() => View();
+
     // ── مشخصات کارگاه ─────────────────────────────────────────
 
     [HttpGet]

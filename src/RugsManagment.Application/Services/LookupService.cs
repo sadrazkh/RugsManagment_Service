@@ -10,7 +10,8 @@ namespace RugsManagment.Application.Services;
 public interface ILookupService
 {
     Task<IReadOnlyList<WorkflowTemplateDto>> WorkflowTemplatesAsync(Guid tenantId, CancellationToken ct = default);
-    Task<IReadOnlyList<ProcessStepTypeDto>> StepTypesAsync(CancellationToken ct = default);
+    /// <summary>مرحله‌های قابل استفادهٔ یک کارگاه: سیستمی + اختصاصی خودش.</summary>
+    Task<IReadOnlyList<ProcessStepTypeDto>> StepTypesAsync(Guid tenantId, CancellationToken ct = default);
     Task<IReadOnlyList<ServiceProviderDto>> ServiceProvidersAsync(Guid tenantId, CancellationToken ct = default);
 }
 
@@ -25,9 +26,9 @@ public sealed class LookupService(
         return list.Select(t => t.ToDto()).ToList();
     }
 
-    public async Task<IReadOnlyList<ProcessStepTypeDto>> StepTypesAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<ProcessStepTypeDto>> StepTypesAsync(Guid tenantId, CancellationToken ct = default)
     {
-        var list = await stepTypes.ListAllOrderedAsync(ct);
+        var list = await stepTypes.ListForTenantAsync(tenantId, onlyActive: true, ct);
         return list.Select(s => s.ToDto()).ToList();
     }
 

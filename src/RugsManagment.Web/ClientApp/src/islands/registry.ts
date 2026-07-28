@@ -10,6 +10,7 @@ export const islands: Record<string, () => Promise<{ default: unknown }>> = {
   'sales-report': () => import('./SalesReport.vue'),
   'analytics-dashboard': () => import('./AnalyticsDashboard.vue'),
   'aging-alert': () => import('./AgingAlert.vue'),
+  'step-type-manager': () => import('./StepTypeManager.vue'),
   'workflow-template-editor': () => import('./WorkflowTemplateEditor.vue'),
   'list-quick-advance': () => import('./ListQuickAdvance.vue'),
   'rug-bulk-toolbar': () => import('./RugBulkToolbar.vue'),

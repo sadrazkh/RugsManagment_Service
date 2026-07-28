@@ -35,7 +35,8 @@ public static class EntityMappers
 
     public static ProcessStepTypeDto ToDto(this ProcessStepType t) => new(
         t.Id, t.Code, t.NameFa, t.NameEn, t.Icon, t.SortOrder,
-        t.DefaultPricingModel, t.DefaultUnitRate, t.FieldSchemaJson);
+        t.DefaultPricingModel, t.DefaultUnitRate, t.FieldSchemaJson,
+        t.ExpectedDurationDays, t.IsActive, t.TenantId is null);
 
     public static WorkflowTemplateDto ToDto(this WorkflowTemplate template) => new(
         template.Id,

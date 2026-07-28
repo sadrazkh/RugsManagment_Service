@@ -16,8 +16,9 @@ public interface IAnalyticsService
 
 public sealed class AnalyticsService(IRugRepository rugs, IWorkflowEngine workflowEngine) : IAnalyticsService
 {
-    /// <summary>آستانه‌های کهنگی بر حسب روز. عمداً ثابت‌اند تا رفتار قابل‌پیش‌بینی بماند؛
-    /// در فاز بعد به «مدت انتظار هر نوع مرحله» تبدیل می‌شوند.</summary>
+    /// <summary>
+    /// آستانه‌های پیش‌فرض کهنگی (روز) — وقتی نوع مرحله «مدت معمول» تعریف‌شده ندارد.
+    /// </summary>
     private const int WarningDays = 7;
     private const int SeriousDays = 14;
     private const int CriticalDays = 30;
@@ -55,7 +56,11 @@ public sealed class AnalyticsService(IRugRepository rugs, IWorkflowEngine workfl
             // اگر زمان شروع ثبت نشده، از زمان آخرین تغییر خود فرش تخمین می‌زنیم
             var since = step.StartedAt ?? rug.UpdatedAt ?? rug.CreatedAt;
             var days = (int)Math.Floor((now - since).TotalDays);
-            if (days < WarningDays) continue;
+
+            // آستانه از «مدت معمول» همان نوع مرحله می‌آید؛ اگر تعریف نشده، پیش‌فرض سامانه.
+            // یعنی مرحله‌ای که ذاتاً ۳ روزه است زودتر از مرحله‌ای که ۳۰ روزه است علامت می‌خورد.
+            var severity = Classify(days, step.ProcessStepType?.ExpectedDurationDays);
+            if (severity == AgingSeverity.Normal) continue;
 
             items.Add(new AgingItemDto(
                 rug.Id,
@@ -65,7 +70,7 @@ public sealed class AnalyticsService(IRugRepository rugs, IWorkflowEngine workfl
                 days,
                 step.StartedAt,
                 step.ServiceProvider?.Name,
-                Classify(days)));
+                severity));
         }
 
         items = items.OrderByDescending(i => i.DaysInStep).ToList();
@@ -77,13 +82,33 @@ public sealed class AnalyticsService(IRugRepository rugs, IWorkflowEngine workfl
             items.Count(i => i.Severity == AgingSeverity.Critical));
     }
 
-    private static AgingSeverity Classify(int days) => days switch
+    /// <summary>
+    /// شدت کهنگی نسبت به «مدت معمول» مرحله سنجیده می‌شود:
+    /// از مدت معمول گذشت → پیگیری، دو برابر → طولانی، سه برابر → بحرانی.
+    /// بدون مدت معمول، آستانه‌های ثابت سامانه به کار می‌روند.
+    /// </summary>
+    private static AgingSeverity Classify(int days, int? expectedDays)
     {
-        >= CriticalDays => AgingSeverity.Critical,
-        >= SeriousDays => AgingSeverity.Serious,
-        >= WarningDays => AgingSeverity.Warning,
-        _ => AgingSeverity.Normal
-    };
+        if (expectedDays is not > 0)
+        {
+            return days switch
+            {
+                >= CriticalDays => AgingSeverity.Critical,
+                >= SeriousDays => AgingSeverity.Serious,
+                >= WarningDays => AgingSeverity.Warning,
+                _ => AgingSeverity.Normal
+            };
+        }
+
+        var expected = expectedDays.Value;
+        return days switch
+        {
+            _ when days >= expected * 3 => AgingSeverity.Critical,
+            _ when days >= expected * 2 => AgingSeverity.Serious,
+            _ when days > expected => AgingSeverity.Warning,
+            _ => AgingSeverity.Normal
+        };
+    }
 
     // ─────────────────────────────────────────────────────────
     // شکست هزینه و زمان به تفکیک نوع مرحله

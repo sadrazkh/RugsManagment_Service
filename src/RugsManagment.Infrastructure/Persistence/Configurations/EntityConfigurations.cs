@@ -30,10 +30,15 @@ public class ProcessStepTypeConfiguration : IEntityTypeConfiguration<ProcessStep
 {
     public void Configure(EntityTypeBuilder<ProcessStepType> builder)
     {
-        builder.HasIndex(s => s.Code).IsUnique();
+        // کد در محدودهٔ هر کارگاه یکتاست، نه در کل سامانه — وگرنه دو کارگاه
+        // نمی‌توانستند هر دو مرحله‌ای به نام «رنگرزی» داشته باشند.
+        // مرحله‌های سیستمی (TenantId = null) هم بین خودشان یکتا می‌مانند.
+        builder.HasIndex(s => new { s.TenantId, s.Code }).IsUnique();
+
         builder.Property(s => s.Code).HasMaxLength(50).IsRequired();
         builder.Property(s => s.NameFa).HasMaxLength(100).IsRequired();
         builder.Property(s => s.NameEn).HasMaxLength(100).IsRequired();
+        builder.Property(s => s.FieldSchemaJson).HasColumnType("jsonb");
     }
 }
 

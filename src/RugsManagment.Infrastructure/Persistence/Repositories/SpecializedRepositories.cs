@@ -297,8 +297,34 @@ public class ProcessStepTypeRepository(AppDbContext db) : Repository<ProcessStep
     public async Task<IReadOnlyList<ProcessStepType>> ListAllOrderedAsync(CancellationToken cancellationToken = default)
         => await Db.ProcessStepTypes.AsNoTracking().OrderBy(s => s.SortOrder).ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<ProcessStepType>> ListForTenantAsync(
+        Guid tenantId, bool onlyActive = true, CancellationToken cancellationToken = default)
+    {
+        var query = Db.ProcessStepTypes
+            .AsNoTracking()
+            // سیستمی (بدون کارگاه) + اختصاصی همین کارگاه
+            .Where(s => s.TenantId == null || s.TenantId == tenantId);
+
+        if (onlyActive)
+            query = query.Where(s => s.IsActive);
+
+        return await query
+            .OrderBy(s => s.SortOrder)
+            .ThenBy(s => s.NameFa)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<ProcessStepType?> GetForTenantAsync(
+        Guid id, Guid tenantId, CancellationToken cancellationToken = default)
+        => await Db.ProcessStepTypes
+            .FirstOrDefaultAsync(
+                s => s.Id == id && (s.TenantId == null || s.TenantId == tenantId),
+                cancellationToken);
+
+    /// <summary>فقط برای مرحله‌های سیستمی — در seed استفاده می‌شود.</summary>
     public async Task<ProcessStepType?> GetByCodeAsync(string code, CancellationToken cancellationToken = default)
-        => await Db.ProcessStepTypes.FirstOrDefaultAsync(s => s.Code == code, cancellationToken);
+        => await Db.ProcessStepTypes.FirstOrDefaultAsync(
+            s => s.Code == code && s.TenantId == null, cancellationToken);
 }
 
 public class RugBatchRepository(AppDbContext db) : Repository<RugBatch>(db), IRugBatchRepository

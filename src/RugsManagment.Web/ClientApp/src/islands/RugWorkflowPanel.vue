@@ -10,14 +10,16 @@ import { api } from '@/lib/api'
 import { faDate, faMoney, faNumber } from '@/lib/format'
 import AppIcon from '@/components/AppIcon.vue'
 import CostRuleEditor from '@/components/CostRuleEditor.vue'
+import StepFieldsForm from '@/components/StepFieldsForm.vue'
 import type { Rug } from '@/lib/types'
 
 const costEditor = ref<InstanceType<typeof CostRuleEditor> | null>(null)
+const stepFields = ref<InstanceType<typeof StepFieldsForm> | null>(null)
 
 const props = defineProps<{ rugId: string }>()
 
 interface Provider { id: string; name: string }
-interface StepType { id: string; nameFa: string }
+interface StepType { id: string; nameFa: string; fieldSchemaJson?: string }
 interface Template { id: string; name: string; isDefault: boolean }
 interface Row { uid: number; processStepTypeId: string; stepNameFa: string; isOptional: boolean }
 
@@ -83,11 +85,48 @@ function openBack() {
   Object.assign(modal, { open: true, kind: 'back', notes: '' })
 }
 
+/**
+ * مقادیر فرم داینامیک مرحله. اگر نوع مرحله اسکیما نداشته باشد null برمی‌گردد
+ * و رفتار قبلی (فقط هزینه و توضیح) حفظ می‌شود.
+ */
 function fieldValues() {
-  const obj: Record<string, string> = {}
-  if (modal.date) obj.date = modal.date
-  return Object.keys(obj).length ? JSON.stringify(obj) : null
+  return stepFields.value?.toPayload() ?? null
 }
+
+/**
+ * مقادیر فرم ثبت‌شدهٔ یک مرحله، با برچسب فارسی از اسکیما.
+ * کلیدهایی که دیگر در اسکیما نیستند (فیلد حذف‌شده) نمایش داده نمی‌شوند.
+ */
+function recordedFields(step: { processStepTypeId: string; fieldValuesJson?: string }) {
+  if (!step.fieldValuesJson) return []
+
+  const schemaRaw = stepTypes.value.find((t) => t.id === step.processStepTypeId)?.fieldSchemaJson
+  if (!schemaRaw) return []
+
+  try {
+    const schema = JSON.parse(schemaRaw) as { key: string; label: string; type: number }[]
+    const values = JSON.parse(step.fieldValuesJson) as Record<string, unknown>
+
+    return schema
+      .filter((f) => values[f.key] !== undefined && values[f.key] !== null && values[f.key] !== '')
+      .map((f) => ({
+        label: f.label,
+        value: f.type === 4
+          ? (values[f.key] === true || values[f.key] === 'true' ? 'بله' : 'خیر')
+          : f.type === 1
+            ? faNumber(Number(values[f.key]), 2)
+            : String(values[f.key]),
+      }))
+  } catch {
+    return []
+  }
+}
+
+/** اسکیمای فیلدهای مرحلهٔ جاری — از کاتالوگ انواع مرحله می‌آید. */
+const currentSchema = computed(() => {
+  if (!currentStep.value) return null
+  return stepTypes.value.find((t) => t.id === currentStep.value!.processStepTypeId)?.fieldSchemaJson ?? null
+})
 function movePayload(markCompleted: boolean) {
   const pricing = costEditor.value?.toPayload() ?? { manualCostOverride: null, pricingModel: null, unitRate: null, pricingConfigJson: null, adjustment: null }
   return {
@@ -100,6 +139,16 @@ function movePayload(markCompleted: boolean) {
 
 async function doForward(markCompleted: boolean) {
   if (!currentStep.value) return
+
+  // فیلدهای الزامی فقط هنگام «تکمیل» اجباری‌اند؛ «فقط ذخیره» باید ناقص هم بپذیرد
+  if (markCompleted) {
+    const missing = stepFields.value?.missingRequired() ?? []
+    if (missing.length > 0) {
+      error.value = `این فیلدها الزامی‌اند: ${missing.join('، ')}`
+      return
+    }
+  }
+
   busy.value = true; error.value = ''
   try {
     if (markCompleted) {
@@ -216,6 +265,13 @@ onMounted(load)
                   <template v-if="s.completedByName && s.completedAt"> · </template>
                   <template v-if="s.completedAt">{{ faDate(s.completedAt) }}</template>
                 </span>
+                <!-- مقادیر فرم داینامیک همان مرحله -->
+                <span v-if="recordedFields(s).length" class="mt-0.5 flex flex-wrap gap-1">
+                  <span v-for="v in recordedFields(s)" :key="v.label"
+                        class="rounded bg-surface-container px-1.5 py-0.5 text-[0.7rem] text-on-surface-variant">
+                    {{ v.label }}: {{ v.value }}
+                  </span>
+                </span>
               </span>
             </div>
             <div class="flex items-center gap-2">
@@ -258,6 +314,8 @@ onMounted(load)
         <div v-if="error" class="mb-3 rounded-lg bg-error-container px-3 py-2 text-sm text-error">{{ error }}</div>
         <div class="space-y-3">
           <CostRuleEditor ref="costEditor" :width="rug?.widthMeters ?? 0" :length="rug?.lengthMeters ?? 0" />
+          <!-- فرم اختصاصی این نوع مرحله (اگر تعریف شده باشد) -->
+          <StepFieldsForm ref="stepFields" :schema-json="currentSchema" :values-json="currentStep?.fieldValuesJson" />
           <div class="grid grid-cols-2 gap-3">
             <label v-if="providers.length" class="block"><span class="mb-1 block text-sm">انجام‌دهنده</span>
               <select v-model="modal.providerId" class="fld"><option value="">—</option><option v-for="p in providers" :key="p.id" :value="p.id">{{ p.name }}</option></select>
