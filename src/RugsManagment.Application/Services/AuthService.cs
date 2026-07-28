@@ -25,6 +25,17 @@ public sealed class AuthService(
         if (!VerifyPassword(request.Password, user.PasswordHash))
             throw new UnauthorizedAccessException("ایمیل یا رمز عبور اشتباه است.");
 
+        // بررسی وضعیت کارگاه بعد از تأیید رمز انجام می‌شود تا پیام‌های خطا
+        // اطلاعاتی دربارهٔ وجود یا نبود حساب لو ندهند.
+        if (user.Tenant is { } tenant)
+        {
+            if (!tenant.IsActive)
+                throw new UnauthorizedAccessException("دسترسی این کارگاه غیرفعال شده است. با پشتیبانی تماس بگیرید.");
+
+            if (tenant.SubscriptionExpiresAt is { } expiry && expiry <= DateTimeOffset.UtcNow)
+                throw new UnauthorizedAccessException("اشتراک این کارگاه به پایان رسیده است. برای تمدید با پشتیبانی تماس بگیرید.");
+        }
+
         user.LastLoginAt = DateTimeOffset.UtcNow;
         users.Update(user);
 

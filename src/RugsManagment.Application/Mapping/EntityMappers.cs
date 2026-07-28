@@ -137,7 +137,8 @@ public static class EntityMappers
         step.PricingConfigJson,
         step.FieldValuesJson,
         step.Notes,
-        step.Adjustment);
+        step.Adjustment,
+        step.CompletedByName);
 
     /// <summary>
     /// خلاصهٔ هزینه. اگر فرش فروخته شده باشد، سود واقعی هم کنار سود تخمینی می‌آید

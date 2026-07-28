@@ -22,6 +22,12 @@ public class RugWorkflowStep : BaseEntity
     public DateTimeOffset? StartedAt { get; set; }
     public DateTimeOffset? CompletedAt { get; set; }
 
+    /// <summary>کاربری که این مرحله را تکمیل کرد — «چه کسی این کار را انجام داد»</summary>
+    public Guid? CompletedByUserId { get; set; }
+
+    /// <summary>نام کاربر در لحظهٔ تکمیل؛ کپی می‌شود تا با حذف کاربر تاریخچه خالی نشود</summary>
+    public string? CompletedByName { get; set; }
+
     /// <summary>هزینه محاسبه‌شده توسط سیستم</summary>
     public decimal? CalculatedCost { get; set; }
 

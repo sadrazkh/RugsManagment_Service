@@ -26,6 +26,7 @@ public sealed class RugSaleService(
     IRepository<RugSale> sales,
     IRugRepository rugs,
     IWorkflowEngine workflowEngine,
+    IAuditLog audit,
     IUnitOfWork unitOfWork) : IRugSaleService
 {
     public async Task<RugSaleDto?> GetForRugAsync(Guid tenantId, Guid rugId, CancellationToken ct = default)
@@ -75,6 +76,13 @@ public sealed class RugSaleService(
         rug.UpdatedAt = DateTimeOffset.UtcNow;
         rugs.Update(rug);
 
+        audit.Record(
+            AuditAction.SaleRecorded, nameof(Rug), rug.Id,
+            isNew
+                ? $"به «{sale.BuyerName}» فروخته شد."
+                : $"اطلاعات فروش به «{sale.BuyerName}» ویرایش شد.",
+            rug.Sku);
+
         await unitOfWork.SaveChangesAsync(ct);
         return ToDto(rug, sale);
     }
@@ -95,6 +103,9 @@ public sealed class RugSaleService(
         rug.Status = workflowEngine.ResolveStatusFromWorkflow(rug);
         rug.UpdatedAt = DateTimeOffset.UtcNow;
         rugs.Update(rug);
+
+        audit.Record(AuditAction.SaleCancelled, nameof(Rug), rug.Id,
+            $"فروش به «{sale.BuyerName}» لغو شد.", rug.Sku);
 
         await unitOfWork.SaveChangesAsync(ct);
     }

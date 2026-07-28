@@ -46,6 +46,9 @@ export interface RugWorkflowStep {
   isOptional: boolean
   status: number
   effectiveCost: number
+  completedAt?: string
+  /** کاربری که این مرحله را تکمیل کرد */
+  completedByName?: string
 }
 
 export interface Rug {

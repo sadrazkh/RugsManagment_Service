@@ -264,7 +264,7 @@
                             </dl>
                             <p class="mt-2 text-sm" data-numeric>
                                 @PersianFormat.Money(r.TotalInvestment)
-                                <span class="text-xs text-on-surface-variant">تومان</span>
+                                <span class="text-xs text-on-surface-variant">@Tenant.Currency</span>
                             </p>
                             </span>
                         </a>
@@ -344,7 +344,7 @@
                             </td>
                             <td class="p-3 whitespace-nowrap" data-numeric>
                                 @PersianFormat.Money(r.TotalInvestment)
-                                <span class="text-xs text-on-surface-variant">تومان</span>
+                                <span class="text-xs text-on-surface-variant">@Tenant.Currency</span>
                             </td>
                             <td class="p-3">
                                 <div class="flex justify-end gap-1.5">

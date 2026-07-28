@@ -1,0 +1,176 @@
+@using RugsManagment.Application.DTOs.Activity
+@using RugsManagment.Application.Services
+@using RugsManagment.Domain.Enums
+@using RugsManagment.Web.Support
+@model ActivityPageDto
+@{
+    ViewData["Title"] = "تاریخچهٔ فعالیت";
+    var filter = ViewData["Filter"] as ActivityQuery ?? new ActivityQuery();
+    var fromRaw = ViewData["FromRaw"] as DateTimeOffset?;
+    var toRaw = ViewData["ToRaw"] as DateTimeOffset?;
+
+    // فقط رویدادهایی که کاربر کارگاه واقعاً می‌بیند
+    AuditAction[] actions =
+    [
+        AuditAction.Created, AuditAction.Updated,
+        AuditAction.StepAdvanced, AuditAction.StepReverted, AuditAction.StepSkipped,
+        AuditAction.SaleRecorded, AuditAction.SaleCancelled,
+        AuditAction.ProviderPaid,
+        AuditAction.UserInvited, AuditAction.UserDisabled, AuditAction.PasswordChanged,
+        AuditAction.SettingsChanged
+    ];
+
+    (string Icon, string Css) Style(AuditAction a) => a switch
+    {
+        AuditAction.StepAdvanced => ("check", "bg-success/12 text-success"),
+        AuditAction.StepReverted => ("arrow-right", "bg-warning/12 text-warning"),
+        AuditAction.StepSkipped => ("close", "bg-surface-container-high text-on-surface-variant"),
+        AuditAction.SaleRecorded => ("receipt", "bg-primary/12 text-primary"),
+        AuditAction.SaleCancelled => ("close", "bg-error-container text-on-error-container"),
+        AuditAction.ProviderPaid => ("handshake", "bg-secondary-container text-on-secondary-container"),
+        AuditAction.UserDisabled => ("users", "bg-error-container text-on-error-container"),
+        AuditAction.UserInvited => ("users", "bg-secondary-container text-on-secondary-container"),
+        AuditAction.PasswordChanged => ("settings", "bg-warning/12 text-warning"),
+        AuditAction.SettingsChanged => ("settings", "bg-surface-container-high text-on-surface-variant"),
+        AuditAction.Created => ("plus", "bg-secondary-container text-on-secondary-container"),
+        _ => ("edit", "bg-surface-container-high text-on-surface-variant")
+    };
+}
+
+<div class="space-y-5">
+    <div>
+        <h1 class="text-2xl font-bold">تاریخچهٔ فعالیت</h1>
+        <p class="text-sm text-on-surface-variant">
+            چه کسی، کِی، چه کاری انجام داد. این فهرست فقط خواندنی است و ویرایش نمی‌شود.
+        </p>
+    </div>
+
+    <!-- فیلترها -->
+    <form asp-action="Activity" method="get"
+          class="flex flex-wrap items-end gap-3 rounded-xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm">
+        <label class="block">
+            <span class="mb-1 block text-sm">نوع رویداد</span>
+            <select name="type"
+                    class="min-h-11 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-sm outline-none focus:border-primary">
+                <option value="">همه</option>
+                @foreach (var a in actions)
+                {
+                    <option value="@((int)a)" selected="@(filter.Action == a)">@ActivityLogService.ActionLabel(a)</option>
+                }
+            </select>
+        </label>
+
+        <label class="block">
+            <span class="mb-1 block text-sm">از تاریخ</span>
+            <input type="date" name="from" dir="ltr" value="@fromRaw?.ToString("yyyy-MM-dd")"
+                   class="min-h-11 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-sm outline-none focus:border-primary" />
+        </label>
+
+        <label class="block">
+            <span class="mb-1 block text-sm">تا تاریخ</span>
+            <input type="date" name="to" dir="ltr" value="@toRaw?.ToString("yyyy-MM-dd")"
+                   class="min-h-11 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-sm outline-none focus:border-primary" />
+        </label>
+
+        <button type="submit"
+                class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-on-primary hover:bg-primary-hover">
+            <icon name="filter" class="h-4 w-4" />
+            اعمال
+        </button>
+
+        <a asp-action="Activity"
+           class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-4 text-sm hover:bg-surface-container">
+            <icon name="close" class="h-4 w-4" />
+            پاک کردن
+        </a>
+
+        <div class="flex-1"></div>
+        <p class="text-sm text-on-surface-variant" data-numeric>@PersianFormat.Count(Model.TotalCount) رویداد</p>
+    </form>
+
+    @if (Model.Items.Count == 0)
+    {
+        <div class="rounded-xl border border-dashed border-outline-variant bg-surface-container-lowest p-12 text-center">
+            <span class="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full bg-surface-container text-on-surface-variant">
+                <icon name="info" class="h-7 w-7" />
+            </span>
+            <p class="font-medium text-on-surface">رویدادی یافت نشد</p>
+            <p class="mx-auto mt-1 max-w-sm text-sm text-on-surface-variant">
+                @(filter.Action is null && filter.From is null && filter.To is null
+                    ? "به‌محض ثبت فرش، پیشبرد مرحله یا فروش، رویدادها اینجا ثبت می‌شوند."
+                    : "با این فیلتر رویدادی نیست؛ بازه یا نوع رویداد را تغییر دهید.")
+            </p>
+        </div>
+    }
+    else
+    {
+        <ul class="divide-y divide-outline-variant rounded-xl border border-outline-variant bg-surface-container-lowest">
+            @foreach (var e in Model.Items)
+            {
+                var style = Style(e.Action);
+                <li class="flex items-start gap-3 p-4">
+                    <span class="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full @style.Css">
+                        <icon name="@style.Icon" class="h-4 w-4" />
+                    </span>
+
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm">
+                            <span class="font-medium">@e.UserName</span>
+                            <span class="text-on-surface-variant">— @e.Summary</span>
+                        </p>
+                        <p class="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-on-surface-variant">
+                            <span class="rounded-full bg-surface-container px-2 py-0.5">@e.ActionLabel</span>
+                            @if (!string.IsNullOrEmpty(e.EntityLabel))
+                            {
+                                @if (e.EntityType == "Rug" && e.EntityId is Guid rugId)
+                                {
+                                    <a asp-controller="Rugs" asp-action="Details" asp-route-id="@rugId"
+                                       class="font-mono hover:text-primary hover:underline" dir="ltr">@e.EntityLabel</a>
+                                }
+                                else
+                                {
+                                    <span class="font-mono" dir="ltr">@e.EntityLabel</span>
+                                }
+                            }
+                        </p>
+                    </div>
+
+                    <time class="shrink-0 whitespace-nowrap text-xs text-on-surface-variant"
+                          datetime="@e.CreatedAt.ToString("o")"
+                          title="@PersianFormat.DateTime(e.CreatedAt)">
+                        @PersianFormat.Relative(e.CreatedAt)
+                    </time>
+                </li>
+            }
+        </ul>
+
+        @if (Model.TotalPages > 1)
+        {
+            <nav class="flex items-center justify-between gap-3" aria-label="صفحه‌بندی">
+                <a asp-action="Activity"
+                   asp-route-type="@(filter.Action is null ? null : ((int)filter.Action).ToString())"
+                   asp-route-from="@fromRaw?.ToString("yyyy-MM-dd")"
+                   asp-route-to="@toRaw?.ToString("yyyy-MM-dd")"
+                   asp-route-page="@(Model.Page - 1)"
+                   class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-4 text-sm @(Model.HasPrevious ? "hover:bg-surface-container" : "pointer-events-none opacity-50")">
+                    <icon name="arrow-right" class="h-4 w-4" />
+                    قبلی
+                </a>
+
+                <span class="text-sm text-on-surface-variant" data-numeric>
+                    صفحهٔ @PersianFormat.Count(Model.Page) از @PersianFormat.Count(Model.TotalPages)
+                </span>
+
+                <a asp-action="Activity"
+                   asp-route-type="@(filter.Action is null ? null : ((int)filter.Action).ToString())"
+                   asp-route-from="@fromRaw?.ToString("yyyy-MM-dd")"
+                   asp-route-to="@toRaw?.ToString("yyyy-MM-dd")"
+                   asp-route-page="@(Model.Page + 1)"
+                   class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-4 text-sm @(Model.HasNext ? "hover:bg-surface-container" : "pointer-events-none opacity-50")">
+                    بعدی
+                    <icon name="arrow-left" class="h-4 w-4" />
+                </a>
+            </nav>
+        }
+    }
+</div>

@@ -1,4 +1,5 @@
 using RugsManagment.Domain.Common;
+using RugsManagment.Domain.Enums;
 
 namespace RugsManagment.Domain.Entities;
 
@@ -22,6 +23,18 @@ public class Tenant : BaseEntity
 
     /// <summary>پایان اشتراک (اختیاری) — برای مدل فروش SaaS</summary>
     public DateTimeOffset? SubscriptionExpiresAt { get; set; }
+
+    /// <summary>
+    /// واحد پول نمایشی. مبالغ همیشه به یک واحد ذخیره می‌شوند؛ این فقط برچسب نمایش است،
+    /// چون بعضی کارگاه‌ها با ریال کار می‌کنند و بعضی با تومان.
+    /// </summary>
+    public CurrencyUnit Currency { get; set; } = CurrencyUnit.Toman;
+
+    /// <summary>نام فایل لوگو (بدون مسیر) — روی برچسب و سربرگ گزارش استفاده می‌شود</summary>
+    public string? LogoFileName { get; set; }
+
+    /// <summary>قالب گردش کاری که هنگام ثبت فرش جدید از پیش انتخاب می‌شود</summary>
+    public Guid? DefaultWorkflowTemplateId { get; set; }
 
     public ICollection<User> Users { get; set; } = [];
     public ICollection<WorkflowTemplate> WorkflowTemplates { get; set; } = [];

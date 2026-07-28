@@ -64,6 +64,15 @@ builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<RugsManagment.Web.Frontend.ViteAssets>();
 
+// پل هویت: تنها جایی که لایهٔ وب کاربر جاری را به Application می‌رساند (برای لاگ حسابرسی)
+builder.Services.AddScoped<RugsManagment.Application.Abstractions.Services.ICurrentUser,
+    RugsManagment.Web.Auth.HttpCurrentUser>();
+
+// دسترسی viewها به تنظیمات کارگاه (واحد پول، لوگو) — با کش کوتاه در طول هر درخواست
+builder.Services.AddScoped<RugsManagment.Web.Support.TenantSettingsAccessor>();
+builder.Services.AddScoped<RugsManagment.Web.Support.IImageUploadHelper,
+    RugsManagment.Web.Support.ImageUploadHelper>();
+
 var app = builder.Build();
 
 // باید قبل از بقیهٔ میان‌افزارها باشد تا scheme درست تشخیص داده شود

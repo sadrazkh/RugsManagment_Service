@@ -15,13 +15,43 @@ namespace RugsManagment.Web.Controllers;
 /// شناسهٔ کارگاه از کوکی کاربر می‌آید، نه از آدرس — پس دستکاری آدرس بی‌فایده است.
 /// </summary>
 [Authorize(Roles = $"{nameof(Domain.Enums.UserRole.TenantAdmin)},{nameof(Domain.Enums.UserRole.Operator)}")]
-[Route("media/rugs")]
-public class MediaController(IRepository<RugImage> images, IImageStorage storage) : Controller
+[Route("media")]
+public class MediaController(
+    IRepository<RugImage> images,
+    IImageStorage storage,
+    RugsManagment.Application.Services.ITenantSettingsService settings) : Controller
 {
     /// <summary>مدت کش مرورگر. نام فایل‌ها Guid و تغییرناپذیرند، پس کش طولانی امن است.</summary>
     private static readonly TimeSpan CacheDuration = TimeSpan.FromDays(30);
 
-    [HttpGet("{rugId:guid}/{fileName}")]
+    /// <summary>
+    /// لوگوی کارگاه. نام فایل با آنچه در تنظیمات ثبت شده مقایسه می‌شود، پس
+    /// نمی‌شود با حدس نام، فایل دیگری از پوشهٔ کارگاه بیرون کشید.
+    /// </summary>
+    [HttpGet("tenant/{fileName}")]
+    public async Task<IActionResult> TenantLogo(string fileName, CancellationToken ct)
+    {
+        var tenantId = User.RequireTenantId();
+        var current = await settings.GetAsync(tenantId, ct);
+
+        if (current.LogoUrl is null || !current.LogoUrl.EndsWith('/' + fileName, StringComparison.Ordinal))
+            return NotFound();
+
+        var stream = await storage.OpenReadAsync(tenantId, Support.ImageUploadHelper.AssetsFolder, fileName, ct);
+        if (stream is null) return NotFound();
+
+        Response.Headers.CacheControl = $"private, max-age={(int)CacheDuration.TotalSeconds}, immutable";
+        return File(stream, ContentTypeFor(fileName));
+    }
+
+    private static string ContentTypeFor(string fileName) => Path.GetExtension(fileName).ToLowerInvariant() switch
+    {
+        ".png" => "image/png",
+        ".jpg" or ".jpeg" => "image/jpeg",
+        _ => "image/webp"
+    };
+
+    [HttpGet("rugs/{rugId:guid}/{fileName}")]
     public async Task<IActionResult> Get(Guid rugId, string fileName, CancellationToken ct)
     {
         var tenantId = User.RequireTenantId();

@@ -43,6 +43,9 @@ public static class DependencyInjection
         // ذخیره‌سازی تصاویر روی دیسک — مسیر از Storage:ImagePath خوانده می‌شود
         services.AddSingleton<IImageStorage, LocalImageStorage>();
 
+        // تاریخچهٔ فعالیت — در همان DbContext و همان تراکنش عملیات اصلی می‌نویسد
+        services.AddScoped<IAuditLog, AuditLog>();
+
         return services;
     }
 }

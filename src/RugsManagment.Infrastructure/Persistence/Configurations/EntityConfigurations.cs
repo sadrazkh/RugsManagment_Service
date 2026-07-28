@@ -144,6 +144,27 @@ public class ProviderPaymentConfiguration : IEntityTypeConfiguration<ProviderPay
 }
 
 /// <summary>
+/// تاریخچهٔ فعالیت — فقط افزودنی. ایندکس روی (کارگاه، زمان نزولی) چون فهرست
+/// همیشه «آخرین رویدادهای یک کارگاه» است.
+/// </summary>
+public class AuditEntryConfiguration : IEntityTypeConfiguration<AuditEntry>
+{
+    public void Configure(EntityTypeBuilder<AuditEntry> builder)
+    {
+        builder.HasIndex(a => new { a.TenantId, a.CreatedAt });
+        builder.HasIndex(a => new { a.TenantId, a.EntityType, a.EntityId });
+
+        builder.Property(a => a.UserName).HasMaxLength(200).IsRequired();
+        builder.Property(a => a.EntityType).HasMaxLength(60).IsRequired();
+        builder.Property(a => a.EntityLabel).HasMaxLength(200);
+        builder.Property(a => a.Summary).HasMaxLength(500).IsRequired();
+
+        builder.HasOne(a => a.Tenant).WithMany()
+            .HasForeignKey(a => a.TenantId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+/// <summary>
 /// فروش فرش — هر فرش حداکثر یک فروش دارد، پس رابطه یک‌به‌یک با ایندکس یکتاست.
 /// </summary>
 public class RugSaleConfiguration : IEntityTypeConfiguration<RugSale>
@@ -201,6 +222,7 @@ public class RugWorkflowStepConfiguration : IEntityTypeConfiguration<RugWorkflow
     public void Configure(EntityTypeBuilder<RugWorkflowStep> builder)
     {
         builder.HasIndex(s => new { s.RugId, s.OrderIndex });
+        builder.Property(s => s.CompletedByName).HasMaxLength(200);
         builder.Ignore(s => s.EffectiveCost); // فقط در کد محاسبه می‌شود
         builder.Property<uint>("xmin").IsRowVersion();
     }

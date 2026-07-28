@@ -27,6 +27,9 @@ public static class DependencyInjection
         services.AddScoped<IServiceProviderService, ServiceProviderService>();
         services.AddScoped<IRugSaleService, RugSaleService>();
         services.AddScoped<IAnalyticsService, AnalyticsService>();
+        services.AddScoped<ITenantSettingsService, TenantSettingsService>();
+        services.AddScoped<IActivityLogService, ActivityLogService>();
+        services.AddScoped<IProfileService, ProfileService>();
         return services;
     }
 }

@@ -112,19 +112,19 @@
                 <dl class="space-y-2 text-sm" data-numeric>
                     <div class="flex justify-between gap-3">
                         <dt class="text-on-surface-variant">قیمت خرید</dt>
-                        <dd>@PersianFormat.MoneyWithUnit(Model.Costs.PurchaseCost)</dd>
+                        <dd>@Tenant.Money(Model.Costs.PurchaseCost)</dd>
                     </div>
                     <div class="flex justify-between gap-3">
                         <dt class="text-on-surface-variant">مجموع هزینهٔ مراحل</dt>
-                        <dd>@PersianFormat.MoneyWithUnit(Model.Costs.TotalProcessCost)</dd>
+                        <dd>@Tenant.Money(Model.Costs.TotalProcessCost)</dd>
                     </div>
                     <div class="flex justify-between gap-3 border-t border-outline-variant pt-2 font-semibold">
                         <dt>سرمایه‌گذاری کل</dt>
-                        <dd>@PersianFormat.MoneyWithUnit(Model.Costs.TotalInvestment)</dd>
+                        <dd>@Tenant.Money(Model.Costs.TotalInvestment)</dd>
                     </div>
                     <div class="flex justify-between gap-3">
                         <dt class="text-on-surface-variant">قیمت فروش هدف</dt>
-                        <dd>@PersianFormat.MoneyWithUnit(Model.Costs.TargetSalePrice)</dd>
+                        <dd>@Tenant.Money(Model.Costs.TargetSalePrice)</dd>
                     </div>
 
                     @if (Model.Costs.ActualProfit is decimal actualProfit)
@@ -132,13 +132,13 @@
                         @* فرش فروخته شده: سود واقعی جای تخمین را می‌گیرد و تخمین فقط برای مقایسه می‌ماند *@
                         <div class="flex justify-between gap-3 border-t border-outline-variant pt-2 font-bold @(actualProfit >= 0 ? "text-success" : "text-error")">
                             <dt>سود واقعی</dt>
-                            <dd>@PersianFormat.MoneyWithUnit(actualProfit)</dd>
+                            <dd>@Tenant.Money(actualProfit)</dd>
                         </div>
                         @if (Model.Costs.EstimatedMargin is decimal estimated && estimated != actualProfit)
                         {
                             <div class="flex justify-between gap-3 text-xs text-on-surface-variant">
                                 <dt>سود تخمینی (پیش‌بینی)</dt>
-                                <dd>@PersianFormat.MoneyWithUnit(estimated)</dd>
+                                <dd>@Tenant.Money(estimated)</dd>
                             </div>
                         }
                     }
@@ -146,7 +146,7 @@
                     {
                         <div class="flex justify-between gap-3 font-semibold @(Model.Costs.EstimatedMargin >= 0 ? "text-success" : "text-error")">
                             <dt>سود تخمینی</dt>
-                            <dd>@PersianFormat.MoneyWithUnit(Model.Costs.EstimatedMargin)</dd>
+                            <dd>@Tenant.Money(Model.Costs.EstimatedMargin)</dd>
                         </div>
                     }
                 </dl>

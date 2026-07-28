@@ -51,7 +51,9 @@ public record RugWorkflowStepDto(
     string? PricingConfigJson,
     string? FieldValuesJson,
     string? Notes,
-    decimal? Adjustment = null);
+    decimal? Adjustment = null,
+    /// <summary>کاربری که این مرحله را تکمیل کرد — «چه کسی این کار را انجام داد»</summary>
+    string? CompletedByName = null);
 
 public record RugCostSummaryDto(
     decimal TotalProcessCost,

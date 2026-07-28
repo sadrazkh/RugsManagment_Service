@@ -1,5 +1,6 @@
 using RugsManagment.Application.Abstractions;
 using RugsManagment.Application.Abstractions.Persistence;
+using RugsManagment.Application.Abstractions.Services;
 using RugsManagment.Application.DTOs.Auth;
 using RugsManagment.Application.DTOs.Users;
 using RugsManagment.Application.Mapping;
@@ -21,6 +22,7 @@ public interface IUserManagementService
 
 public sealed class UserManagementService(
     IUserRepository users,
+    IAuditLog audit,
     IUnitOfWork unitOfWork) : IUserManagementService
 {
     public async Task<IReadOnlyList<UserDto>> ListByTenantAsync(Guid tenantId, CancellationToken ct = default)
@@ -48,6 +50,10 @@ public sealed class UserManagementService(
         };
 
         await users.AddAsync(user, ct);
+
+        audit.Record(AuditAction.UserInvited, nameof(User), user.Id,
+            $"کاربر «{user.FullName}» با نقش {RoleLabel(user.Role)} اضافه شد.", user.Email);
+
         await unitOfWork.SaveChangesAsync(ct);
         return user.ToDto();
     }
@@ -63,14 +69,31 @@ public sealed class UserManagementService(
         if (user.TenantId != tenantId)
             throw new UnauthorizedAccessException("این کاربر متعلق به کارگاه شما نیست.");
 
+        var wasActive = user.IsActive;
+        var passwordReset = !string.IsNullOrWhiteSpace(request.NewPassword);
+
         user.FullName = request.FullName.Trim();
         user.Role = request.Role;
         user.IsActive = request.IsActive;
-        if (!string.IsNullOrWhiteSpace(request.NewPassword))
-            user.PasswordHash = AuthService.HashPassword(request.NewPassword);
+        if (passwordReset)
+            user.PasswordHash = AuthService.HashPassword(request.NewPassword!);
         user.UpdatedAt = DateTimeOffset.UtcNow;
 
         users.Update(user);
+
+        // غیرفعال شدن حساب رویداد امنیتی مهمی است و جدا ثبت می‌شود
+        if (wasActive && !user.IsActive)
+        {
+            audit.Record(AuditAction.UserDisabled, nameof(User), user.Id,
+                $"حساب «{user.FullName}» غیرفعال شد.", user.Email);
+        }
+        else
+        {
+            var note = passwordReset ? " (رمز عبور بازنشانی شد)" : "";
+            audit.Record(AuditAction.Updated, nameof(User), user.Id,
+                $"حساب «{user.FullName}» ویرایش شد{note}.", user.Email);
+        }
+
         await unitOfWork.SaveChangesAsync(ct);
         return user.ToDto();
     }
@@ -80,4 +103,7 @@ public sealed class UserManagementService(
         if (role is not (UserRole.TenantAdmin or UserRole.Operator))
             throw new InvalidOperationException("نقش نامعتبر برای کاربر کارگاه.");
     }
+
+    private static string RoleLabel(UserRole role)
+        => role == UserRole.TenantAdmin ? "مدیر کارگاه" : "اپراتور";
 }

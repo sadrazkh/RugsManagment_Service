@@ -66,7 +66,7 @@
                 <div class="text-sm text-on-surface-variant">@c.Label</div>
                 <div class="mt-1 text-xl font-bold @c.Css" data-numeric>
                     @PersianFormat.Money(c.Value)
-                    <span class="text-xs font-normal text-on-surface-variant">تومان</span>
+                    <span class="text-xs font-normal text-on-surface-variant">@Tenant.Currency</span>
                 </div>
             </div>
         }
@@ -121,7 +121,7 @@
                        class="inline-flex items-center gap-1.5 rounded-full bg-warning/10 px-3 py-1 text-warning hover:opacity-90"
                        data-numeric>
                         <icon name="warning" class="h-4 w-4" />
-                        طلب از خریداران: @PersianFormat.Money(Model.OutstandingReceivable) تومان
+                        طلب از خریداران: @PersianFormat.Money(Model.OutstandingReceivable) @Tenant.Currency
                     </a>
                 }
             </div>
@@ -169,7 +169,7 @@
                                 </div>
                                 <span class="shrink-0 whitespace-nowrap text-sm" data-numeric>
                                     @PersianFormat.Money(r.TotalInvestment)
-                                    <span class="text-xs text-on-surface-variant">تومان</span>
+                                    <span class="text-xs text-on-surface-variant">@Tenant.Currency</span>
                                 </span>
                             </a>
                         </li>

@@ -2,6 +2,7 @@
 @using RugsManagment.Web.Auth
 @inject RugsManagment.Web.Frontend.ViteAssets ViteAssets
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@inject RugsManagment.Web.Support.TenantSettingsAccessor TenantSettings
 @{
     var csrf = Antiforgery.GetAndStoreTokens(Context).RequestToken;
     var isAuthed = User.Identity?.IsAuthenticated == true;
@@ -9,11 +10,15 @@
     var isSystemAdmin = role == nameof(RugsManagment.Domain.Enums.UserRole.SystemAdmin);
     var isTenantAdmin = role == nameof(RugsManagment.Domain.Enums.UserRole.TenantAdmin);
     var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
 
-    bool IsActive(string controller) =>
-        string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase);
+    // یک کنترلر ممکن است چند آیتم منو داشته باشد (مثل Settings)، پس اکشن هم مقایسه می‌شود
+    // — وگرنه همهٔ آیتم‌های آن کنترلر هم‌زمان فعال نشان داده می‌شوند.
+    bool IsActive(string controller, string action) =>
+        string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(currentAction, action, StringComparison.OrdinalIgnoreCase);
 
-    string NavCss(string controller) => IsActive(controller)
+    string NavCss(string controller, string action) => IsActive(controller, action)
         ? "bg-primary/10 text-primary font-semibold"
         : "text-on-surface-variant hover:bg-surface-container";
 
@@ -32,7 +37,9 @@
                 ("Sales", "Index", "receipt", "گزارش فروش"),
                 ("Providers", "Index", "handshake", "طرف‌های خدمات"),
                 ("Users", "Index", "users", "کاربران"),
+                ("Settings", "Tenant", "building", "تنظیمات کارگاه"),
                 ("Settings", "CustomFields", "settings", "فیلدهای سفارشی"),
+                ("Settings", "Activity", "info", "تاریخچهٔ فعالیت"),
             ]
             :
             [
@@ -126,8 +133,8 @@ else
                 @foreach (var item in navItems)
                 {
                     <a asp-controller="@item.Controller" asp-action="@item.Action"
-                       aria-current="@(IsActive(item.Controller) ? "page" : null)"
-                       class="flex min-h-11 items-center gap-3 rounded-lg px-3 @NavCss(item.Controller)">
+                       aria-current="@(IsActive(item.Controller, item.Action) ? "page" : null)"
+                       class="flex min-h-11 items-center gap-3 rounded-lg px-3 @NavCss(item.Controller, item.Action)">
                         <icon name="@item.Icon" />
                         <span>@item.Label</span>
                     </a>
@@ -161,7 +168,14 @@ else
                     {
                         <span class="hidden rounded-full bg-secondary-container px-3 py-1 text-xs text-on-secondary-container sm:inline">@tenantName</span>
                     }
-                    <span class="hidden text-sm text-on-surface-variant sm:inline">@User.GetDisplayName()</span>
+
+                    @* نام کاربر حالا لینک حساب کاربری است — مسیر متعارف رسیدن به تغییر رمز *@
+                    <a asp-controller="Account" asp-action="Profile"
+                       class="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm text-on-surface-variant hover:bg-surface-container"
+                       title="حساب کاربری">
+                        <icon name="users" class="h-4 w-4" />
+                        <span class="hidden sm:inline">@User.GetDisplayName()</span>
+                    </a>
 
                     <form asp-controller="Account" asp-action="Logout" method="post" class="inline">
                         @Html.AntiForgeryToken()
@@ -175,6 +189,21 @@ else
             </header>
 
             <main id="main-content" class="flex-1 px-4 py-6 pb-24 md:px-6 md:pb-6">
+                @* هشدار نزدیک بودن پایان اشتراک — قبل از قطع دسترسی، نه بعدش *@
+                @if (TenantSettings.ExpiryWarningDays is int daysLeft)
+                {
+                    <div role="status"
+                         class="mb-4 flex flex-wrap items-center gap-2 rounded-lg bg-warning/10 px-4 py-3 text-sm text-warning">
+                        <icon name="warning" class="h-5 w-5" />
+                        <span data-numeric>
+                            @(daysLeft <= 0
+                                ? "اشتراک کارگاه امروز به پایان می‌رسد."
+                                : $"اشتراک کارگاه تا {RugsManagment.Web.Support.PersianFormat.Count(daysLeft)} روز دیگر به پایان می‌رسد.")
+                        </span>
+                        <span class="text-xs text-on-surface-variant">برای تمدید با پشتیبانی تماس بگیرید.</span>
+                    </div>
+                }
+
                 @if (TempData["Toast"] is string toastMessage)
                 {
                     @* پیام سمت سرور به سیستم Toast کلاینت پاس داده می‌شود تا ظاهر یکسان باشد *@
@@ -191,8 +220,8 @@ else
         @foreach (var item in bottomNavItems)
         {
             <a asp-controller="@item.Controller" asp-action="@item.Action"
-               aria-current="@(IsActive(item.Controller) ? "page" : null)"
-               class="flex flex-1 flex-col items-center gap-0.5 pt-2 text-[0.68rem] @(IsActive(item.Controller) ? "text-primary" : "text-on-surface-variant")">
+               aria-current="@(IsActive(item.Controller, item.Action) ? "page" : null)"
+               class="flex flex-1 flex-col items-center gap-0.5 pt-2 text-[0.68rem] @(IsActive(item.Controller, item.Action) ? "text-primary" : "text-on-surface-variant")">
                 <icon name="@item.Icon" />
                 <span>@item.Label</span>
             </a>

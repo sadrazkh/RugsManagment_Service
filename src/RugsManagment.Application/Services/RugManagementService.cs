@@ -41,6 +41,8 @@ public sealed class RugManagementService(
     IWorkflowEngine workflowEngine,
     IRepository<RugWorkflowStep> rugSteps,
     IServiceProviderService providerRates,
+    ICurrentUser currentUser,
+    IAuditLog audit,
     IUnitOfWork unitOfWork) : IRugManagementService
 {
     public async Task<IReadOnlyList<RugDto>> ListAsync(Guid tenantId, RugStatus? status, CancellationToken ct = default)
@@ -121,6 +123,10 @@ public sealed class RugManagementService(
         }
 
         await rugs.AddAsync(rug, ct);
+
+        audit.Record(AuditAction.Created, nameof(Rug), rug.Id,
+            $"فرش «{rug.Title ?? rug.Sku}» ثبت شد.", rug.Sku);
+
         await unitOfWork.SaveChangesAsync(ct);
 
         var created = await rugs.GetWithWorkflowAsync(rug.Id, tenantId, ct)
@@ -159,13 +165,34 @@ public sealed class RugManagementService(
         var rug = await rugs.GetWithWorkflowAsync(rugId, tenantId, ct)
             ?? throw new KeyNotFoundException("فرش یافت نشد.");
 
+        var stepName = rug.WorkflowSteps.FirstOrDefault(s => s.Id == stepId)?.ProcessStepType?.NameFa ?? "مرحله";
+
         request = await ApplyProviderRateAsync(tenantId, rug, stepId, request, ct);
         await workflowEngine.AdvanceStepAsync(rug, stepId, ToAdvanceRequest(request), ct);
 
+        StampCompletedBy(rug, stepId);
+
         rug.UpdatedAt = DateTimeOffset.UtcNow;
         rugs.Update(rug);
+
+        audit.Record(AuditAction.StepAdvanced, nameof(Rug), rug.Id,
+            $"مرحلهٔ «{stepName}» تکمیل شد.", rug.Sku);
+
         await unitOfWork.SaveChangesAsync(ct);
         return rug.ToDto(workflowEngine);
+    }
+
+    /// <summary>
+    /// ثبت «چه کسی این مرحله را تمام کرد». نام کاربر کپی می‌شود تا با حذف حساب،
+    /// تاریخچهٔ فرش بی‌نام نماند.
+    /// </summary>
+    private void StampCompletedBy(Rug rug, Guid stepId)
+    {
+        var step = rug.WorkflowSteps.FirstOrDefault(s => s.Id == stepId);
+        if (step is null || step.Status != WorkflowStepStatus.Completed) return;
+
+        step.CompletedByUserId = currentUser.UserId;
+        step.CompletedByName = currentUser.DisplayName;
     }
 
     public async Task<RugDto> UpdateStepPricingAsync(
@@ -188,9 +215,15 @@ public sealed class RugManagementService(
         var rug = await rugs.GetWithWorkflowAsync(rugId, tenantId, ct)
             ?? throw new KeyNotFoundException("فرش یافت نشد.");
 
+        var stepName = rug.WorkflowSteps.FirstOrDefault(s => s.Id == stepId)?.ProcessStepType?.NameFa ?? "مرحله";
+
         await workflowEngine.SkipStepAsync(rug, stepId, ct);
         rug.UpdatedAt = DateTimeOffset.UtcNow;
         rugs.Update(rug);
+
+        audit.Record(AuditAction.StepSkipped, nameof(Rug), rug.Id,
+            $"مرحلهٔ «{stepName}» رد شد.", rug.Sku);
+
         await unitOfWork.SaveChangesAsync(ct);
         return rug.ToDto(workflowEngine);
     }
@@ -199,9 +232,15 @@ public sealed class RugManagementService(
     {
         var rug = await rugs.GetWithWorkflowAsync(rugId, tenantId, ct)
             ?? throw new KeyNotFoundException("فرش یافت نشد.");
+
         await workflowEngine.GoBackStepAsync(rug, ct);
         rug.UpdatedAt = DateTimeOffset.UtcNow;
         rugs.Update(rug);
+
+        var current = rug.WorkflowSteps.FirstOrDefault(s => s.Status == WorkflowStepStatus.InProgress);
+        audit.Record(AuditAction.StepReverted, nameof(Rug), rug.Id,
+            $"به مرحلهٔ «{current?.ProcessStepType?.NameFa ?? "قبلی"}» بازگشت.", rug.Sku);
+
         await unitOfWork.SaveChangesAsync(ct);
         return rug.ToDto(workflowEngine);
     }

@@ -7,7 +7,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import { api } from '@/lib/api'
-import { faMoney, faNumber } from '@/lib/format'
+import { faDate, faMoney, faNumber } from '@/lib/format'
 import AppIcon from '@/components/AppIcon.vue'
 import CostRuleEditor from '@/components/CostRuleEditor.vue'
 import type { Rug } from '@/lib/types'
@@ -206,9 +206,17 @@ onMounted(load)
           <li v-for="s in orderedSteps" :key="s.id"
               class="flex items-center justify-between gap-2 rounded-lg border px-3 py-2.5"
               :class="s.status === 1 ? 'border-primary bg-primary/5' : 'border-outline-variant'">
-            <div class="flex items-center gap-2">
-              <span class="grid h-7 w-7 place-items-center rounded-full bg-surface-container text-sm" data-numeric>{{ faNumber(s.orderIndex + 1) }}</span>
-              <span class="font-medium">{{ s.stepNameFa }}<span v-if="s.isOptional" class="text-xs text-on-surface-variant"> (اختیاری)</span></span>
+            <div class="flex min-w-0 items-center gap-2">
+              <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-surface-container text-sm" data-numeric>{{ faNumber(s.orderIndex + 1) }}</span>
+              <span class="min-w-0">
+                <span class="font-medium">{{ s.stepNameFa }}<span v-if="s.isOptional" class="text-xs text-on-surface-variant"> (اختیاری)</span></span>
+                <!-- «چه کسی و کِی» — تاریخچهٔ مسئولیت هر مرحله -->
+                <span v-if="s.completedByName || s.completedAt" class="block truncate text-xs text-on-surface-variant">
+                  <template v-if="s.completedByName">{{ s.completedByName }}</template>
+                  <template v-if="s.completedByName && s.completedAt"> · </template>
+                  <template v-if="s.completedAt">{{ faDate(s.completedAt) }}</template>
+                </span>
+              </span>
             </div>
             <div class="flex items-center gap-2">
               <span v-if="s.effectiveCost > 0" class="text-xs" data-numeric>{{ faMoney(s.effectiveCost) }}</span>

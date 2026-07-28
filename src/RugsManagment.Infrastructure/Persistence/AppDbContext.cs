@@ -20,6 +20,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<RugWorkflowStep> RugWorkflowSteps => Set<RugWorkflowStep>();
     public DbSet<RugImage> RugImages => Set<RugImage>();
     public DbSet<RugSale> RugSales => Set<RugSale>();
+    public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<ServiceProviderRate> ServiceProviderRates => Set<ServiceProviderRate>();
     public DbSet<ProviderPayment> ProviderPayments => Set<ProviderPayment>();
     public DbSet<CustomFieldDefinition> CustomFieldDefinitions => Set<CustomFieldDefinition>();
