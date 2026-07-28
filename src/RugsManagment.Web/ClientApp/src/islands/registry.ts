@@ -11,6 +11,7 @@ export const islands: Record<string, () => Promise<{ default: unknown }>> = {
   'analytics-dashboard': () => import('./AnalyticsDashboard.vue'),
   'aging-alert': () => import('./AgingAlert.vue'),
   'step-type-manager': () => import('./StepTypeManager.vue'),
+  'qr-scanner': () => import('./QrScanner.vue'),
   'workflow-template-editor': () => import('./WorkflowTemplateEditor.vue'),
   'list-quick-advance': () => import('./ListQuickAdvance.vue'),
   'rug-bulk-toolbar': () => import('./RugBulkToolbar.vue'),

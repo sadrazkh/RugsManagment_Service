@@ -6,8 +6,9 @@
  *     اگر صفحه‌ای آفلاین باز شود، صفحهٔ offline نمایش داده می‌شود.
  * دادهٔ حساس/احرازشده هرگز کش نمی‌شود.
  */
-const CACHE = 'rugs-static-v1';
-const PRECACHE = ['/icon.svg', '/manifest.webmanifest', '/offline.html'];
+const CACHE = 'rugs-static-v2';
+// اسپرایت آیکون هم پیش‌کش می‌شود: بدون آن، صفحهٔ آفلاین و نشانگر صف بی‌آیکون می‌مانند
+const PRECACHE = ['/icon.svg', '/icons.svg', '/manifest.webmanifest', '/offline.html'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
@@ -23,7 +24,8 @@ self.addEventListener('activate', (event) => {
 
 function isStaticAsset(url) {
   return url.pathname.startsWith('/dist/') || url.pathname.startsWith('/lib/') ||
-    url.pathname === '/icon.svg' || url.pathname === '/favicon.ico';
+    url.pathname === '/icon.svg' || url.pathname === '/icons.svg' ||
+    url.pathname === '/favicon.ico' || url.pathname.startsWith('/js/');
 }
 
 self.addEventListener('fetch', (event) => {

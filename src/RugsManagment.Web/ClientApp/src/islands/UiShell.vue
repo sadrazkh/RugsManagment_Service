@@ -1,16 +1,33 @@
 <script setup lang="ts">
 /**
  * پوستهٔ سراسری رابط کاربری — یک بار در layout مانت می‌شود.
- * دو چیز می‌دهد: صف Toast و دیالوگ تأیید.
+ * صف Toast، دیالوگ تأیید، پالت فرمان و نشانگر صف آفلاین.
  *
  * Toastها در ناحیهٔ aria-live قرار دارند تا صفحه‌خوان هم آن‌ها را اعلام کند.
  */
 import { nextTick, onMounted, ref, watch } from 'vue'
 import AppIcon from '../components/AppIcon.vue'
-import { confirmState, dismissToast, drainPendingToast, settleConfirm, toasts } from '../lib/ui'
+import CommandPalette from '../components/CommandPalette.vue'
+import OfflineIndicator from '../components/OfflineIndicator.vue'
+import { faNumber } from '../lib/format'
+import { watchConnectivity } from '../lib/offlineQueue'
+import { confirmState, dismissToast, drainPendingToast, settleConfirm, toast, toasts } from '../lib/ui'
 
-// پیام موفقیتی که قبل از reload صفحه ثبت شده بود را حالا نشان بده
-onMounted(drainPendingToast)
+onMounted(() => {
+  // پیام موفقیتی که قبل از reload صفحه ثبت شده بود را حالا نشان بده
+  drainPendingToast()
+
+  // با برگشت اینترنت، کارهای معلق خودکار ارسال می‌شوند
+  watchConnectivity((result) => {
+    if (result.sent > 0) {
+      toast.success(`${faNumber(result.sent)} کار معلق ارسال شد.`)
+      window.setTimeout(() => window.location.reload(), 1200)
+    }
+    for (const rejected of result.rejected) {
+      toast.error(`${rejected.label}: ${rejected.message}`)
+    }
+  })
+})
 
 const dialog = ref<HTMLElement | null>(null)
 const confirmButton = ref<HTMLButtonElement | null>(null)
@@ -161,4 +178,8 @@ function onKeydown(event: KeyboardEvent) {
       </div>
     </div>
   </Transition>
+
+  <!-- پالت فرمان (Ctrl+K) و نشانگر صف آفلاین — هر دو سراسری‌اند -->
+  <CommandPalette />
+  <OfflineIndicator />
 </template>

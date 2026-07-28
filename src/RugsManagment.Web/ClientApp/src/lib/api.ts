@@ -40,3 +40,42 @@ export const api = {
   put: <T>(url: string, body?: unknown) => request<T>('PUT', url, body),
   del: <T>(url: string) => request<T>('DELETE', url),
 }
+
+/** نتیجهٔ ارسالِ تاب‌آور در برابر قطعی شبکه. */
+export type SendOutcome =
+  /** به سرور رسید */
+  | { kind: 'sent' }
+  /** شبکه قطع بود؛ در صف ماند تا بعداً ارسال شود */
+  | { kind: 'queued' }
+
+/**
+ * عملیات را می‌فرستد و اگر شبکه قطع بود در صف آفلاین می‌گذارد.
+ *
+ * تمایز مهم: خطای شبکه صف می‌شود، ولی خطای سرور (۴xx/۵xx) پرتاب می‌شود —
+ * چون تکرار درخواستی که سرور رد کرده بی‌فایده است و کاربر باید همان لحظه بداند.
+ */
+export async function sendOrQueue(
+  method: 'POST' | 'PUT' | 'DELETE',
+  url: string,
+  body: unknown,
+  label: string,
+): Promise<SendOutcome> {
+  const { enqueue } = await import('./offlineQueue')
+
+  if (!navigator.onLine) {
+    enqueue({ url, method, body, label })
+    return { kind: 'queued' }
+  }
+
+  try {
+    await request(method, url, body)
+    return { kind: 'sent' }
+  } catch (error) {
+    // request فقط برای پاسخ‌های ناموفق Error پرتاب می‌کند؛ خطای شبکه TypeError است
+    if (error instanceof TypeError) {
+      enqueue({ url, method, body, label })
+      return { kind: 'queued' }
+    }
+    throw error
+  }
+}

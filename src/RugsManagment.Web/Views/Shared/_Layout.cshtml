@@ -157,6 +157,17 @@ else
                 </div>
 
                 <div class="flex items-center gap-2">
+                    @* جستجو/پالت فرمان — میان‌بر Ctrl+K هم همین را باز می‌کند *@
+                    <button type="button" data-open-palette
+                            class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-3 text-sm text-on-surface-variant hover:bg-surface-container">
+                        <icon name="search" class="h-4 w-4" />
+                        <span class="hidden lg:inline">جستجو</span>
+                        <kbd class="hidden rounded border border-outline-variant px-1 text-[0.65rem] lg:inline" dir="ltr">Ctrl K</kbd>
+                    </button>
+
+                    @* اسکن برچسب فرش با دوربین — کنش پرکاربرد اپراتور روی موبایل *@
+                    <div data-island="qr-scanner" data-skeleton="off"></div>
+
                     <div data-island="pwa-install" data-skeleton="off"></div>
 
                     <button type="button" id="theme-toggle"

@@ -122,6 +122,23 @@ public record ApplyTemplateRequest(Guid TemplateId, IReadOnlyList<Guid>? Skipped
 
 public record BulkRugIdsRequest(IReadOnlyList<Guid> RugIds);
 
+/// <summary>
+/// ویرایش گروهی مشخصات چند فرش.
+///
+/// هر فیلد null یعنی «دست نزن» — این تفاوت با «خالی کن» عمدی است، وگرنه
+/// کاربری که فقط می‌خواهد اصالت را عوض کند ناخواسته بقیهٔ فیلدها را پاک می‌کرد.
+/// </summary>
+public record BulkUpdateFieldsRequest(
+    IReadOnlyList<Guid> RugIds,
+    string? Origin,
+    string? Pattern,
+    string? Material,
+    int? KnotDensity,
+    decimal? TargetSalePrice,
+    RugStatus? Status,
+    /// <summary>Guid.Empty یعنی «از گروه خارج کن»</summary>
+    Guid? BatchId);
+
 public record BulkAdvanceRequest(
     IReadOnlyList<Guid> RugIds,
     AdvanceRugStepRequest Step);

@@ -79,4 +79,9 @@ public class RugsApiController(IRugManagementService rugs) : ApiControllerBase
     [HttpPost("bulk/back")]
     public async Task<IActionResult> BulkBack([FromBody] BulkRugIdsRequest request, CancellationToken ct)
         => Ok(await rugs.BulkGoBackAsync(User.RequireTenantId(), request, ct));
+
+    /// <summary>ویرایش گروهی مشخصات چند فرش — فیلدهای null دست‌نخورده می‌مانند.</summary>
+    [HttpPut("bulk/fields")]
+    public async Task<IActionResult> BulkFields([FromBody] BulkUpdateFieldsRequest request, CancellationToken ct)
+        => Ok(await rugs.BulkUpdateFieldsAsync(User.RequireTenantId(), request, ct));
 }

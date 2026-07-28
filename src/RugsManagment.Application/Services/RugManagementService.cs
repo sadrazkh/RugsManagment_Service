@@ -30,6 +30,9 @@ public interface IRugManagementService
     Task<BulkOperationResultDto> BulkAdvanceAsync(Guid tenantId, BulkAdvanceRequest request, CancellationToken ct = default);
     Task<BulkOperationResultDto> BulkGoBackAsync(Guid tenantId, BulkRugIdsRequest request, CancellationToken ct = default);
     Task<BulkOperationResultDto> BulkUpdateWorkflowAsync(Guid tenantId, BulkUpdateWorkflowRequest request, CancellationToken ct = default);
+
+    /// <summary>ویرایش گروهی مشخصات — فقط فیلدهای مقداردار اعمال می‌شوند.</summary>
+    Task<BulkOperationResultDto> BulkUpdateFieldsAsync(Guid tenantId, BulkUpdateFieldsRequest request, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -368,6 +371,67 @@ public sealed class RugManagementService(
         await unitOfWork.SaveChangesAsync(ct);
         return new BulkOperationResultDto(ok, errors.Count, errors);
     }
+
+    public async Task<BulkOperationResultDto> BulkUpdateFieldsAsync(
+        Guid tenantId, BulkUpdateFieldsRequest request, CancellationToken ct = default)
+    {
+        var errors = new List<BulkItemErrorDto>();
+        var ok = 0;
+
+        // فهرست تغییرات برای ثبت در تاریخچه — تا بعداً معلوم باشد چه چیزی گروهی عوض شد
+        var changes = new List<string>();
+        if (request.Origin is not null) changes.Add("اصالت");
+        if (request.Pattern is not null) changes.Add("طرح");
+        if (request.Material is not null) changes.Add("جنس");
+        if (request.KnotDensity is not null) changes.Add("رجشمار");
+        if (request.TargetSalePrice is not null) changes.Add("قیمت هدف");
+        if (request.Status is not null) changes.Add("وضعیت");
+        if (request.BatchId is not null) changes.Add("گروه");
+
+        if (changes.Count == 0)
+            throw new InvalidOperationException("هیچ فیلدی برای تغییر انتخاب نشده است.");
+
+        foreach (var rugId in request.RugIds.Distinct())
+        {
+            try
+            {
+                var rug = await rugs.GetWithWorkflowAsync(rugId, tenantId, ct)
+                    ?? throw new KeyNotFoundException("فرش یافت نشد.");
+
+                if (request.Origin is not null) rug.Origin = Blank(request.Origin);
+                if (request.Pattern is not null) rug.Pattern = Blank(request.Pattern);
+                if (request.Material is not null) rug.Material = Blank(request.Material);
+                if (request.KnotDensity is not null) rug.KnotDensity = request.KnotDensity;
+                if (request.TargetSalePrice is not null) rug.TargetSalePrice = request.TargetSalePrice;
+                if (request.Status is not null) rug.Status = request.Status.Value;
+
+                // Guid.Empty قرارداد «خارج کردن از گروه» است
+                if (request.BatchId is Guid batchId)
+                    rug.BatchId = batchId == Guid.Empty ? null : batchId;
+
+                rug.UpdatedAt = DateTimeOffset.UtcNow;
+                rugs.Update(rug);
+                ok++;
+            }
+            catch (Exception ex)
+            {
+                errors.Add(new BulkItemErrorDto(rugId, ex.Message));
+            }
+        }
+
+        if (ok > 0)
+        {
+            audit.Record(AuditAction.Updated, nameof(Rug), null,
+                $"ویرایش گروهی {PersianText.ToPersianDigits(ok.ToString())} فرش ({string.Join("، ", changes)}).");
+        }
+
+        await unitOfWork.SaveChangesAsync(ct);
+        return new BulkOperationResultDto(ok, errors.Count, errors);
+    }
+
+    /// <summary>رشتهٔ خالی یعنی «پاک کن»؛ متن واقعی نرمال‌سازی می‌شود.</summary>
+    private static string? Blank(string value)
+        => string.IsNullOrWhiteSpace(value) ? null : PersianText.Normalize(value.Trim());
 
     public async Task<BulkOperationResultDto> BulkUpdateWorkflowAsync(
         Guid tenantId, BulkUpdateWorkflowRequest request, CancellationToken ct = default)
