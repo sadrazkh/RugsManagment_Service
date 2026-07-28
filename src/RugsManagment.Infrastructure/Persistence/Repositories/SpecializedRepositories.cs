@@ -34,6 +34,7 @@ public class RugRepository(AppDbContext db) : Repository<Rug>(db), IRugRepositor
     public async Task<Rug?> GetWithWorkflowAsync(Guid id, Guid tenantId, CancellationToken cancellationToken = default)
         => await Db.Rugs
             .Include(r => r.Batch)
+            .Include(r => r.Sale)
             .Include(r => r.Images.OrderBy(i => i.SortOrder))
             .Include(r => r.WorkflowSteps.OrderBy(s => s.OrderIndex))
                 .ThenInclude(s => s.ProcessStepType)
@@ -47,6 +48,7 @@ public class RugRepository(AppDbContext db) : Repository<Rug>(db), IRugRepositor
         var query = Db.Rugs
             .AsNoTracking()
             .Include(r => r.Batch)
+            .Include(r => r.Sale)
             .Include(r => r.WorkflowSteps)
                 .ThenInclude(s => s.ProcessStepType)
             .Where(r => r.TenantId == tenantId);

@@ -365,6 +365,22 @@ public sealed class WorkflowEngine(
     }
 
     /// <summary>اولین مرحله Pending را InProgress می‌کند؛ اگر مرحله‌ای نماند → آماده فروش</summary>
+    /// <summary>
+    /// وضعیت واقعی فرش بر اساس مراحلش:
+    ///   بدون مرحله → پیش‌نویس، همهٔ مراحل تمام → آمادهٔ فروش، وگرنه در جریان.
+    /// «فروخته‌شده» و «بایگانی» اینجا برنمی‌گردند چون از گردش کار نمی‌آیند.
+    /// </summary>
+    public RugStatus ResolveStatusFromWorkflow(Rug rug)
+    {
+        if (rug.WorkflowSteps.Count == 0)
+            return RugStatus.Draft;
+
+        var allSettled = rug.WorkflowSteps.All(s =>
+            s.Status is WorkflowStepStatus.Completed or WorkflowStepStatus.Skipped or WorkflowStepStatus.Cancelled);
+
+        return allSettled ? RugStatus.ReadyForSale : RugStatus.InProgress;
+    }
+
     private static void ActivateCurrentStep(Rug rug)
     {
         var current = rug.WorkflowSteps

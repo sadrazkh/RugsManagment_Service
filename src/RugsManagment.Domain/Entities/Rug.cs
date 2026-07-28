@@ -54,6 +54,9 @@ public class Rug : BaseEntity, ITenantScoped
     /// <summary>گالری عکس‌های فرش به ترتیب SortOrder</summary>
     public ICollection<RugImage> Images { get; set; } = [];
 
+    /// <summary>فروش این فرش؛ null یعنی هنوز فروخته نشده</summary>
+    public RugSale? Sale { get; set; }
+
     /// <summary>مساحت متر مربع — فقط محاسباتی، در دیتابیس ذخیره نمی‌شود</summary>
     public decimal AreaSquareMeters => WidthMeters * LengthMeters;
 }

@@ -1,0 +1,174 @@
+@using RugsManagment.Application.DTOs.Sales
+@using RugsManagment.Web.Support
+@model SalesReportDto
+@{
+    ViewData["Title"] = "گزارش فروش";
+    Layout = null;
+
+    var from = ViewData["From"] as DateTimeOffset?;
+    var to = ViewData["To"] as DateTimeOffset?;
+    var tenantName = ViewData["TenantName"] as string ?? "کارگاه";
+    var summary = Model.Summary;
+
+    string Range()
+    {
+        if (from is null && to is null) return "همهٔ زمان‌ها";
+        if (from is not null && to is not null) return $"{PersianFormat.DateLong(from)} تا {PersianFormat.DateLong(to)}";
+        return from is not null ? $"از {PersianFormat.DateLong(from)}" : $"تا {PersianFormat.DateLong(to)}";
+    }
+}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>گزارش فروش — @tenantName</title>
+
+    @*
+        صفحهٔ مستقل و بدون وابستگی به build فرانت: کاربر با «چاپ ← ذخیره به‌صورت PDF»
+        مرورگر خروجی PDF می‌گیرد. این کار نیاز به کتابخانهٔ تولید PDF را حذف می‌کند.
+    *@
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" />
+    <style>
+        @@page { size: A4 landscape; margin: 12mm; }
+
+        body {
+            font-family: 'Vazirmatn', Tahoma, sans-serif;
+            color: #1b1c1a;
+            margin: 0;
+            padding: 16px;
+            font-size: 12px;
+            line-height: 1.7;
+        }
+
+        h1 { font-size: 18px; margin: 0 0 2px; color: #6b0008; }
+        .muted { color: #58413f; font-size: 11px; }
+
+        .head {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            gap: 16px; border-bottom: 2px solid #6b0008; padding-bottom: 8px; margin-bottom: 12px;
+        }
+
+        .cards { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+        .card {
+            flex: 1 1 140px; border: 1px solid #e0bfbc; border-radius: 6px; padding: 8px 10px;
+        }
+        .card .label { font-size: 10px; color: #58413f; }
+        .card .value { font-size: 15px; font-weight: 700; }
+        .profit { border-color: #3f6212; }
+        .profit .value { color: #3f6212; }
+        .loss { border-color: #ba1a1a; }
+        .loss .value { color: #ba1a1a; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        th, td { border: 1px solid #e0bfbc; padding: 4px 6px; text-align: right; }
+        th { background: #efeeea; font-weight: 600; }
+        /* سربرگ جدول در هر صفحهٔ چاپ تکرار شود */
+        thead { display: table-header-group; }
+        tr { break-inside: avoid; }
+        tfoot td { font-weight: 700; background: #f5f3ef; }
+        .num { white-space: nowrap; }
+        .mono { font-family: monospace; direction: ltr; }
+
+        .print-btn {
+            margin-bottom: 12px; padding: 8px 16px; border-radius: 6px;
+            border: 1px solid #6b0008; background: #6b0008; color: #fff;
+            font-family: inherit; font-size: 13px; cursor: pointer;
+        }
+        @@media print { .print-btn { display: none; } }
+    </style>
+</head>
+<body>
+    <button type="button" class="print-btn" onclick="window.print()">چاپ / ذخیره به‌صورت PDF</button>
+
+    <div class="head">
+        <div>
+            <h1>گزارش فروش و سود</h1>
+            <div class="muted">@tenantName · @Range()</div>
+        </div>
+        <div class="muted">تاریخ گزارش: @PersianFormat.DateTime(DateTimeOffset.UtcNow)</div>
+    </div>
+
+    <div class="cards">
+        <div class="card">
+            <div class="label">تعداد فروش</div>
+            <div class="value">@PersianFormat.Count(summary.SaleCount)</div>
+        </div>
+        <div class="card">
+            <div class="label">فروش خالص</div>
+            <div class="value">@PersianFormat.Money(summary.NetTotal)</div>
+        </div>
+        <div class="card">
+            <div class="label">تخفیف</div>
+            <div class="value">@PersianFormat.Money(summary.DiscountTotal)</div>
+        </div>
+        <div class="card">
+            <div class="label">سرمایه‌گذاری</div>
+            <div class="value">@PersianFormat.Money(summary.InvestmentTotal)</div>
+        </div>
+        <div class="card @(summary.ProfitTotal >= 0 ? "profit" : "loss")">
+            <div class="label">سود واقعی@(summary.MarginPercent is decimal m ? $" (حاشیه {PersianFormat.Number(m)}٪)" : "")</div>
+            <div class="value">@PersianFormat.Money(summary.ProfitTotal)</div>
+        </div>
+    </div>
+
+    @if (Model.Sales.Count == 0)
+    {
+        <p class="muted">در این بازه فروشی ثبت نشده است.</p>
+    }
+    else
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th>کد فرش</th>
+                    <th>عنوان</th>
+                    <th>خریدار</th>
+                    <th>تاریخ</th>
+                    <th>مبلغ فروش</th>
+                    <th>تخفیف</th>
+                    <th>فروش خالص</th>
+                    <th>دریافتی</th>
+                    <th>باقی‌مانده</th>
+                    <th>پرداخت</th>
+                    <th>سرمایه‌گذاری</th>
+                    <th>سود</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in Model.Sales)
+                {
+                    <tr>
+                        <td class="mono">@s.RugSku</td>
+                        <td>@(string.IsNullOrEmpty(s.RugTitle) ? "—" : s.RugTitle)</td>
+                        <td>@s.BuyerName</td>
+                        <td class="num">@PersianFormat.Date(s.SoldAt)</td>
+                        <td class="num">@PersianFormat.Money(s.SalePrice)</td>
+                        <td class="num">@(s.Discount > 0 ? PersianFormat.Money(s.Discount) : "—")</td>
+                        <td class="num">@PersianFormat.Money(s.NetAmount)</td>
+                        <td class="num">@PersianFormat.Money(s.ReceivedAmount)</td>
+                        <td class="num">@(s.OutstandingAmount > 0 ? PersianFormat.Money(s.OutstandingAmount) : "—")</td>
+                        <td>@DisplayHelpers.PaymentMethod(s.PaymentMethod)</td>
+                        <td class="num">@PersianFormat.Money(s.TotalInvestment)</td>
+                        <td class="num">@PersianFormat.Money(s.ActualProfit)</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="4">جمع (@PersianFormat.Count(summary.SaleCount) فروش)</td>
+                    <td class="num">@PersianFormat.Money(summary.GrossTotal)</td>
+                    <td class="num">@PersianFormat.Money(summary.DiscountTotal)</td>
+                    <td class="num">@PersianFormat.Money(summary.NetTotal)</td>
+                    <td class="num">@PersianFormat.Money(summary.ReceivedTotal)</td>
+                    <td class="num">@PersianFormat.Money(summary.OutstandingTotal)</td>
+                    <td></td>
+                    <td class="num">@PersianFormat.Money(summary.InvestmentTotal)</td>
+                    <td class="num">@PersianFormat.Money(summary.ProfitTotal)</td>
+                </tr>
+            </tfoot>
+        </table>
+    }
+</body>
+</html>

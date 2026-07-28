@@ -6,6 +6,8 @@ export const islands: Record<string, () => Promise<{ default: unknown }>> = {
   'rug-form': () => import('./RugForm.vue'),
   'rug-workflow': () => import('./RugWorkflowPanel.vue'),
   'rug-gallery': () => import('./RugGallery.vue'),
+  'rug-sale': () => import('./RugSalePanel.vue'),
+  'sales-report': () => import('./SalesReport.vue'),
   'workflow-template-editor': () => import('./WorkflowTemplateEditor.vue'),
   'list-quick-advance': () => import('./ListQuickAdvance.vue'),
   'rug-bulk-toolbar': () => import('./RugBulkToolbar.vue'),

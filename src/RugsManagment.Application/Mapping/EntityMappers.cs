@@ -93,7 +93,7 @@ public static class EntityMappers
             current?.ProcessStepType?.NameFa,
             rug.CurrentStepIndex,
             rug.WorkflowSteps.OrderBy(s => s.OrderIndex).Select(s => s.ToDto()).ToList(),
-            costs.ToDto(),
+            costs.ToDto(rug.Sale),
             rug.MetadataJson,
             rug.Images.OrderBy(i => i.SortOrder).Select(i => i.ToDto()).ToList());
     }
@@ -139,12 +139,18 @@ public static class EntityMappers
         step.Notes,
         step.Adjustment);
 
-    public static RugCostSummaryDto ToDto(this RugCostSummary summary) => new(
+    /// <summary>
+    /// خلاصهٔ هزینه. اگر فرش فروخته شده باشد، سود واقعی هم کنار سود تخمینی می‌آید
+    /// تا تفاوت «آنچه انتظار داشتیم» و «آنچه شد» دیده شود.
+    /// </summary>
+    public static RugCostSummaryDto ToDto(this RugCostSummary summary, RugSale? sale = null) => new(
         summary.TotalProcessCost,
         summary.PurchaseCost,
         summary.TotalInvestment,
         summary.TargetSalePrice,
-        summary.EstimatedMargin);
+        summary.EstimatedMargin,
+        sale?.NetAmount,
+        sale is null ? null : sale.NetAmount - summary.TotalInvestment);
 
     /// <summary>ساخت آمار داشبورد از لیست فرش‌ها — بدون کوئری اضافی</summary>
     public static DashboardStatsDto ToDashboard(
@@ -180,8 +186,20 @@ public static class EntityMappers
         var costed = rugs.Select(r => (Rug: r, Costs: workflowEngine.CalculateRugCosts(r))).ToList();
 
         var pipeline = costed.Where(x => x.Rug.Status == RugStatus.InProgress).Sum(x => x.Costs.TotalInvestment);
-        var profit = costed.Where(x => x.Costs.EstimatedMargin.HasValue).Sum(x => x.Costs.EstimatedMargin!.Value);
         var readyValue = costed.Where(x => x.Rug.Status == RugStatus.ReadyForSale).Sum(x => x.Costs.TotalInvestment);
+
+        // سود تخمینی فقط برای فرش‌های فروخته‌نشده معنا دارد؛ برای فروخته‌شده‌ها
+        // سود واقعی را داریم و مخلوط کردن این دو عدد را بی‌معنا می‌کند.
+        var sold = costed.Where(x => x.Rug.Sale is not null).ToList();
+        var unsold = costed.Where(x => x.Rug.Sale is null).ToList();
+
+        var profit = unsold
+            .Where(x => x.Costs.EstimatedMargin.HasValue)
+            .Sum(x => x.Costs.EstimatedMargin!.Value);
+
+        var actualSales = sold.Sum(x => x.Rug.Sale!.NetAmount);
+        var actualProfit = sold.Sum(x => x.Rug.Sale!.NetAmount - x.Costs.TotalInvestment);
+        var outstanding = sold.Sum(x => x.Rug.Sale!.OutstandingAmount);
         var batchCount = rugs.Where(r => r.BatchId.HasValue).Select(r => r.BatchId).Distinct().Count();
         // فرش‌های در جریان که هزینهٔ مرحلهٔ جاری‌شان هنوز ثبت نشده
         var pendingCost = costed.Count(x => x.Rug.Status == RugStatus.InProgress
@@ -198,6 +216,9 @@ public static class EntityMappers
             readyValue,
             batchCount,
             pendingCost,
+            actualSales,
+            actualProfit,
+            outstanding,
             recent,
             distribution);
     }

@@ -31,6 +31,17 @@ public static class DisplayHelpers
         _ => (status.ToString(), "bg-surface-container-high text-on-surface-variant", "info")
     };
 
+    /// <summary>نحوهٔ پرداخت در فروش.</summary>
+    public static string PaymentMethod(SalePaymentMethod method) => method switch
+    {
+        SalePaymentMethod.Cash => "نقدی",
+        SalePaymentMethod.Card => "کارت",
+        SalePaymentMethod.Transfer => "حواله",
+        SalePaymentMethod.Cheque => "چک",
+        SalePaymentMethod.Installment => "اقساطی",
+        _ => method.ToString()
+    };
+
     /// <summary>وضعیت یک مرحله روی فرش.</summary>
     public static (string Label, string Css, string Icon) StepStatus(WorkflowStepStatus status) => status switch
     {

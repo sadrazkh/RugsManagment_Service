@@ -144,6 +144,35 @@ public class ProviderPaymentConfiguration : IEntityTypeConfiguration<ProviderPay
 }
 
 /// <summary>
+/// فروش فرش — هر فرش حداکثر یک فروش دارد، پس رابطه یک‌به‌یک با ایندکس یکتاست.
+/// </summary>
+public class RugSaleConfiguration : IEntityTypeConfiguration<RugSale>
+{
+    public void Configure(EntityTypeBuilder<RugSale> builder)
+    {
+        builder.HasIndex(s => s.RugId).IsUnique();
+        // گزارش فروش تقریباً همیشه «بازهٔ تاریخ در یک کارگاه» است
+        builder.HasIndex(s => new { s.TenantId, s.SoldAt });
+
+        builder.Property(s => s.BuyerName).HasMaxLength(200).IsRequired();
+        builder.Property(s => s.BuyerPhone).HasMaxLength(40);
+        builder.Property(s => s.Reference).HasMaxLength(120);
+        builder.Property(s => s.SalePrice).HasPrecision(18, 2);
+        builder.Property(s => s.Discount).HasPrecision(18, 2);
+        builder.Property(s => s.ReceivedAmount).HasPrecision(18, 2);
+
+        // فقط در کد محاسبه می‌شوند
+        builder.Ignore(s => s.NetAmount);
+        builder.Ignore(s => s.OutstandingAmount);
+
+        builder.HasOne(s => s.Rug).WithOne(r => r.Sale)
+            .HasForeignKey<RugSale>(s => s.RugId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(s => s.Tenant).WithMany()
+            .HasForeignKey(s => s.TenantId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+/// <summary>
 /// عکس‌های فرش — با حذف فرش، رکوردها هم می‌روند (فایل‌ها را سرویس پاک می‌کند).
 /// ایندکس ترکیبی چون گالری همیشه «عکس‌های یک فرش به ترتیب» خوانده می‌شود.
 /// </summary>

@@ -58,7 +58,12 @@ public record RugCostSummaryDto(
     decimal PurchaseCost,
     decimal TotalInvestment,
     decimal? TargetSalePrice,
-    decimal? EstimatedMargin);
+    /// <summary>سود تخمینی بر اساس «قیمت هدف» — تا وقتی فرش فروخته نشده</summary>
+    decimal? EstimatedMargin,
+    /// <summary>مبلغ خالص فروش واقعی؛ null یعنی هنوز فروخته نشده</summary>
+    decimal? ActualSaleAmount = null,
+    /// <summary>سود واقعی = فروش خالص − سرمایه‌گذاری کل؛ null یعنی هنوز فروخته نشده</summary>
+    decimal? ActualProfit = null);
 
 /// <summary>ثبت فرش جدید — یا WorkflowTemplateId یا CustomSteps</summary>
 public record CreateRugRequest(

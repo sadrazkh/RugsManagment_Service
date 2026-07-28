@@ -45,12 +45,16 @@
     <!-- کارت‌های مالی -->
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         @{
+            // سود واقعی (فروش‌های ثبت‌شده) از سود تخمینی (فرش‌های فروخته‌نشده) جداست —
+            // جمع کردن این دو عدد را بی‌معنا می‌کند.
             (string Label, decimal? Value, string Css)[] moneyCards =
             {
                 ("ارزش کل موجودی", Model.TotalInvestment, "text-on-surface"),
                 ("ارزش در جریان تولید", Model.PipelineValue, "text-on-surface"),
                 ("ارزش آمادهٔ فروش", Model.ReadyForSaleValue, "text-success"),
-                ("سود تخمینی", Model.ProfitEstimate, Model.ProfitEstimate >= 0 ? "text-success" : "text-error"),
+                ("سود تخمینی فروخته‌نشده‌ها", Model.ProfitEstimate, Model.ProfitEstimate >= 0 ? "text-success" : "text-error"),
+                ("فروش واقعی", Model.ActualSalesTotal, "text-on-surface"),
+                ("سود واقعی محقق‌شده", Model.ActualProfitTotal, Model.ActualProfitTotal >= 0 ? "text-success" : "text-error"),
             };
         }
         @foreach (var c in moneyCards)
@@ -108,6 +112,15 @@
                     <icon name="package" class="h-4 w-4" />
                     گروه‌ها: @PersianFormat.Count(Model.BatchCount)
                 </a>
+                @if (Model.OutstandingReceivable > 0)
+                {
+                    <a asp-controller="Sales" asp-action="Index" asp-route-onlyOutstanding="true"
+                       class="inline-flex items-center gap-1.5 rounded-full bg-warning/10 px-3 py-1 text-warning hover:opacity-90"
+                       data-numeric>
+                        <icon name="warning" class="h-4 w-4" />
+                        طلب از خریداران: @PersianFormat.Money(Model.OutstandingReceivable) تومان
+                    </a>
+                }
             </div>
         </section>
 

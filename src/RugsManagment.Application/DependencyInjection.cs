@@ -25,6 +25,7 @@ public static class DependencyInjection
         services.AddScoped<IRugBatchService, RugBatchService>();
         services.AddScoped<IRugImageService, RugImageService>();
         services.AddScoped<IServiceProviderService, ServiceProviderService>();
+        services.AddScoped<IRugSaleService, RugSaleService>();
         return services;
     }
 }

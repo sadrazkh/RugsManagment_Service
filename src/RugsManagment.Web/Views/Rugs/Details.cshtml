@@ -126,7 +126,23 @@
                         <dt class="text-on-surface-variant">قیمت فروش هدف</dt>
                         <dd>@PersianFormat.MoneyWithUnit(Model.Costs.TargetSalePrice)</dd>
                     </div>
-                    @if (Model.Costs.EstimatedMargin.HasValue)
+
+                    @if (Model.Costs.ActualProfit is decimal actualProfit)
+                    {
+                        @* فرش فروخته شده: سود واقعی جای تخمین را می‌گیرد و تخمین فقط برای مقایسه می‌ماند *@
+                        <div class="flex justify-between gap-3 border-t border-outline-variant pt-2 font-bold @(actualProfit >= 0 ? "text-success" : "text-error")">
+                            <dt>سود واقعی</dt>
+                            <dd>@PersianFormat.MoneyWithUnit(actualProfit)</dd>
+                        </div>
+                        @if (Model.Costs.EstimatedMargin is decimal estimated && estimated != actualProfit)
+                        {
+                            <div class="flex justify-between gap-3 text-xs text-on-surface-variant">
+                                <dt>سود تخمینی (پیش‌بینی)</dt>
+                                <dd>@PersianFormat.MoneyWithUnit(estimated)</dd>
+                            </div>
+                        }
+                    }
+                    else if (Model.Costs.EstimatedMargin.HasValue)
                     {
                         <div class="flex justify-between gap-3 font-semibold @(Model.Costs.EstimatedMargin >= 0 ? "text-success" : "text-error")">
                             <dt>سود تخمینی</dt>
@@ -135,6 +151,10 @@
                     }
                 </dl>
             </section>
+
+            @* ثبت/ویرایش فروش و نمایش سود واقعی *@
+            <div data-island="rug-sale" data-skeleton="12rem"
+                 data-props='@Json.Serialize(new { rugId = Model.Id, totalInvestment = Model.Costs.TotalInvestment })'></div>
 
             @* جزیرهٔ گردش کار: تایم‌لاین، حرکت مراحل با مودال، ویرایش مسیر *@
             <div data-island="rug-workflow" data-skeleton="20rem" data-props='@Json.Serialize(new { rugId = Model.Id })'></div>
