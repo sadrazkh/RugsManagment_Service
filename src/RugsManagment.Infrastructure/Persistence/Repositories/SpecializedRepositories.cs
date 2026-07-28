@@ -51,6 +51,9 @@ public class RugRepository(AppDbContext db) : Repository<Rug>(db), IRugRepositor
             .Include(r => r.Sale)
             .Include(r => r.WorkflowSteps)
                 .ThenInclude(s => s.ProcessStepType)
+            // برای گزارش کهنگی لازم است: «چه کسی این مرحله را نگه داشته»
+            .Include(r => r.WorkflowSteps)
+                .ThenInclude(s => s.ServiceProvider)
             .Where(r => r.TenantId == tenantId);
 
         if (status.HasValue)

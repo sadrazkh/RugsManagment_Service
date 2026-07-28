@@ -8,6 +8,8 @@ export const islands: Record<string, () => Promise<{ default: unknown }>> = {
   'rug-gallery': () => import('./RugGallery.vue'),
   'rug-sale': () => import('./RugSalePanel.vue'),
   'sales-report': () => import('./SalesReport.vue'),
+  'analytics-dashboard': () => import('./AnalyticsDashboard.vue'),
+  'aging-alert': () => import('./AgingAlert.vue'),
   'workflow-template-editor': () => import('./WorkflowTemplateEditor.vue'),
   'list-quick-advance': () => import('./ListQuickAdvance.vue'),
   'rug-bulk-toolbar': () => import('./RugBulkToolbar.vue'),

@@ -26,6 +26,7 @@ public static class DependencyInjection
         services.AddScoped<IRugImageService, RugImageService>();
         services.AddScoped<IServiceProviderService, ServiceProviderService>();
         services.AddScoped<IRugSaleService, RugSaleService>();
+        services.AddScoped<IAnalyticsService, AnalyticsService>();
         return services;
     }
 }
