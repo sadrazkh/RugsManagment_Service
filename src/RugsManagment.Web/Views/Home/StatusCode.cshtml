@@ -21,10 +21,15 @@
             <a href="/" class="rounded-lg bg-primary px-5 py-2.5 font-semibold text-on-primary transition hover:bg-primary-container">
                 بازگشت به خانه
             </a>
-            <button type="button" onclick="history.back()"
+            @* هندلر inline نداریم: CSP فقط اسکریپت nonce‌دار را اجازه می‌دهد *@
+            <button type="button" id="go-back"
                     class="rounded-lg border border-outline-variant px-5 py-2.5 transition hover:bg-surface-container">
                 صفحهٔ قبل
             </button>
         </div>
     </div>
 </div>
+
+<script nonce="@Context.CspNonce()">
+    document.getElementById('go-back')?.addEventListener('click', function () { history.back(); });
+</script>

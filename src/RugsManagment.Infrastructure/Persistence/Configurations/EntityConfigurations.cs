@@ -64,6 +64,13 @@ public class RugConfiguration : IEntityTypeConfiguration<Rug>
         builder.Property(r => r.MetadataJson).HasColumnType("jsonb"); // متادیتای انعطاف‌پذیر
         builder.Ignore(r => r.AreaSquareMeters); // فقط در کد محاسبه می‌شود
 
+        // ── حذف نرم ────────────────────────────────────────────────
+        // فیلتر سراسری: فرش‌های سطل‌زباله از هر کوئری‌ای (فهرست، داشبورد، گزارش، فروش)
+        // خودبه‌خود کنار می‌روند. فقط صفحهٔ سطل زباله با IgnoreQueryFilters آن‌ها را می‌بیند.
+        builder.HasQueryFilter(r => r.DeletedAt == null);
+        // ایندکس جزئی: ردیف‌های فعال (اکثریت قاطع) ایندکس سبکی می‌گیرند
+        builder.HasIndex(r => new { r.TenantId, r.DeletedAt });
+
         // کنترل هم‌زمانی خوش‌بینانه با ستون سیستمی xmin پستگرس (بدون ستون اضافه در جدول).
         // اگر دو اپراتور هم‌زمان یک فرش را تغییر دهند، دومی خطای هم‌زمانی می‌گیرد
         // به‌جای اینکه تغییر اولی را بی‌صدا بازنویسی کند.
@@ -193,6 +200,10 @@ public class RugSaleConfiguration : IEntityTypeConfiguration<RugSale>
 
         builder.HasOne(s => s.Rug).WithOne(r => r.Sale)
             .HasForeignKey<RugSale>(s => s.RugId).OnDelete(DeleteBehavior.Cascade);
+
+        // هم‌راستا با فیلتر حذف نرمِ فرش (وگرنه EF هشدار «سر اجباری رابطه فیلتر شده» می‌دهد).
+        // در عمل نباید فعال شود چون حذف فرشِ فروخته‌شده در سرویس مسدود است.
+        builder.HasQueryFilter(s => s.Rug.DeletedAt == null);
         builder.HasOne(s => s.Tenant).WithMany()
             .HasForeignKey(s => s.TenantId).OnDelete(DeleteBehavior.Cascade);
     }
@@ -213,6 +224,9 @@ public class RugImageConfiguration : IEntityTypeConfiguration<RugImage>
 
         builder.HasOne(i => i.Rug).WithMany(r => r.Images)
             .HasForeignKey(i => i.RugId).OnDelete(DeleteBehavior.Cascade);
+
+        // هم‌راستا با فیلتر حذف نرمِ فرش: عکس فرشِ سطل‌زباله‌شده هم سرو نمی‌شود
+        builder.HasQueryFilter(i => i.Rug.DeletedAt == null);
         builder.HasOne(i => i.Tenant).WithMany()
             .HasForeignKey(i => i.TenantId).OnDelete(DeleteBehavior.Cascade);
     }
@@ -230,5 +244,9 @@ public class RugWorkflowStepConfiguration : IEntityTypeConfiguration<RugWorkflow
         builder.Property(s => s.CompletedByName).HasMaxLength(200);
         builder.Ignore(s => s.EffectiveCost); // فقط در کد محاسبه می‌شود
         builder.Property<uint>("xmin").IsRowVersion();
+
+        // هم‌راستا با فیلتر حذف نرمِ فرش: تسویهٔ استادکار نباید مرحلهٔ فرشِ
+        // سطل‌زباله‌شده را بشمارد، وگرنه بدهی‌ای گزارش می‌شود که وجود ندارد.
+        builder.HasQueryFilter(s => s.Rug.DeletedAt == null);
     }
 }

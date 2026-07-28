@@ -33,6 +33,8 @@
         AuditAction.PasswordChanged => ("settings", "bg-warning/12 text-warning"),
         AuditAction.SettingsChanged => ("settings", "bg-surface-container-high text-on-surface-variant"),
         AuditAction.Created => ("plus", "bg-secondary-container text-on-secondary-container"),
+        AuditAction.Deleted => ("trash", "bg-error-container text-on-error-container"),
+        AuditAction.Restored => ("undo", "bg-secondary-container text-on-secondary-container"),
         _ => ("edit", "bg-surface-container-high text-on-surface-variant")
     };
 }

@@ -69,7 +69,7 @@
         تم قبل از رنگ‌آمیزی صفحه اعمال می‌شود تا در حالت تاریک «فلاش سفید» رخ ندهد.
         این اسکریپت عمداً inline و همگام است.
     *@
-    <script>
+    <script nonce="@Context.CspNonce()">
         (function () {
             try {
                 var saved = localStorage.getItem('rugs-theme');

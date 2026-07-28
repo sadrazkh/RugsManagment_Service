@@ -67,6 +67,7 @@ public sealed class ActivityLogService(IRepository<AuditEntry> entries) : IActiv
         AuditAction.Created => "ایجاد",
         AuditAction.Updated => "ویرایش",
         AuditAction.Deleted => "حذف",
+        AuditAction.Restored => "بازگردانی",
         AuditAction.StepAdvanced => "پیشبرد مرحله",
         AuditAction.StepReverted => "بازگشت مرحله",
         AuditAction.StepSkipped => "رد کردن مرحله",

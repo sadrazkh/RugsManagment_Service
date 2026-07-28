@@ -64,6 +64,9 @@ public sealed class WorkflowEngine(
             {
                 RugId = rug.Id,
                 ProcessStepTypeId = stepType.Id,
+                // خودِ ناوبری هم ست می‌شود: بدون آن، هر کدی که مرحله را بسازد و
+                // در همان درخواست پیش ببرد به NullReferenceException می‌خورد.
+                ProcessStepType = stepType,
                 OrderIndex = index,
                 IsOptional = step.IsOptional,
                 ServiceProviderId = step.ServiceProviderId,
@@ -274,11 +277,13 @@ public sealed class WorkflowEngine(
             {
                 RugId = rug.Id,
                 ProcessStepTypeId = stepType.Id,
+                // خودِ ناوبری هم ست می‌شود: بدون آن، هر کدی که مرحله را بسازد و
+                // در همان درخواست پیش ببرد به NullReferenceException می‌خورد.
+                ProcessStepType = stepType,
                 OrderIndex = startIndex + i,
                 IsOptional = input.IsOptional,
                 ServiceProviderId = input.ServiceProviderId,
-                Status = WorkflowStepStatus.Pending,
-                ProcessStepType = stepType
+                Status = WorkflowStepStatus.Pending
             };
             ApplyPricing(instance, rug, stepType, input.Pricing);
             rug.WorkflowSteps.Add(instance);
@@ -316,6 +321,7 @@ public sealed class WorkflowEngine(
         {
             RugId = rugId,
             ProcessStepTypeId = templateStep.ProcessStepTypeId,
+            ProcessStepType = templateStep.ProcessStepType,
             OrderIndex = orderIndex,
             IsOptional = templateStep.IsOptional,
             ServiceProviderId = templateStep.DefaultServiceProviderId,

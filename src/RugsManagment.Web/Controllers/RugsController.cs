@@ -76,6 +76,56 @@ public class RugsController(
         return View();
     }
 
+    // ── سطل زباله ─────────────────────────────────────────────────
+    // حذف و بازگردانی فقط دست مدیر کارگاه است: اپراتور فرش را پیش می‌برد، از چرخه بیرون نمی‌برد.
+
+    [HttpGet]
+    [Authorize(Roles = nameof(UserRole.TenantAdmin))]
+    public async Task<IActionResult> Trash(CancellationToken ct)
+        => View(await rugs.ListDeletedAsync(User.RequireTenantId(), ct));
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = nameof(UserRole.TenantAdmin))]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        try
+        {
+            await rugs.SoftDeleteAsync(User.RequireTenantId(), id, ct);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            // مثلاً فرش فروخته‌شده — کاربر باید بداند چرا نشد، نه اینکه صفحه بی‌صدا برگردد
+            TempData["Toast"] = ex.Message;
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        TempData["Toast"] = "فرش به سطل زباله منتقل شد.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = nameof(UserRole.TenantAdmin))]
+    public async Task<IActionResult> Restore(Guid id, CancellationToken ct)
+    {
+        try
+        {
+            await rugs.RestoreAsync(User.RequireTenantId(), id, ct);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+
+        TempData["Toast"] = "فرش بازگردانده شد.";
+        return RedirectToAction(nameof(Trash));
+    }
+
     /// <summary>کوئری را به route value تبدیل می‌کند (فقط برای redirect داخلی این کنترلر).</summary>
     private static object BuildRoute(RugQuery query) => new
     {

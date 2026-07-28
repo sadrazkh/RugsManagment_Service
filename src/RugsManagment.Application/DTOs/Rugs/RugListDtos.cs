@@ -31,6 +31,22 @@ public record RugListItemDto(
     int TotalStepCount,
     DateTimeOffset CreatedAt);
 
+/// <summary>
+/// ردیف سطل زباله — فرشی که حذف نرم شده و هنوز قابل بازگردانی است.
+/// </summary>
+public record DeletedRugDto(
+    Guid Id,
+    string Sku,
+    string? Title,
+    string? Origin,
+    decimal WidthMeters,
+    decimal LengthMeters,
+    RugStatus Status,
+    decimal TotalInvestment,
+    DateTimeOffset DeletedAt,
+    /// <summary>نام حذف‌کننده؛ اگر کاربر بعداً حذف شده باشد null است</summary>
+    string? DeletedByName);
+
 /// <summary>ستون‌های قابل مرتب‌سازی در فهرست فرش‌ها.</summary>
 public enum RugSortBy
 {

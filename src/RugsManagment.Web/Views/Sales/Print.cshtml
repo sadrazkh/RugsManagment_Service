@@ -80,7 +80,11 @@
     </style>
 </head>
 <body>
-    <button type="button" class="print-btn" onclick="window.print()">چاپ / ذخیره به‌صورت PDF</button>
+    @* هندلر inline نداریم: CSP فقط اسکریپت nonce‌دار را اجازه می‌دهد *@
+    <button type="button" class="print-btn" id="print-report">چاپ / ذخیره به‌صورت PDF</button>
+    <script nonce="@Context.CspNonce()">
+        document.getElementById('print-report').addEventListener('click', function () { window.print(); });
+    </script>
 
     <div class="head">
         <div>

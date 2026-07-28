@@ -44,11 +44,21 @@
                 }
             </p>
         </div>
-        <a asp-action="Create"
-           class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 font-semibold text-on-primary hover:bg-primary-hover">
-            <icon name="plus" class="h-5 w-5" />
-            ثبت فرش
-        </a>
+        <div class="flex flex-wrap gap-2">
+            @if (User.IsInRole(nameof(UserRole.TenantAdmin)))
+            {
+                <a asp-action="Trash"
+                   class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-4 hover:bg-surface-container">
+                    <icon name="trash" class="h-5 w-5" />
+                    سطل زباله
+                </a>
+            }
+            <a asp-action="Create"
+               class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 font-semibold text-on-primary hover:bg-primary-hover">
+                <icon name="plus" class="h-5 w-5" />
+                ثبت فرش
+            </a>
+        </div>
     </div>
 
     @*

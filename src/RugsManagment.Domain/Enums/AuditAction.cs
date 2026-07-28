@@ -12,6 +12,9 @@ public enum AuditAction
     Updated = 1,
     Deleted = 2,
 
+    /// <summary>بازگردانی از سطل زباله (حذف نرم برگشت خورد)</summary>
+    Restored = 3,
+
     /// <summary>مرحله تکمیل و فرش به مرحلهٔ بعد رفت</summary>
     StepAdvanced = 10,
 

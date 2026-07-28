@@ -1,9 +1,12 @@
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using RugsManagment.Application;
 using RugsManagment.Infrastructure;
 using RugsManagment.Infrastructure.Persistence.Seed;
+using RugsManagment.Web.Support;
 
 // ═══════════════════════════════════════════════════════════════════
 // میزبان یکپارچه: MVC/Razor + کنترلرهای API + جزیره‌های Vue
@@ -12,6 +15,19 @@ using RugsManagment.Infrastructure.Persistence.Seed;
 // ═══════════════════════════════════════════════════════════════════
 
 var builder = WebApplication.CreateBuilder(args);
+
+// لاگ ساخت‌یافته: در تولید JSON یک‌خطی تا مستقیم قابل ingest و جستجو باشد.
+// در توسعه خروجی خوانای معمولی می‌ماند. IncludeScopes لازم است وگرنه
+// کلیدهای RequestId/TenantId/UserId که میان‌افزار می‌گذارد در خروجی نمی‌آیند.
+if (builder.Environment.IsDevelopment())
+{
+    builder.Logging.AddSimpleConsole(o => { o.IncludeScopes = true; o.SingleLine = true; });
+}
+else
+{
+    builder.Logging.ClearProviders();
+    builder.Logging.AddJsonConsole(o => { o.IncludeScopes = true; o.UseUtcTimestamp = true; });
+}
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -73,10 +89,46 @@ builder.Services.AddScoped<RugsManagment.Web.Support.TenantSettingsAccessor>();
 builder.Services.AddScoped<RugsManagment.Web.Support.IImageUploadHelper,
     RugsManagment.Web.Support.ImageUploadHelper>();
 
+// ═══════════════════════════════════════════════════════════════════
+// محدودیت نرخ — دفاع در برابر حدس رمز
+// ═══════════════════════════════════════════════════════════════════
+// فقط روی ورود اعمال می‌شود؛ بقیهٔ اپ پشت احراز هویت است و محدودکردنش
+// کار اپراتوری را که تند کار می‌کند مختل می‌کرد.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy("login", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            // کلید بر اساس IP — پشت پراکسی، UseForwardedHeaders آی‌پی واقعی را می‌دهد
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0
+            }));
+
+    // پیام فارسی به‌جای صفحهٔ خالی ۴۲۹
+    options.OnRejected = async (context, ct) =>
+    {
+        context.HttpContext.Response.ContentType = "text/plain; charset=utf-8";
+        await context.HttpContext.Response.WriteAsync(
+            "تلاش‌های زیاد برای ورود. لطفاً چند دقیقه صبر کنید و دوباره امتحان کنید.", ct);
+    };
+});
+
+// بررسی سلامت: اتصال دیتابیس مهم‌ترین وابستگی است
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<RugsManagment.Infrastructure.Persistence.AppDbContext>("database");
+
 var app = builder.Build();
 
 // باید قبل از بقیهٔ میان‌افزارها باشد تا scheme درست تشخیص داده شود
 app.UseForwardedHeaders();
+
+// هدرهای امنیتی و CSP — قبل از هر چیزی که پاسخ می‌سازد
+app.UseSecurityHeaders();
 
 if (!app.Environment.IsDevelopment())
 {
@@ -97,13 +149,22 @@ if (builder.Configuration.GetValue("Hosting:UseHttpsRedirection", false))
 app.UseStaticFiles();
 app.UseRouting();
 
+// محدودیت نرخ باید بعد از Routing باشد تا سیاست هر endpoint شناخته شود
+app.UseRateLimiter();
+
 app.UseAuthentication();
 app.UseAuthorization();
+
+// بعد از احراز هویت تا کاربر و کارگاه در scope لاگ بنشینند
+app.UseRequestLogScope();
 
 app.MapControllers();
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
+
+// بررسی سلامت برای CapRover و مانیتورینگ — بدون احراز هویت، بدون افشای جزئیات
+app.MapHealthChecks("/health").AllowAnonymous();
 
 // migration + دادهٔ اولیه — با چند بار تلاش تا اگر دیتابیس هنگام استارت هنوز آماده نبود کرش نکند
 await MigrateAndSeedWithRetryAsync(app);

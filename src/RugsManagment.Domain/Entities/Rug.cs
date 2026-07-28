@@ -44,6 +44,16 @@ public class Rug : BaseEntity, ITenantScoped
     /// <summary>شاخص مرحلهٔ جاری در مسیر (برای UI)</summary>
     public int CurrentStepIndex { get; set; }
 
+    /// <summary>
+    /// زمان انتقال به سطل زباله؛ null یعنی فعال.
+    /// حذف نرم است تا هزینه‌های ثبت‌شدهٔ مراحل و تاریخچه از بین نرود و اشتباه اپراتور برگشت‌پذیر باشد.
+    /// فیلتر سراسری EF این رکوردها را از همهٔ کوئری‌ها بیرون می‌گذارد.
+    /// </summary>
+    public DateTimeOffset? DeletedAt { get; set; }
+
+    /// <summary>چه کسی حذف کرده — برای پاسخ‌گویی در لاگ فعالیت</summary>
+    public Guid? DeletedByUserId { get; set; }
+
     public Tenant Tenant { get; set; } = null!;
     public RugBatch? Batch { get; set; }
     public WorkflowTemplate? WorkflowTemplate { get; set; }

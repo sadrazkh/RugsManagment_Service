@@ -47,6 +47,31 @@
                 <icon name="edit" class="h-5 w-5" />
                 ویرایش
             </a>
+
+            @* حذف فقط دست مدیر کارگاه است. تأیید با <details> انجام می‌شود نه confirm()،
+               چون CSP اسکریپت inline را اجازه نمی‌دهد و این شکل بدون هیچ جاوااسکریپتی کار می‌کند. *@
+            @if (User.IsInRole(nameof(RugsManagment.Domain.Enums.UserRole.TenantAdmin)))
+            {
+                <details class="relative">
+                    <summary class="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-lg border border-outline-variant px-4 text-error hover:bg-error-container/40">
+                        <icon name="trash" class="h-5 w-5" />
+                        حذف
+                    </summary>
+                    <div class="absolute end-0 z-20 mt-2 w-72 rounded-xl border border-outline-variant bg-surface-container-lowest p-4 shadow-lg">
+                        <p class="text-sm">
+                            فرش به <span class="font-semibold">سطل زباله</span> می‌رود. مراحل و هزینه‌ها حفظ می‌شوند
+                            و هر زمان می‌توانید بازگردانیدش.
+                        </p>
+                        <form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="mt-3 flex justify-end">
+                            <button type="submit"
+                                    class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-error px-4 font-semibold text-on-error hover:opacity-90">
+                                <icon name="trash" class="h-5 w-5" />
+                                انتقال به سطل زباله
+                            </button>
+                        </form>
+                    </div>
+                </details>
+            }
         </div>
     </div>
 

@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+# اجرای موازیِ همان شاخه لغو می‌شود — نتیجهٔ push قدیمی به کار نمی‌آید
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: بک‌اند — build و تست
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: نصب .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: بازیابی وابستگی‌ها
+        run: dotnet restore RugsManagment_Service.slnx
+
+      # هشدارها را خطا می‌کنیم تا مثل ASP0026 (که یک بار امنیت را شکست) از قلم نیفتند
+      - name: Build
+        run: dotnet build RugsManagment_Service.slnx --no-restore -c Release -warnaserror
+
+      - name: تست‌ها
+        run: >
+          dotnet test tests/RugsManagment.Tests/RugsManagment.Tests.csproj
+          --no-build -c Release --logger "console;verbosity=normal"
+
+  frontend:
+    name: فرانت — تایپ‌چک و build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: نصب Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: src/RugsManagment.Web/ClientApp/package-lock.json
+
+      - name: نصب وابستگی‌ها
+        working-directory: src/RugsManagment.Web/ClientApp
+        run: npm ci
+
+      # npm run build شامل vue-tsc است، پس خطای تایپ هم اینجا گرفته می‌شود
+      - name: Build جزیره‌ها
+        working-directory: src/RugsManagment.Web/ClientApp
+        run: npm run build
+
+  docker:
+    name: Docker — بررسی ساخت ایمیج
+    runs-on: ubuntu-latest
+    # فقط بعد از سبز شدن هر دو، چون build ایمیج هر دو را دوباره انجام می‌دهد
+    needs: [backend, frontend]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build ایمیج
+        # فقط ساخته می‌شود و جایی push نمی‌شود — هدف کشف خرابیِ Dockerfile است
+        run: docker build -t rugs-management:ci .

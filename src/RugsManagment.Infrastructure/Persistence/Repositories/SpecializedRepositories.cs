@@ -257,7 +257,10 @@ public class RugRepository(AppDbContext db) : Repository<Rug>(db), IRugRepositor
     {
         var prefix = $"RUG-{DateTime.UtcNow:yyyyMM}-";
 
+        // IgnoreQueryFilters لازم است: ردیف حذف‌شدهٔ نرم هنوز جای SKU را در ایندکس یکتا
+        // اشغال می‌کند، پس اگر نادیده گرفته شود ثبت فرش بعدی با تکرار SKU شکست می‌خورد.
         var existing = await Db.Rugs
+            .IgnoreQueryFilters()
             .AsNoTracking()
             .Where(r => r.TenantId == tenantId && r.Sku.StartsWith(prefix))
             .Select(r => r.Sku)
@@ -270,6 +273,42 @@ public class RugRepository(AppDbContext db) : Repository<Rug>(db), IRugRepositor
 
         return prefix + (maxSequence + 1).ToString("D4");
     }
+
+    // ── سطل زباله ─────────────────────────────────────────────────
+
+    public async Task<IReadOnlyList<DeletedRugDto>> ListDeletedAsync(
+        Guid tenantId, CancellationToken cancellationToken = default)
+        => await Db.Rugs
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(r => r.TenantId == tenantId && r.DeletedAt != null)
+            .OrderByDescending(r => r.DeletedAt)
+            .Select(r => new DeletedRugDto(
+                r.Id,
+                r.Sku,
+                r.Title,
+                r.Origin,
+                r.WidthMeters,
+                r.LengthMeters,
+                r.Status,
+                // همان فرمول هزینهٔ فهرست — تا کاربر بداند با حذف نهایی چه چیزی از دست می‌رود
+                (r.PurchaseCost ?? 0) + r.WorkflowSteps
+                    .Where(s => s.Status == WorkflowStepStatus.Completed || s.Status == WorkflowStepStatus.InProgress)
+                    .Sum(s => (s.ManualCostOverride ?? s.CalculatedCost ?? 0) + (s.Adjustment ?? 0) < 0
+                        ? 0
+                        : (s.ManualCostOverride ?? s.CalculatedCost ?? 0) + (s.Adjustment ?? 0)),
+                r.DeletedAt!.Value,
+                Db.Users
+                    .Where(u => u.Id == r.DeletedByUserId)
+                    .Select(u => u.FullName)
+                    .FirstOrDefault()))
+            .ToListAsync(cancellationToken);
+
+    public async Task<Rug?> GetDeletedAsync(Guid id, Guid tenantId, CancellationToken cancellationToken = default)
+        => await Db.Rugs
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(
+                r => r.Id == id && r.TenantId == tenantId && r.DeletedAt != null, cancellationToken);
 }
 
 public class WorkflowTemplateRepository(AppDbContext db) : Repository<WorkflowTemplate>(db), IWorkflowTemplateRepository

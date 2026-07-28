@@ -33,6 +33,16 @@ public interface IRugManagementService
 
     /// <summary>ویرایش گروهی مشخصات — فقط فیلدهای مقداردار اعمال می‌شوند.</summary>
     Task<BulkOperationResultDto> BulkUpdateFieldsAsync(Guid tenantId, BulkUpdateFieldsRequest request, CancellationToken ct = default);
+
+    // ── سطل زباله ─────────────────────────────────────────────────
+
+    /// <summary>انتقال فرش به سطل زباله (حذف نرم). فرشِ فروخته‌شده حذف نمی‌شود.</summary>
+    Task SoftDeleteAsync(Guid tenantId, Guid rugId, CancellationToken ct = default);
+
+    /// <summary>بازگرداندن فرش از سطل زباله با همان مراحل و هزینه‌ها.</summary>
+    Task<RugDto> RestoreAsync(Guid tenantId, Guid rugId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<DeletedRugDto>> ListDeletedAsync(Guid tenantId, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -162,6 +172,53 @@ public sealed class RugManagementService(
         await unitOfWork.SaveChangesAsync(ct);
         return rug.ToDto(workflowEngine);
     }
+
+    // ── سطل زباله ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// حذف نرم: رکورد می‌ماند و فقط از دید همهٔ کوئری‌ها خارج می‌شود (فیلتر سراسری EF).
+    /// دلیل نرم‌بودن: هزینه‌های ثبت‌شدهٔ مراحل و بدهی استادکارها با یک کلیک اشتباه از بین نرود.
+    /// </summary>
+    public async Task SoftDeleteAsync(Guid tenantId, Guid rugId, CancellationToken ct = default)
+    {
+        var rug = await rugs.GetWithWorkflowAsync(rugId, tenantId, ct)
+            ?? throw new KeyNotFoundException("فرش یافت نشد.");
+
+        // فروش، سند مالی است؛ حذف فرشِ فروخته‌شده گزارش درآمد را بی‌صدا خراب می‌کند
+        if (rug.Sale is not null)
+            throw new InvalidOperationException("این فرش فروخته شده است. ابتدا فروش را لغو کنید، سپس حذف کنید.");
+
+        rug.DeletedAt = DateTimeOffset.UtcNow;
+        rug.DeletedByUserId = currentUser.UserId;
+        rug.UpdatedAt = DateTimeOffset.UtcNow;
+
+        rugs.Update(rug);
+        audit.Record(AuditAction.Deleted, nameof(Rug), rug.Id,
+            $"فرش {rug.Sku} به سطل زباله منتقل شد.", rug.Sku);
+        await unitOfWork.SaveChangesAsync(ct);
+    }
+
+    public async Task<RugDto> RestoreAsync(Guid tenantId, Guid rugId, CancellationToken ct = default)
+    {
+        var rug = await rugs.GetDeletedAsync(rugId, tenantId, ct)
+            ?? throw new KeyNotFoundException("فرش حذف‌شده یافت نشد.");
+
+        rug.DeletedAt = null;
+        rug.DeletedByUserId = null;
+        rug.UpdatedAt = DateTimeOffset.UtcNow;
+
+        rugs.Update(rug);
+        audit.Record(AuditAction.Restored, nameof(Rug), rug.Id,
+            $"فرش {rug.Sku} از سطل زباله بازگردانده شد.", rug.Sku);
+        await unitOfWork.SaveChangesAsync(ct);
+
+        // بعد از بازگردانی، فیلتر سراسری دیگر مانع نیست و می‌شود کامل خواندش
+        var restored = await rugs.GetWithWorkflowAsync(rugId, tenantId, ct)!;
+        return restored!.ToDto(workflowEngine);
+    }
+
+    public Task<IReadOnlyList<DeletedRugDto>> ListDeletedAsync(Guid tenantId, CancellationToken ct = default)
+        => rugs.ListDeletedAsync(tenantId, ct);
 
     public async Task<RugDto> AdvanceStepAsync(
         Guid tenantId, Guid rugId, Guid stepId, AdvanceRugStepRequest request, CancellationToken ct = default)

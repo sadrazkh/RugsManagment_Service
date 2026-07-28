@@ -25,4 +25,14 @@ public interface IRugRepository : IRepository<Rug>
     Task<PagedResult<RugListItemDto>> SearchAsync(Guid tenantId, RugQuery query, CancellationToken cancellationToken = default);
 
     Task<string> GenerateNextSkuAsync(Guid tenantId, CancellationToken cancellationToken = default);
+
+    // ── سطل زباله ─────────────────────────────────────────────────
+    // فیلتر سراسری EF فرش‌های حذف‌شده را از همهٔ کوئری‌های بالا بیرون می‌گذارد،
+    // پس این دو متد تنها راه دیدن و بازگرداندن آن‌ها هستند.
+
+    /// <summary>فرش‌های سطل زباله، تازه‌ترین اول.</summary>
+    Task<IReadOnlyList<DeletedRugDto>> ListDeletedAsync(Guid tenantId, CancellationToken cancellationToken = default);
+
+    /// <summary>یک فرش حذف‌شده برای بازگردانی؛ null یعنی وجود ندارد یا مال کارگاه دیگری است.</summary>
+    Task<Rug?> GetDeletedAsync(Guid id, Guid tenantId, CancellationToken cancellationToken = default);
 }

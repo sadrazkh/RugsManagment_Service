@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
@@ -35,7 +36,9 @@ public class AccountController(
         return View(new LoginViewModel { ReturnUrl = returnUrl });
     }
 
+    /// <summary>محدودیت نرخ: ۱۰ تلاش در ۵ دقیقه از هر آی‌پی — دفاع در برابر حدس رمز.</summary>
     [AllowAnonymous]
+    [EnableRateLimiting("login")]
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Login(LoginViewModel model, CancellationToken ct)
