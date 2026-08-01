@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using RugsManagment.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using RugsManagment.Infrastructure.Persistence;
 namespace RugsManagment.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260604082452_PendingModelSync")]
+    partial class PendingModelSync
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -70,7 +73,7 @@ namespace RugsManagment.Infrastructure.Persistence.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.ToTable("ProcessStepTypes", (string)null);
+                    b.ToTable("ProcessStepTypes");
                 });
 
             modelBuilder.Entity("RugsManagment.Domain.Entities.Rug", b =>
@@ -147,7 +150,7 @@ namespace RugsManagment.Infrastructure.Persistence.Migrations
                     b.HasIndex("TenantId", "Sku")
                         .IsUnique();
 
-                    b.ToTable("Rugs", (string)null);
+                    b.ToTable("Rugs");
                 });
 
             modelBuilder.Entity("RugsManagment.Domain.Entities.RugBatch", b =>
@@ -180,7 +183,7 @@ namespace RugsManagment.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("TenantId");
 
-                    b.ToTable("RugBatches", (string)null);
+                    b.ToTable("RugBatches");
                 });
 
             modelBuilder.Entity("RugsManagment.Domain.Entities.RugWorkflowStep", b =>
@@ -248,7 +251,7 @@ namespace RugsManagment.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ServiceProviderId");
 
-                    b.ToTable("RugWorkflowSteps", (string)null);
+                    b.ToTable("RugWorkflowSteps");
                 });
 
             modelBuilder.Entity("RugsManagment.Domain.Entities.ServiceProvider", b =>
@@ -290,7 +293,7 @@ namespace RugsManagment.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("TenantId");
 
-                    b.ToTable("ServiceProviders", (string)null);
+                    b.ToTable("ServiceProviders");
                 });
 
             modelBuilder.Entity("RugsManagment.Domain.Entities.Tenant", b =>
@@ -332,7 +335,7 @@ namespace RugsManagment.Infrastructure.Persistence.Migrations
                     b.HasIndex("Slug")
                         .IsUnique();
 
-                    b.ToTable("Tenants", (string)null);
+                    b.ToTable("Tenants");
                 });
 
             modelBuilder.Entity("RugsManagment.Domain.Entities.User", b =>
@@ -380,7 +383,7 @@ namespace RugsManagment.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("TenantId");
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("RugsManagment.Domain.Entities.WorkflowTemplate", b =>
@@ -416,7 +419,7 @@ namespace RugsManagment.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("TenantId");
 
-                    b.ToTable("WorkflowTemplates", (string)null);
+                    b.ToTable("WorkflowTemplates");
                 });
 
             modelBuilder.Entity("RugsManagment.Domain.Entities.WorkflowTemplateStep", b =>
@@ -463,7 +466,7 @@ namespace RugsManagment.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("WorkflowTemplateId");
 
-                    b.ToTable("WorkflowTemplateSteps", (string)null);
+                    b.ToTable("WorkflowTemplateSteps");
                 });
 
             modelBuilder.Entity("RugsManagment.Domain.Entities.Rug", b =>
