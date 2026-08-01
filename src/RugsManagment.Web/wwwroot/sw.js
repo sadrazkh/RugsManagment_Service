@@ -1,12 +1,15 @@
 /*
  * Service Worker محافظه‌کار برای PWA سامانهٔ مدیریت فرش.
  * راهبرد:
- *   • دارایی‌های ساکن (/dist, /lib, آیکون، فونت) → cache-first (سریع + آفلاین)
+ *   • دارایی‌های ساکن (/dist, /js, آیکون) → cache-first (سریع + آفلاین)
  *   • ناوبری صفحات و API → network-only (چون به کوکی احراز هویت و دادهٔ زنده وابسته‌اند)
  *     اگر صفحه‌ای آفلاین باز شود، صفحهٔ offline نمایش داده می‌شود.
  * دادهٔ حساس/احرازشده هرگز کش نمی‌شود.
  */
-const CACHE = 'rugs-static-v2';
+// ⚠ با هر تغییر در PRECACHE (یا در فایل‌هایی که آنجا فهرست شده‌اند، مثل manifest)
+// این شماره را یک واحد بالا ببرید؛ وگرنه مرورگرِ کاربرانی که PWA را نصب کرده‌اند
+// تا ابد نسخهٔ قدیمی را از کش سرو می‌کند. activate کش‌های قدیمی را پاک می‌کند.
+const CACHE = 'rugs-static-v3';
 // اسپرایت آیکون هم پیش‌کش می‌شود: بدون آن، صفحهٔ آفلاین و نشانگر صف بی‌آیکون می‌مانند
 const PRECACHE = ['/icon.svg', '/icons.svg', '/manifest.webmanifest', '/offline.html'];
 
@@ -23,9 +26,9 @@ self.addEventListener('activate', (event) => {
 });
 
 function isStaticAsset(url) {
-  return url.pathname.startsWith('/dist/') || url.pathname.startsWith('/lib/') ||
+  return url.pathname.startsWith('/dist/') || url.pathname.startsWith('/js/') ||
     url.pathname === '/icon.svg' || url.pathname === '/icons.svg' ||
-    url.pathname === '/favicon.ico' || url.pathname.startsWith('/js/');
+    url.pathname === '/favicon.ico' || url.pathname.startsWith('/icons/');
 }
 
 self.addEventListener('fetch', (event) => {

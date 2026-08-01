@@ -31,6 +31,15 @@ public class UserRepository(AppDbContext db) : Repository<User>(db), IUserReposi
 /// </summary>
 public class RugRepository(AppDbContext db) : Repository<Rug>(db), IRugRepository
 {
+    /// <summary>
+    /// AsSplitQuery چون دو مجموعهٔ هم‌سطح (عکس‌ها و مراحل) با هم Include می‌شوند:
+    /// در حالت تک‌کوئری، پستگرس حاصل‌ضرب دکارتی می‌دهد (۵ عکس × ۸ مرحله = ۴۰ ردیف
+    /// که هر کدام کل ستون‌های فرش را تکرار می‌کند) و با زیاد شدن گالری بدتر می‌شود.
+    ///
+    /// رفت‌وبرگشت‌های جدا خارج از تراکنش‌اند، پس نظرياً می‌شود بین دو کوئری تغییری رخ دهد؛
+    /// اینجا بی‌خطر است چون فرش و مراحل هر دو توکن هم‌زمانی xmin دارند و اگر خواندنِ
+    /// ناهم‌خوان به نوشتن اشتباه منجر شود، SaveChanges آن را رد می‌کند.
+    /// </summary>
     public async Task<Rug?> GetWithWorkflowAsync(Guid id, Guid tenantId, CancellationToken cancellationToken = default)
         => await Db.Rugs
             .Include(r => r.Batch)
@@ -40,6 +49,7 @@ public class RugRepository(AppDbContext db) : Repository<Rug>(db), IRugRepositor
                 .ThenInclude(s => s.ProcessStepType)
             .Include(r => r.WorkflowSteps)
                 .ThenInclude(s => s.ServiceProvider)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(r => r.Id == id && r.TenantId == tenantId, cancellationToken);
 
     public async Task<IReadOnlyList<Rug>> ListByTenantAsync(
@@ -375,11 +385,17 @@ public class RugBatchRepository(AppDbContext db) : Repository<RugBatch>(db), IRu
             .OrderByDescending(b => b.ReceivedAt ?? b.CreatedAt)
             .ToListAsync(cancellationToken);
 
+    /// <summary>
+    /// AsSplitQuery چون زنجیرهٔ تودرتوی مجموعه‌هاست (محموله → فرش‌ها → مراحل):
+    /// در تک‌کوئری تعداد ردیف‌ها حاصل‌ضرب «تعداد فرش × تعداد مراحل» می‌شود و
+    /// یک محمولهٔ ۵۰تایی با مسیر ۸ مرحله‌ای ۴۰۰ ردیف پرتکرار برمی‌گرداند.
+    /// </summary>
     public async Task<RugBatch?> GetWithRugsAsync(Guid id, Guid tenantId, CancellationToken cancellationToken = default)
         => await Db.RugBatches
             .Include(b => b.Rugs)
                 .ThenInclude(r => r.WorkflowSteps)
                     .ThenInclude(s => s.ProcessStepType)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(b => b.Id == id && b.TenantId == tenantId, cancellationToken);
 }
 

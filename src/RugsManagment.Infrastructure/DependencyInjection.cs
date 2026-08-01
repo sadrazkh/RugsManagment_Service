@@ -13,15 +13,13 @@ using RugsManagment.Infrastructure.Storage;
 namespace RugsManagment.Infrastructure;
 
 /// <summary>
-/// لایهٔ زیرساخت — اتصال PostgreSQL، پیاده‌سازی Repositoryها و JWT.
+/// لایهٔ زیرساخت — اتصال PostgreSQL و پیاده‌سازی Repositoryها.
 /// Application فقط interface می‌بیند؛ اینجا جایگزین واقعی ثبت می‌شود.
 /// </summary>
 public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
-
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? "Host=localhost;Port=5432;Database=rugs_management;Username=postgres;Password=postgres";
 
@@ -37,7 +35,6 @@ public static class DependencyInjection
         services.AddScoped<IWorkflowTemplateRepository, WorkflowTemplateRepository>();
         services.AddScoped<IProcessStepTypeRepository, ProcessStepTypeRepository>();
         services.AddScoped<IServiceProviderRepository, ServiceProviderRepository>();
-        services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IProcessStepTypeLookup, ProcessStepTypeLookup>();
 
         // ذخیره‌سازی تصاویر روی دیسک — مسیر از Storage:ImagePath خوانده می‌شود

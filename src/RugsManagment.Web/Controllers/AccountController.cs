@@ -46,10 +46,10 @@ public class AccountController(
         if (!ModelState.IsValid)
             return View(model);
 
-        AuthResponse result;
+        UserDto user;
         try
         {
-            result = await auth.LoginAsync(new LoginRequest(model.Email, model.Password), ct);
+            user = await auth.LoginAsync(new LoginRequest(model.Email, model.Password), ct);
             await unitOfWork.SaveChangesAsync(ct); // ذخیرهٔ LastLoginAt
         }
         catch (UnauthorizedAccessException ex)
@@ -59,7 +59,7 @@ public class AccountController(
             return View(model);
         }
 
-        var identity = new ClaimsIdentity(result.User.ToClaims(), CookieAuthenticationDefaults.AuthenticationScheme);
+        var identity = new ClaimsIdentity(user.ToClaims(), CookieAuthenticationDefaults.AuthenticationScheme);
         var props = new AuthenticationProperties
         {
             IsPersistent = model.RememberMe,
@@ -71,7 +71,7 @@ public class AccountController(
             new ClaimsPrincipal(identity),
             props);
 
-        return RedirectToLocalOrHome(model.ReturnUrl, result.User.Role);
+        return RedirectToLocalOrHome(model.ReturnUrl, user.Role);
     }
 
     [HttpPost]
@@ -127,7 +127,7 @@ public class AccountController(
 
         // نام نمایشی داخل کوکی است؛ بدون تازه‌سازی، هدر نام قدیمی را نشان می‌دهد
         var refreshed = await auth.RefreshAsync(userId, ct);
-        var identity = new ClaimsIdentity(refreshed.User.ToClaims(), CookieAuthenticationDefaults.AuthenticationScheme);
+        var identity = new ClaimsIdentity(refreshed.ToClaims(), CookieAuthenticationDefaults.AuthenticationScheme);
         await HttpContext.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
 
