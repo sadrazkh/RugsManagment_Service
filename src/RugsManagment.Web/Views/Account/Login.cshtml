@@ -1,0 +1,63 @@
+@model RugsManagment.Web.Models.Account.LoginViewModel
+@{
+    ViewData["Title"] = "ورود";
+}
+
+<div class="w-full max-w-md">
+    <div class="mb-6 text-center">
+        <div class="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl bg-primary text-on-primary">
+            <icon name="rug" class="h-7 w-7" />
+        </div>
+        <h1 class="text-xl font-bold text-on-surface">سامانه مدیریت فرش</h1>
+        <p class="mt-1 text-sm text-on-surface-variant">برای ادامه وارد حساب کاربری شوید</p>
+    </div>
+
+    <div class="rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 shadow-sm">
+        @if (!string.IsNullOrEmpty(Model.Error))
+        {
+            @* خطای ورود — role=alert تا صفحه‌خوان بلافاصله اعلام کند *@
+            <div role="alert"
+                 class="mb-4 flex items-start gap-2 rounded-lg bg-error-container px-4 py-3 text-sm text-on-error-container">
+                <icon name="error" class="mt-0.5 h-5 w-5" />
+                <span>@Model.Error</span>
+            </div>
+        }
+
+        <form asp-controller="Account" asp-action="Login" method="post" class="space-y-4">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="ReturnUrl" />
+
+            <div>
+                <label asp-for="Email" class="mb-1 block text-sm font-medium text-on-surface"></label>
+                <input asp-for="Email" dir="ltr" autocomplete="username" placeholder="admin@rugsystem.local"
+                       class="min-h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+                <span id="Email-error" asp-validation-for="Email" class="mt-1 block text-xs text-error"></span>
+            </div>
+
+            <div>
+                <label asp-for="Password" class="mb-1 block text-sm font-medium text-on-surface"></label>
+                <input asp-for="Password" dir="ltr" autocomplete="current-password"
+                       class="min-h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+                <span id="Password-error" asp-validation-for="Password" class="mt-1 block text-xs text-error"></span>
+            </div>
+
+            <label class="flex min-h-11 items-center gap-2 text-sm text-on-surface-variant">
+                <input asp-for="RememberMe" type="checkbox" class="h-5 w-5 rounded border-outline-variant text-primary" />
+                مرا به خاطر بسپار
+            </label>
+
+            <button type="submit"
+                    class="min-h-11 w-full rounded-lg bg-primary px-4 font-semibold text-on-primary hover:bg-primary-hover">
+                ورود
+            </button>
+        </form>
+    </div>
+
+    <p class="mt-4 text-center text-xs text-on-surface-variant">
+        حساب پیش‌فرض ادمین: <span class="font-mono" dir="ltr">admin@rugsystem.local / Admin@@12345</span>
+    </p>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,35 @@
+@model int
+@{
+    var (title, description) = Model switch
+    {
+        404 => ("صفحه پیدا نشد", "آدرسی که باز کردید وجود ندارد یا جابه‌جا شده است."),
+        403 => ("دسترسی ندارید", "برای دیدن این بخش مجوز لازم را ندارید."),
+        401 => ("وارد نشده‌اید", "برای ادامه ابتدا وارد حساب کاربری خود شوید."),
+        >= 500 => ("خطای سرور", "در پردازش درخواست شما مشکلی پیش آمد. لطفاً دوباره تلاش کنید."),
+        _ => ("مشکلی پیش آمد", "درخواست شما قابل پردازش نبود.")
+    };
+    ViewData["Title"] = title;
+}
+
+<div class="grid min-h-[60vh] place-items-center px-4">
+    <div class="w-full max-w-md text-center">
+        <div class="mb-4 font-mono text-6xl font-bold text-outline-variant" dir="ltr">@Model</div>
+        <h1 class="text-xl font-bold text-on-surface">@title</h1>
+        <p class="mt-2 text-sm text-on-surface-variant">@description</p>
+
+        <div class="mt-6 flex flex-wrap justify-center gap-3">
+            <a href="/" class="rounded-lg bg-primary px-5 py-2.5 font-semibold text-on-primary transition hover:bg-primary-container">
+                بازگشت به خانه
+            </a>
+            @* هندلر inline نداریم: CSP فقط اسکریپت nonce‌دار را اجازه می‌دهد *@
+            <button type="button" id="go-back"
+                    class="rounded-lg border border-outline-variant px-5 py-2.5 transition hover:bg-surface-container">
+                صفحهٔ قبل
+            </button>
+        </div>
+    </div>
+</div>
+
+<script nonce="@Context.CspNonce()">
+    document.getElementById('go-back')?.addEventListener('click', function () { history.back(); });
+</script>

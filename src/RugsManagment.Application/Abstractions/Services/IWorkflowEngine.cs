@@ -43,6 +43,13 @@ public interface IWorkflowEngine
         CancellationToken cancellationToken = default);
 
     RugCostSummary CalculateRugCosts(Rug rug);
+
+    /// <summary>
+    /// وضعیت فرش را از روی مراحلش بازمحاسبه می‌کند (بدون تغییر خود مراحل).
+    /// جایی لازم است که وضعیت از بیرونِ گردش کار عوض شده و باید برگردد —
+    /// مثلاً وقتی فروش یک فرش لغو می‌شود.
+    /// </summary>
+    Domain.Enums.RugStatus ResolveStatusFromWorkflow(Rug rug);
 }
 
 /// <summary>یک مرحله در مسیر سفارشی هنگام ثبت فرش</summary>
@@ -66,7 +73,8 @@ public record AdvanceStepRequest(
     string? PricingConfigJson,
     string? FieldValuesJson,
     string? Notes,
-    bool MarkCompleted = true);
+    bool MarkCompleted = true,
+    decimal? Adjustment = null);
 
 /// <summary>خلاصهٔ مالی یک فرش برای نمایش</summary>
 public record RugCostSummary(

@@ -1,0 +1,91 @@
+@using System.Security.Claims
+@using RugsManagment.Application.DTOs.Labels
+@using RugsManagment.Web.Support
+@model IReadOnlyList<LabelTemplateDto>
+@{
+    ViewData["Title"] = "برچسب‌ها";
+    var isAdmin = User.FindFirstValue(ClaimTypes.Role) == nameof(RugsManagment.Domain.Enums.UserRole.TenantAdmin);
+}
+
+<div class="space-y-5">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <h1 class="text-2xl font-bold">قالب‌های برچسب</h1>
+            <p class="text-sm text-on-surface-variant">طراحی و چاپ برچسب فرش با دادهٔ واقعی</p>
+        </div>
+        @if (isAdmin)
+        {
+            <a asp-action="Design"
+               class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 font-semibold text-on-primary hover:bg-primary-hover">
+                <icon name="plus" class="h-5 w-5" />
+                برچسب جدید
+            </a>
+        }
+    </div>
+
+    @if (Model.Count == 0)
+    {
+        @* حالت خالی با راهنما و کنش — نه صفحهٔ سفید خالی *@
+        <div class="rounded-xl border border-dashed border-outline-variant bg-surface-container-lowest p-12 text-center">
+            <span class="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full bg-surface-container text-on-surface-variant">
+                <icon name="tag" class="h-7 w-7" />
+            </span>
+            <p class="font-medium text-on-surface">هنوز قالب برچسبی طراحی نشده است</p>
+            <p class="mx-auto mt-1 max-w-sm text-sm text-on-surface-variant">
+                با طراح بصری، برچسبی با کد QR، بارکد و مشخصات فرش بسازید و مستقیم چاپ بگیرید.
+            </p>
+            @if (isAdmin)
+            {
+                <a asp-action="Design"
+                   class="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-5 font-semibold text-on-primary hover:bg-primary-hover">
+                    <icon name="plus" class="h-5 w-5" />
+                    ساخت اولین برچسب
+                </a>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            @foreach (var l in Model)
+            {
+                <div class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm transition hover:shadow-md">
+                    <div class="flex items-start gap-3">
+                        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-secondary-container text-on-secondary-container">
+                            <icon name="tag" />
+                        </span>
+                        <div class="min-w-0">
+                            <h3 class="truncate font-bold">@l.Name</h3>
+                            <p class="text-xs text-on-surface-variant">
+                                @PersianFormat.Count(l.WidthMm)×@PersianFormat.Count(l.HeightMm) میلی‌متر ·
+                                @(l.Mode == RugsManagment.Domain.Enums.LabelMode.Html ? "HTML" : "بصری")
+                            </p>
+                        </div>
+                    </div>
+
+                    @if (isAdmin)
+                    {
+                        <div class="mt-4 flex gap-2">
+                            <a asp-action="Design" asp-route-id="@l.Id"
+                               class="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-outline-variant px-3 text-sm hover:bg-surface-container">
+                                <icon name="edit" class="h-4 w-4" />
+                                ویرایش / چاپ
+                            </a>
+                            <form asp-action="Delete" asp-route-id="@l.Id" method="post"
+                                  data-confirm="قالب «@l.Name» حذف شود؟"
+                                  data-confirm-message="این کار قابل بازگشت نیست."
+                                  data-confirm-label="حذف قالب"
+                                  data-confirm-danger>
+                                @Html.AntiForgeryToken()
+                                <button type="submit"
+                                        class="grid h-11 w-11 place-items-center rounded-lg border border-outline-variant text-error hover:bg-error-container">
+                                    <icon name="trash" class="h-4 w-4" label="حذف قالب @l.Name" />
+                                </button>
+                            </form>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>

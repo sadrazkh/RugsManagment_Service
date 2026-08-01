@@ -1,0 +1,39 @@
+@{
+    ViewData["Title"] = "خطا";
+    // بدون layout و بدون CSS خارجی: این صفحه باید حتی وقتی build فرانت خراب است هم رندر شود.
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>خطا — سامانه مدیریت فرش</title>
+    <style>
+        :root { color-scheme: light dark; --bg: #fbf9f5; --fg: #1b1c1a; --muted: #58413f; --brand: #6b0008; --error: #ba1a1a; }
+        @@media (prefers-color-scheme: dark) {
+            :root { --bg: #14100f; --fg: #f0ebe9; --muted: #d4bcba; --brand: #ffb3ac; --error: #ffb4ab; }
+        }
+        body {
+            font-family: 'Vazirmatn', system-ui, sans-serif;
+            display: grid; place-items: center; min-height: 100vh; margin: 0;
+            background: var(--bg); color: var(--fg); line-height: 1.75;
+        }
+        .card { text-align: center; padding: 2rem; max-width: 28rem; }
+        h1 { color: var(--error); font-size: 1.5rem; margin: 0 0 .5rem; }
+        p { color: var(--muted); margin: 0 0 1.5rem; }
+        a {
+            display: inline-block; min-height: 44px; line-height: 44px; padding: 0 1.25rem;
+            border-radius: .5rem; background: var(--brand); color: var(--bg);
+            text-decoration: none; font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>خطایی رخ داد</h1>
+        <p>در پردازش درخواست شما مشکلی پیش آمد. لطفاً دوباره تلاش کنید؛ اگر تکرار شد با پشتیبانی تماس بگیرید.</p>
+        <a href="/">بازگشت به خانه</a>
+    </div>
+</body>
+</html>

@@ -1,5 +1,6 @@
 using RugsManagment.Application.Abstractions.Services;
 using RugsManagment.Application.DTOs.Auth;
+using RugsManagment.Application.DTOs.CustomFields;
 using RugsManagment.Application.DTOs.Dashboard;
 using RugsManagment.Application.DTOs.Rugs;
 using RugsManagment.Application.DTOs.Tenants;
@@ -34,7 +35,8 @@ public static class EntityMappers
 
     public static ProcessStepTypeDto ToDto(this ProcessStepType t) => new(
         t.Id, t.Code, t.NameFa, t.NameEn, t.Icon, t.SortOrder,
-        t.DefaultPricingModel, t.DefaultUnitRate, t.FieldSchemaJson);
+        t.DefaultPricingModel, t.DefaultUnitRate, t.FieldSchemaJson,
+        t.ExpectedDurationDays, t.IsActive, t.TenantId is null);
 
     public static WorkflowTemplateDto ToDto(this WorkflowTemplate template) => new(
         template.Id,
@@ -55,15 +57,15 @@ public static class EntityMappers
         step.OverridePricingModel,
         step.OverrideUnitRate);
 
-    public static ServiceProviderDto ToDto(this ServiceProvider sp)
-    {
-        var codes = string.IsNullOrWhiteSpace(sp.SupportedStepTypeCodesJson)
-            ? Array.Empty<string>()
-            : JsonSerializer.Deserialize<string[]>(sp.SupportedStepTypeCodesJson) ?? [];
-
-        return new ServiceProviderDto(
-            sp.Id, sp.Name, sp.Specialty, sp.Phone, sp.Address, sp.IsActive, codes);
-    }
+    /// <summary>
+    /// «مراحلی که این طرف انجام می‌دهد» از نرخ‌های تعریف‌شده مشتق می‌شود، نه از یک فهرست جدا:
+    /// نرخ داشتن برای یک نوع مرحله یعنی همان کار را انجام می‌دهد.
+    /// </summary>
+    public static ServiceProviderDto ToDto(this ServiceProvider sp) => new(
+        sp.Id, sp.Name, sp.Specialty, sp.Phone, sp.Address, sp.IsActive,
+        sp.Rates.Select(r => r.ProcessStepType?.Code ?? string.Empty)
+            .Where(code => code.Length > 0)
+            .ToList());
 
     /// <summary>فرش کامل با مراحل و خلاصهٔ هزینه — برای صفحهٔ جزئیات</summary>
     public static RugDto ToDto(this Rug rug, IWorkflowEngine workflowEngine)
@@ -92,8 +94,28 @@ public static class EntityMappers
             current?.ProcessStepType?.NameFa,
             rug.CurrentStepIndex,
             rug.WorkflowSteps.OrderBy(s => s.OrderIndex).Select(s => s.ToDto()).ToList(),
-            costs.ToDto());
+            costs.ToDto(rug.Sale),
+            rug.MetadataJson,
+            rug.Images.OrderBy(i => i.SortOrder).Select(i => i.ToDto()).ToList());
     }
+
+    /// <summary>
+    /// آدرس‌ها از مسیر کنترلر media ساخته می‌شوند، نه از مسیر فایل سیستمی:
+    /// فایل‌ها بیرون از wwwroot هستند و با بررسی مالکیت کارگاه سرو می‌شوند.
+    /// </summary>
+    public static RugImageDto ToDto(this RugImage image)
+    {
+        var url = $"/media/rugs/{image.RugId}/{image.FileName}";
+        var thumbnail = string.IsNullOrEmpty(image.ThumbnailFileName)
+            ? url
+            : $"/media/rugs/{image.RugId}/{image.ThumbnailFileName}";
+
+        return new RugImageDto(
+            image.Id, url, thumbnail, image.Width, image.Height, image.SizeBytes, image.SortOrder, image.IsPrimary);
+    }
+
+    public static CustomFieldDefinitionDto ToDto(this CustomFieldDefinition f) => new(
+        f.Id, f.Key, f.Label, f.FieldType, f.OptionsJson, f.IsRequired, f.SortOrder, f.IsActive);
 
     public static RugWorkflowStepDto ToDto(this RugWorkflowStep step) => new(
         step.Id,
@@ -115,14 +137,22 @@ public static class EntityMappers
         step.AppliedUnitRate,
         step.PricingConfigJson,
         step.FieldValuesJson,
-        step.Notes);
+        step.Notes,
+        step.Adjustment,
+        step.CompletedByName);
 
-    public static RugCostSummaryDto ToDto(this RugCostSummary summary) => new(
+    /// <summary>
+    /// خلاصهٔ هزینه. اگر فرش فروخته شده باشد، سود واقعی هم کنار سود تخمینی می‌آید
+    /// تا تفاوت «آنچه انتظار داشتیم» و «آنچه شد» دیده شود.
+    /// </summary>
+    public static RugCostSummaryDto ToDto(this RugCostSummary summary, RugSale? sale = null) => new(
         summary.TotalProcessCost,
         summary.PurchaseCost,
         summary.TotalInvestment,
         summary.TargetSalePrice,
-        summary.EstimatedMargin);
+        summary.EstimatedMargin,
+        sale?.NetAmount,
+        sale is null ? null : sale.NetAmount - summary.TotalInvestment);
 
     /// <summary>ساخت آمار داشبورد از لیست فرش‌ها — بدون کوئری اضافی</summary>
     public static DashboardStatsDto ToDashboard(
@@ -154,17 +184,43 @@ public static class EntityMappers
             .Select(g => new StepDistributionDto(g.Key, g.Count()))
             .ToList();
 
-        var pipeline = rugs
-            .Where(r => r.Status == RugStatus.InProgress)
-            .Sum(r => workflowEngine.CalculateRugCosts(r).TotalInvestment);
+        // یک بار محاسبهٔ هزینهٔ هر فرش تا از تکرار جلوگیری شود
+        var costed = rugs.Select(r => (Rug: r, Costs: workflowEngine.CalculateRugCosts(r))).ToList();
+
+        var pipeline = costed.Where(x => x.Rug.Status == RugStatus.InProgress).Sum(x => x.Costs.TotalInvestment);
+        var readyValue = costed.Where(x => x.Rug.Status == RugStatus.ReadyForSale).Sum(x => x.Costs.TotalInvestment);
+
+        // سود تخمینی فقط برای فرش‌های فروخته‌نشده معنا دارد؛ برای فروخته‌شده‌ها
+        // سود واقعی را داریم و مخلوط کردن این دو عدد را بی‌معنا می‌کند.
+        var sold = costed.Where(x => x.Rug.Sale is not null).ToList();
+        var unsold = costed.Where(x => x.Rug.Sale is null).ToList();
+
+        var profit = unsold
+            .Where(x => x.Costs.EstimatedMargin.HasValue)
+            .Sum(x => x.Costs.EstimatedMargin!.Value);
+
+        var actualSales = sold.Sum(x => x.Rug.Sale!.NetAmount);
+        var actualProfit = sold.Sum(x => x.Rug.Sale!.NetAmount - x.Costs.TotalInvestment);
+        var outstanding = sold.Sum(x => x.Rug.Sale!.OutstandingAmount);
+        var batchCount = rugs.Where(r => r.BatchId.HasValue).Select(r => r.BatchId).Distinct().Count();
+        // فرش‌های در جریان که هزینهٔ مرحلهٔ جاری‌شان هنوز ثبت نشده
+        var pendingCost = costed.Count(x => x.Rug.Status == RugStatus.InProgress
+            && x.Rug.WorkflowSteps.Any(s => s.Status == WorkflowStepStatus.InProgress && s.EffectiveCost == 0));
 
         return new DashboardStatsDto(
             rugs.Count,
             rugs.Count(r => r.Status == RugStatus.InProgress),
             rugs.Count(r => r.Status == RugStatus.ReadyForSale),
             rugs.Count(r => r.Status == RugStatus.Sold),
-            rugs.Sum(r => workflowEngine.CalculateRugCosts(r).TotalInvestment),
+            costed.Sum(x => x.Costs.TotalInvestment),
             pipeline,
+            profit,
+            readyValue,
+            batchCount,
+            pendingCost,
+            actualSales,
+            actualProfit,
+            outstanding,
             recent,
             distribution);
     }

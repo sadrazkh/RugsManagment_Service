@@ -3,10 +3,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RugsManagment.Application.Abstractions;
 using RugsManagment.Application.Abstractions.Persistence;
+using RugsManagment.Application.Abstractions.Services;
 using RugsManagment.Application.Services;
 using RugsManagment.Infrastructure.Identity;
 using RugsManagment.Infrastructure.Persistence;
 using RugsManagment.Infrastructure.Persistence.Repositories;
+using RugsManagment.Infrastructure.Storage;
 
 namespace RugsManagment.Infrastructure;
 
@@ -27,6 +29,7 @@ public static class DependencyInjection
             options.UseNpgsql(connectionString));
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped(typeof(IRepository<>), typeof(Repository<>)); // Repository عمومی برای موجودیت‌های ساده
         services.AddScoped<ITenantRepository, TenantRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRugRepository, RugRepository>();
@@ -36,6 +39,12 @@ public static class DependencyInjection
         services.AddScoped<IServiceProviderRepository, ServiceProviderRepository>();
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IProcessStepTypeLookup, ProcessStepTypeLookup>();
+
+        // ذخیره‌سازی تصاویر روی دیسک — مسیر از Storage:ImagePath خوانده می‌شود
+        services.AddSingleton<IImageStorage, LocalImageStorage>();
+
+        // تاریخچهٔ فعالیت — در همان DbContext و همان تراکنش عملیات اصلی می‌نویسد
+        services.AddScoped<IAuditLog, AuditLog>();
 
         return services;
     }

@@ -1,0 +1,101 @@
+@model RugsManagment.Web.Models.Account.ProfileViewModel
+@{
+    ViewData["Title"] = "حساب کاربری";
+}
+
+<div class="mx-auto max-w-xl space-y-5">
+    <h1 class="text-2xl font-bold">حساب کاربری</h1>
+
+    @if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <div role="alert" class="flex items-start gap-2 rounded-lg bg-error-container px-4 py-3 text-sm text-on-error-container">
+            <icon name="error" class="mt-0.5 h-5 w-5" />
+            <span>@Model.Error</span>
+        </div>
+    }
+
+    <form asp-action="Profile" method="post" class="space-y-5">
+        @Html.AntiForgeryToken()
+
+        <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
+            <h2 class="mb-4 flex items-center gap-2 text-sm font-semibold text-primary">
+                <icon name="users" class="h-4 w-4" />
+                مشخصات
+            </h2>
+
+            <div class="space-y-4">
+                <div>
+                    <label asp-for="FullName" class="mb-1 block text-sm font-medium"></label>
+                    <input asp-for="FullName"
+                           class="min-h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+                    <span asp-validation-for="FullName" class="mt-1 block text-xs text-error"></span>
+                </div>
+
+                <dl class="grid grid-cols-2 gap-x-4 gap-y-3 border-t border-outline-variant pt-4 text-sm">
+                    <div>
+                        <dt class="text-on-surface-variant">ایمیل ورود</dt>
+                        <dd class="font-mono text-xs" dir="ltr">@Model.Email</dd>
+                    </div>
+                    <div>
+                        <dt class="text-on-surface-variant">نقش</dt>
+                        <dd>@Model.RoleLabel</dd>
+                    </div>
+                    @if (!string.IsNullOrEmpty(Model.TenantName))
+                    {
+                        <div>
+                            <dt class="text-on-surface-variant">کارگاه</dt>
+                            <dd>@Model.TenantName</dd>
+                        </div>
+                    }
+                </dl>
+
+                <p class="text-xs text-on-surface-variant">
+                    ایمیل ورود شناسهٔ حساب است و قابل تغییر نیست. برای تغییر آن با مدیر کارگاه در تماس باشید.
+                </p>
+            </div>
+        </section>
+
+        <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
+            <h2 class="mb-1 flex items-center gap-2 text-sm font-semibold text-primary">
+                <icon name="settings" class="h-4 w-4" />
+                تغییر رمز عبور
+            </h2>
+            <p class="mb-4 text-xs text-on-surface-variant">
+                اگر قصد تغییر رمز ندارید، این بخش را خالی بگذارید.
+            </p>
+
+            <div class="space-y-4">
+                <div>
+                    <label asp-for="CurrentPassword" class="mb-1 block text-sm font-medium"></label>
+                    <input asp-for="CurrentPassword" dir="ltr" autocomplete="current-password"
+                           class="min-h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+                    <span asp-validation-for="CurrentPassword" class="mt-1 block text-xs text-error"></span>
+                </div>
+                <div>
+                    <label asp-for="NewPassword" class="mb-1 block text-sm font-medium"></label>
+                    <input asp-for="NewPassword" dir="ltr" autocomplete="new-password"
+                           class="min-h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+                    <span asp-validation-for="NewPassword" class="mt-1 block text-xs text-error"></span>
+                </div>
+                <div>
+                    <label asp-for="ConfirmPassword" class="mb-1 block text-sm font-medium"></label>
+                    <input asp-for="ConfirmPassword" dir="ltr" autocomplete="new-password"
+                           class="min-h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+                    <span asp-validation-for="ConfirmPassword" class="mt-1 block text-xs text-error"></span>
+                </div>
+            </div>
+        </section>
+
+        <div class="flex justify-end">
+            <button type="submit"
+                    class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-5 font-semibold text-on-primary hover:bg-primary-hover">
+                <icon name="check" class="h-5 w-5" />
+                ذخیره
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

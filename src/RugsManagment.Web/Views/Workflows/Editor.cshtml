@@ -1,0 +1,23 @@
+@{
+    ViewData["Title"] = ViewData["TemplateId"] != null ? "ویرایش قالب" : "قالب جدید";
+    var templateId = ViewData["TemplateId"];
+}
+<div class="mx-auto max-w-4xl space-y-5">
+    <div class="flex items-center gap-3">
+        @* در RTL «بازگشت» به سمت راست اشاره می‌کند *@
+        <a asp-action="Index"
+           class="grid h-11 w-11 place-items-center rounded-lg border border-outline-variant hover:bg-surface-container">
+            <icon name="arrow-right" label="بازگشت به فهرست قالب‌ها" />
+        </a>
+        <h1 class="text-2xl font-bold">@ViewData["Title"]</h1>
+    </div>
+
+    @if (templateId != null)
+    {
+        <div data-island="workflow-template-editor" data-skeleton="24rem" data-props='@Json.Serialize(new { templateId })'></div>
+    }
+    else
+    {
+        <div data-island="workflow-template-editor" data-skeleton="24rem"></div>
+    }
+</div>

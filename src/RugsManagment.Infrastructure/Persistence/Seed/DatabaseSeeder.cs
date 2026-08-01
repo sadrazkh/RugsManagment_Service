@@ -113,7 +113,85 @@ public static class DatabaseSeeder
 
             db.WorkflowTemplates.AddRange(fullTemplate, shortTemplate);
             await db.SaveChangesAsync();
+
+            await SeedDemoContentAsync(db, demoTenant, fullTemplate, [washing, darkening, repair, inspection, ready]);
         }
+    }
+
+    /// <summary>
+    /// دادهٔ نمایشی برای کارگاه دمو: چند فرش در مراحل مختلف، یک گروه، یک فیلد سفارشی، و یک برچسب.
+    /// فقط یک بار (هنگام ساخت اولیهٔ کارگاه دمو) اجرا می‌شود.
+    /// </summary>
+    private static async Task SeedDemoContentAsync(
+        AppDbContext db, Tenant tenant, WorkflowTemplate template, ProcessStepType[] flow)
+    {
+        // فیلد سفارشی نمونه
+        db.CustomFieldDefinitions.Add(new CustomFieldDefinition
+        {
+            TenantId = tenant.Id, Key = "bg_color", Label = "رنگ زمینه",
+            FieldType = CustomFieldType.Text, SortOrder = 0, IsActive = true
+        });
+
+        var batch = new RugBatch { TenantId = tenant.Id, Name = "محمولهٔ نمونه", Description = "فرش‌های ورودی نمونه", ReceivedAt = DateTimeOffset.UtcNow.AddDays(-3) };
+        db.RugBatches.Add(batch);
+
+        var month = DateTime.UtcNow.ToString("yyyyMM");
+        var seq = 0;
+
+        Rug MakeRug(string title, string origin, decimal w, decimal l, decimal purchase, decimal target, int currentIdx, RugStatus status, string? color, Guid? batchId)
+        {
+            var area = w * l;
+            var steps = new List<RugWorkflowStep>();
+            for (var i = 0; i < flow.Length; i++)
+            {
+                var st = status is RugStatus.ReadyForSale or RugStatus.Sold ? WorkflowStepStatus.Completed
+                    : i < currentIdx ? WorkflowStepStatus.Completed
+                    : i == currentIdx ? WorkflowStepStatus.InProgress
+                    : WorkflowStepStatus.Pending;
+                decimal? cost = st is WorkflowStepStatus.Completed or WorkflowStepStatus.InProgress
+                    ? (flow[i].DefaultPricingModel == StepPricingModel.PerSquareMeter ? Math.Round(flow[i].DefaultUnitRate * area, 2) : flow[i].DefaultUnitRate)
+                    : null;
+                steps.Add(new RugWorkflowStep
+                {
+                    ProcessStepTypeId = flow[i].Id, OrderIndex = i, Status = st, CalculatedCost = cost,
+                    StartedAt = st != WorkflowStepStatus.Pending ? DateTimeOffset.UtcNow.AddDays(-flow.Length + i) : null,
+                    CompletedAt = st == WorkflowStepStatus.Completed ? DateTimeOffset.UtcNow.AddDays(-flow.Length + i + 1) : null
+                });
+            }
+            return new Rug
+            {
+                TenantId = tenant.Id, Sku = $"RUG-{month}-{++seq:D4}", Title = title, Origin = origin,
+                Pattern = "لچک ترنج", Material = "پشم و ابریشم", WidthMeters = w, LengthMeters = l,
+                PurchaseCost = purchase, TargetSalePrice = target, Status = status, CurrentStepIndex = currentIdx,
+                WorkflowTemplateId = template.Id, BatchId = batchId,
+                MetadataJson = color is null ? null : $"{{\"bg_color\":\"{color}\"}}",
+                WorkflowSteps = steps
+            };
+        }
+
+        db.Rugs.AddRange(
+            MakeRug("تبریز لاکی", "تبریز", 2m, 3m, 45_000_000, 90_000_000, 0, RugStatus.InProgress, "لاکی", batch.Id),
+            MakeRug("کاشان سرمه‌ای", "کاشان", 1.5m, 2.25m, 30_000_000, 65_000_000, 2, RugStatus.InProgress, "سرمه‌ای", batch.Id),
+            MakeRug("اصفهان کرم", "اصفهان", 3m, 4m, 120_000_000, 260_000_000, 4, RugStatus.ReadyForSale, "کرم", null),
+            MakeRug("نایین آبی", "نایین", 2m, 3m, 80_000_000, 170_000_000, 4, RugStatus.Sold, "آبی", null),
+            MakeRug("قم ابریشم", "قم", 1m, 1.5m, 60_000_000, 140_000_000, 0, RugStatus.Draft, null, null));
+
+        // برچسب نمونه (طراحی بصری)
+        db.LabelTemplates.Add(new LabelTemplate
+        {
+            TenantId = tenant.Id, Name = "برچسب استاندارد", WidthMm = 90, HeightMm = 50, Mode = LabelMode.Visual,
+            ElementsJson = """
+            {"columns":2,"elements":[
+              {"id":"e1","type":"heading","colSpan":2,"text":"{{title}}","fontSize":16,"bold":true,"align":"center"},
+              {"id":"e2","type":"divider","colSpan":2},
+              {"id":"e3","type":"field","colSpan":1,"field":"sku","prefix":true,"fontSize":12,"align":"right"},
+              {"id":"e4","type":"field","colSpan":1,"field":"dimensions","prefix":true,"fontSize":12,"align":"right"},
+              {"id":"e5","type":"qr","colSpan":2,"source":"{{sku}}","align":"center"}
+            ]}
+            """
+        });
+
+        await db.SaveChangesAsync();
     }
 
     private static ProcessStepType Step(

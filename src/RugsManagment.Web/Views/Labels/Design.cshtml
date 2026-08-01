@@ -1,0 +1,23 @@
+@{
+    ViewData["Title"] = "طراح برچسب";
+    var templateId = ViewData["TemplateId"] as Guid?;
+}
+<div class="space-y-4">
+    <div class="flex items-center gap-3" data-no-print>
+        @* در RTL «بازگشت» به سمت راست اشاره می‌کند *@
+        <a asp-action="Index"
+           class="grid h-11 w-11 place-items-center rounded-lg border border-outline-variant hover:bg-surface-container">
+            <icon name="arrow-right" label="بازگشت به فهرست برچسب‌ها" />
+        </a>
+        <h1 class="text-2xl font-bold">طراح برچسب</h1>
+    </div>
+
+    @if (templateId.HasValue && templateId.Value != Guid.Empty)
+    {
+        <div data-island="label-designer" data-skeleton="30rem" data-props='@Json.Serialize(new { templateId = templateId.Value })'></div>
+    }
+    else
+    {
+        <div data-island="label-designer" data-skeleton="30rem"></div>
+    }
+</div>

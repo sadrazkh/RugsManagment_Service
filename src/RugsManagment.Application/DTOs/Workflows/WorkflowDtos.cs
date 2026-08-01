@@ -12,7 +12,23 @@ public record ProcessStepTypeDto(
     int SortOrder,
     StepPricingModel DefaultPricingModel,
     decimal DefaultUnitRate,
-    string? FieldSchemaJson);
+    string? FieldSchemaJson,
+    /// <summary>مدت معمول انجام (روز) — مبنای هشدار کهنگی</summary>
+    int? ExpectedDurationDays = null,
+    bool IsActive = true,
+    /// <summary>مرحلهٔ سیستمی قابل ویرایش یا حذف توسط کارگاه نیست</summary>
+    bool IsSystem = true);
+
+public record SaveProcessStepTypeRequest(
+    string NameFa,
+    string? NameEn,
+    string Icon,
+    int SortOrder,
+    StepPricingModel DefaultPricingModel,
+    decimal DefaultUnitRate,
+    int? ExpectedDurationDays,
+    string? FieldSchemaJson,
+    bool IsActive);
 
 public record WorkflowTemplateDto(
     Guid Id,

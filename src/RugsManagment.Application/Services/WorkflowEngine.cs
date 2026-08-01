@@ -64,6 +64,9 @@ public sealed class WorkflowEngine(
             {
                 RugId = rug.Id,
                 ProcessStepTypeId = stepType.Id,
+                // خودِ ناوبری هم ست می‌شود: بدون آن، هر کدی که مرحله را بسازد و
+                // در همان درخواست پیش ببرد به NullReferenceException می‌خورد.
+                ProcessStepType = stepType,
                 OrderIndex = index,
                 IsOptional = step.IsOptional,
                 ServiceProviderId = step.ServiceProviderId,
@@ -274,11 +277,13 @@ public sealed class WorkflowEngine(
             {
                 RugId = rug.Id,
                 ProcessStepTypeId = stepType.Id,
+                // خودِ ناوبری هم ست می‌شود: بدون آن، هر کدی که مرحله را بسازد و
+                // در همان درخواست پیش ببرد به NullReferenceException می‌خورد.
+                ProcessStepType = stepType,
                 OrderIndex = startIndex + i,
                 IsOptional = input.IsOptional,
                 ServiceProviderId = input.ServiceProviderId,
-                Status = WorkflowStepStatus.Pending,
-                ProcessStepType = stepType
+                Status = WorkflowStepStatus.Pending
             };
             ApplyPricing(instance, rug, stepType, input.Pricing);
             rug.WorkflowSteps.Add(instance);
@@ -316,6 +321,7 @@ public sealed class WorkflowEngine(
         {
             RugId = rugId,
             ProcessStepTypeId = templateStep.ProcessStepTypeId,
+            ProcessStepType = templateStep.ProcessStepType,
             OrderIndex = orderIndex,
             IsOptional = templateStep.IsOptional,
             ServiceProviderId = templateStep.DefaultServiceProviderId,
@@ -359,9 +365,28 @@ public sealed class WorkflowEngine(
             step.ManualCostOverride = request.ManualCostOverride;
         else if (request.ManualCostOverride is null && request.PricingModel.HasValue)
             step.ManualCostOverride = null;
+
+        if (request.Adjustment.HasValue)
+            step.Adjustment = request.Adjustment;
     }
 
     /// <summary>اولین مرحله Pending را InProgress می‌کند؛ اگر مرحله‌ای نماند → آماده فروش</summary>
+    /// <summary>
+    /// وضعیت واقعی فرش بر اساس مراحلش:
+    ///   بدون مرحله → پیش‌نویس، همهٔ مراحل تمام → آمادهٔ فروش، وگرنه در جریان.
+    /// «فروخته‌شده» و «بایگانی» اینجا برنمی‌گردند چون از گردش کار نمی‌آیند.
+    /// </summary>
+    public RugStatus ResolveStatusFromWorkflow(Rug rug)
+    {
+        if (rug.WorkflowSteps.Count == 0)
+            return RugStatus.Draft;
+
+        var allSettled = rug.WorkflowSteps.All(s =>
+            s.Status is WorkflowStepStatus.Completed or WorkflowStepStatus.Skipped or WorkflowStepStatus.Cancelled);
+
+        return allSettled ? RugStatus.ReadyForSale : RugStatus.InProgress;
+    }
+
     private static void ActivateCurrentStep(Rug rug)
     {
         var current = rug.WorkflowSteps

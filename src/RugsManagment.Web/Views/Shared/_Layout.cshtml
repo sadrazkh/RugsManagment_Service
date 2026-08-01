@@ -1,0 +1,247 @@
+@using System.Security.Claims
+@using RugsManagment.Web.Auth
+@inject RugsManagment.Web.Frontend.ViteAssets ViteAssets
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@inject RugsManagment.Web.Support.TenantSettingsAccessor TenantSettings
+@{
+    var csrf = Antiforgery.GetAndStoreTokens(Context).RequestToken;
+    var isAuthed = User.Identity?.IsAuthenticated == true;
+    var role = User.FindFirstValue(ClaimTypes.Role);
+    var isSystemAdmin = role == nameof(RugsManagment.Domain.Enums.UserRole.SystemAdmin);
+    var isTenantAdmin = role == nameof(RugsManagment.Domain.Enums.UserRole.TenantAdmin);
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+
+    // یک کنترلر ممکن است چند آیتم منو داشته باشد (مثل Settings)، پس اکشن هم مقایسه می‌شود
+    // — وگرنه همهٔ آیتم‌های آن کنترلر هم‌زمان فعال نشان داده می‌شوند.
+    bool IsActive(string controller, string action) =>
+        string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(currentAction, action, StringComparison.OrdinalIgnoreCase);
+
+    string NavCss(string controller, string action) => IsActive(controller, action)
+        ? "bg-primary/10 text-primary font-semibold"
+        : "text-on-surface-variant hover:bg-surface-container";
+
+    // آیتم‌های منو یک بار تعریف می‌شوند و هم در نوار کناری و هم در ناوبری پایین موبایل به کار می‌روند
+    (string Controller, string Action, string Icon, string Label)[] navItems = isSystemAdmin
+        ? [("Admin", "Index", "building", "کارگاه‌ها")]
+        : isTenantAdmin
+            ?
+            [
+                ("Dashboard", "Index", "dashboard", "داشبورد"),
+                ("Rugs", "Index", "rug", "فرش‌ها"),
+                ("Groups", "Index", "package", "گروه‌ها"),
+                ("Workflows", "Index", "workflow", "گردش کار"),
+                ("Labels", "Index", "tag", "برچسب‌ها"),
+                ("Reports", "Index", "chart", "گزارش‌ها"),
+                ("Sales", "Index", "receipt", "گزارش فروش"),
+                ("Providers", "Index", "handshake", "طرف‌های خدمات"),
+                ("Users", "Index", "users", "کاربران"),
+                ("Settings", "Tenant", "building", "تنظیمات کارگاه"),
+                ("Settings", "StepTypes", "workflow", "انواع مرحله"),
+                ("Settings", "CustomFields", "settings", "فیلدهای سفارشی"),
+                ("Settings", "Activity", "info", "تاریخچهٔ فعالیت"),
+            ]
+            :
+            [
+                ("Dashboard", "Index", "dashboard", "داشبورد"),
+                ("Rugs", "Index", "rug", "فرش‌ها"),
+                ("Groups", "Index", "package", "گروه‌ها"),
+                ("Workflows", "Index", "workflow", "گردش کار"),
+                ("Labels", "Index", "tag", "برچسب‌ها"),
+                ("Reports", "Index", "chart", "گزارش‌ها"),
+            ];
+
+    // ناوبری پایین موبایل فقط پرکاربردترین‌ها (راهنمای UX: حداکثر ۵ آیتم)
+    var bottomNavItems = navItems.Take(5).ToArray();
+}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#6b0008" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#14100f" media="(prefers-color-scheme: dark)" />
+    <meta name="csrf-token" content="@csrf" />
+    <title>@ViewData["Title"] — سامانه مدیریت فرش</title>
+
+    @*
+        تم قبل از رنگ‌آمیزی صفحه اعمال می‌شود تا در حالت تاریک «فلاش سفید» رخ ندهد.
+        این اسکریپت عمداً inline و همگام است.
+    *@
+    <script nonce="@Context.CspNonce()">
+        (function () {
+            try {
+                var saved = localStorage.getItem('rugs-theme');
+                var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (saved === 'dark' || (!saved && prefersDark)) document.documentElement.classList.add('dark');
+            } catch (e) { /* حالت خصوصی مرورگر — بی‌صدا */ }
+        })();
+    </script>
+
+    @* PWA — نصب‌پذیری و آفلاین *@
+    <link rel="manifest" href="~/manifest.webmanifest" />
+    <link rel="icon" href="~/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="~/icon.svg" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" />
+    @ViteAssets.RenderHead(Html)
+</head>
+<body class="min-h-screen bg-surface font-sans text-on-surface antialiased">
+
+@* پرش به محتوا — اولین توقف Tab برای کاربران کیبورد و صفحه‌خوان *@
+<a href="#main-content"
+   class="sr-only-focusable absolute right-4 top-4 z-[80] rounded-lg bg-primary px-4 py-2 text-on-primary">
+    پرش به محتوای اصلی
+</a>
+
+@if (!isAuthed)
+{
+    @* صفحات عمومی (ورود) — بدون منو، تمام‌صفحه *@
+    <div id="main-content" class="grid min-h-screen place-items-center px-4">
+        @RenderBody()
+    </div>
+}
+else
+{
+    <div class="flex min-h-screen">
+        @* ── پوشش تیره پشت منوی موبایل ── *@
+        <div id="nav-backdrop" hidden class="fixed inset-0 z-30 bg-black/50 md:hidden" data-no-print></div>
+
+        @* ── نوار کناری (دسکتاپ ثابت / موبایل کشویی) ── *@
+        <aside id="app-sidebar"
+               aria-label="ناوبری اصلی"
+               class="fixed inset-y-0 right-0 z-40 w-72 translate-x-full overflow-y-auto border-l border-outline-variant bg-surface-container-lowest transition-transform duration-200 md:static md:translate-x-0"
+               data-no-print>
+            <div class="flex items-center justify-between border-b border-outline-variant px-5 py-4">
+                <div class="flex items-center gap-2 font-bold text-primary">
+                    <span class="grid h-9 w-9 place-items-center rounded-lg bg-primary text-on-primary">
+                        <icon name="rug" class="h-5 w-5" />
+                    </span>
+                    <span>مدیریت فرش</span>
+                </div>
+                <button type="button" id="nav-close"
+                        class="grid h-11 w-11 place-items-center rounded-lg hover:bg-surface-container md:hidden">
+                    <icon name="close" label="بستن منو" />
+                </button>
+            </div>
+
+            <nav class="space-y-1 p-3 text-sm">
+                @foreach (var item in navItems)
+                {
+                    <a asp-controller="@item.Controller" asp-action="@item.Action"
+                       aria-current="@(IsActive(item.Controller, item.Action) ? "page" : null)"
+                       class="flex min-h-11 items-center gap-3 rounded-lg px-3 @NavCss(item.Controller, item.Action)">
+                        <icon name="@item.Icon" />
+                        <span>@item.Label</span>
+                    </a>
+                }
+            </nav>
+        </aside>
+
+        <div class="flex min-w-0 flex-1 flex-col">
+            <header class="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-outline-variant bg-surface-container-lowest/90 px-4 py-3 backdrop-blur md:px-6"
+                    data-no-print>
+                <div class="flex min-w-0 items-center gap-2">
+                    <button type="button" id="nav-open"
+                            class="grid h-11 w-11 place-items-center rounded-lg hover:bg-surface-container md:hidden"
+                            aria-controls="app-sidebar" aria-expanded="false">
+                        <icon name="menu" label="باز کردن منو" />
+                    </button>
+                    @* برچسب زمینه‌ای، نه عنوان صفحه — عنوان اصلی (h1) داخل خود صفحه است *@
+                    <span class="truncate text-sm font-medium text-on-surface-variant md:hidden">@ViewData["Title"]</span>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    @* جستجو/پالت فرمان — میان‌بر Ctrl+K هم همین را باز می‌کند *@
+                    <button type="button" data-open-palette
+                            class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-3 text-sm text-on-surface-variant hover:bg-surface-container">
+                        <icon name="search" class="h-4 w-4" />
+                        <span class="hidden lg:inline">جستجو</span>
+                        <kbd class="hidden rounded border border-outline-variant px-1 text-[0.65rem] lg:inline" dir="ltr">Ctrl K</kbd>
+                    </button>
+
+                    @* اسکن برچسب فرش با دوربین — کنش پرکاربرد اپراتور روی موبایل *@
+                    <div data-island="qr-scanner" data-skeleton="off"></div>
+
+                    <div data-island="pwa-install" data-skeleton="off"></div>
+
+                    <button type="button" id="theme-toggle"
+                            class="grid h-11 w-11 place-items-center rounded-lg hover:bg-surface-container">
+                        <icon name="sun" class="hidden h-5 w-5 dark:block" label="روشن کردن تم" />
+                        <icon name="moon" class="h-5 w-5 dark:hidden" label="تاریک کردن تم" />
+                    </button>
+
+                    @if (User.GetTenantName() is string tenantName)
+                    {
+                        <span class="hidden rounded-full bg-secondary-container px-3 py-1 text-xs text-on-secondary-container sm:inline">@tenantName</span>
+                    }
+
+                    @* نام کاربر حالا لینک حساب کاربری است — مسیر متعارف رسیدن به تغییر رمز *@
+                    <a asp-controller="Account" asp-action="Profile"
+                       class="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm text-on-surface-variant hover:bg-surface-container"
+                       title="حساب کاربری">
+                        <icon name="users" class="h-4 w-4" />
+                        <span class="hidden sm:inline">@User.GetDisplayName()</span>
+                    </a>
+
+                    <form asp-controller="Account" asp-action="Logout" method="post" class="inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit"
+                                class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-3 text-sm text-on-surface-variant hover:bg-surface-container">
+                            <icon name="logout" class="h-4 w-4" />
+                            <span class="hidden sm:inline">خروج</span>
+                        </button>
+                    </form>
+                </div>
+            </header>
+
+            <main id="main-content" class="flex-1 px-4 py-6 pb-24 md:px-6 md:pb-6">
+                @* هشدار نزدیک بودن پایان اشتراک — قبل از قطع دسترسی، نه بعدش *@
+                @if (TenantSettings.ExpiryWarningDays is int daysLeft)
+                {
+                    <div role="status"
+                         class="mb-4 flex flex-wrap items-center gap-2 rounded-lg bg-warning/10 px-4 py-3 text-sm text-warning">
+                        <icon name="warning" class="h-5 w-5" />
+                        <span data-numeric>
+                            @(daysLeft <= 0
+                                ? "اشتراک کارگاه امروز به پایان می‌رسد."
+                                : $"اشتراک کارگاه تا {RugsManagment.Web.Support.PersianFormat.Count(daysLeft)} روز دیگر به پایان می‌رسد.")
+                        </span>
+                        <span class="text-xs text-on-surface-variant">برای تمدید با پشتیبانی تماس بگیرید.</span>
+                    </div>
+                }
+
+                @if (TempData["Toast"] is string toastMessage)
+                {
+                    @* پیام سمت سرور به سیستم Toast کلاینت پاس داده می‌شود تا ظاهر یکسان باشد *@
+                    <div data-server-toast="@toastMessage" data-server-toast-kind="success" hidden></div>
+                }
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+
+    @* ── ناوبری پایین (فقط موبایل) — دسترسی یک‌لمسی به بخش‌های اصلی ── *@
+    <nav class="pb-safe fixed inset-x-0 bottom-0 z-30 flex border-t border-outline-variant bg-surface-container-lowest/95 backdrop-blur md:hidden"
+         aria-label="ناوبری سریع" data-no-print>
+        @foreach (var item in bottomNavItems)
+        {
+            <a asp-controller="@item.Controller" asp-action="@item.Action"
+               aria-current="@(IsActive(item.Controller, item.Action) ? "page" : null)"
+               class="flex flex-1 flex-col items-center gap-0.5 pt-2 text-[0.68rem] @(IsActive(item.Controller, item.Action) ? "text-primary" : "text-on-surface-variant")">
+                <icon name="@item.Icon" />
+                <span>@item.Label</span>
+            </a>
+        }
+    </nav>
+}
+
+@await RenderSectionAsync("Scripts", required: false)
+<script src="~/js/site.js" asp-append-version="true"></script>
+</body>
+</html>

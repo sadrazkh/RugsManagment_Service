@@ -8,6 +8,17 @@ public record DashboardStatsDto(
     int Sold,
     decimal TotalInvestment,
     decimal PipelineValue,
+    /// <summary>سود تخمینیِ فرش‌های فروخته‌نشده — بر پایهٔ قیمت هدف</summary>
+    decimal ProfitEstimate,
+    decimal ReadyForSaleValue,
+    int BatchCount,
+    int PendingCostCount,
+    /// <summary>مجموع فروش خالص واقعی</summary>
+    decimal ActualSalesTotal,
+    /// <summary>سود واقعیِ محقق‌شده روی فرش‌های فروخته‌شده</summary>
+    decimal ActualProfitTotal,
+    /// <summary>طلب باقی‌مانده از خریداران (فروش اقساطی/چکی)</summary>
+    decimal OutstandingReceivable,
     IReadOnlyList<RecentRugDto> RecentRugs,
     IReadOnlyList<StepDistributionDto> StepDistribution);
 

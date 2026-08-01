@@ -29,6 +29,12 @@ public class Rug : BaseEntity, ITenantScoped
     public string? ImageUrl { get; set; }
     public string? Notes { get; set; }
 
+    /// <summary>
+    /// مقادیر فیلدهای سفارشی این کارگاه به‌صورت JSON (ستون jsonb).
+    /// کلیدها از CustomFieldDefinition.Key می‌آیند — انعطاف NoSQL‌گونه بدون تغییر اسکیمـا.
+    /// </summary>
+    public string? MetadataJson { get; set; }
+
     /// <summary>اگر از قالب ساخته شده؛ null یعنی مسیر کاملاً سفارشی</summary>
     public Guid? WorkflowTemplateId { get; set; }
 
@@ -38,12 +44,28 @@ public class Rug : BaseEntity, ITenantScoped
     /// <summary>شاخص مرحلهٔ جاری در مسیر (برای UI)</summary>
     public int CurrentStepIndex { get; set; }
 
+    /// <summary>
+    /// زمان انتقال به سطل زباله؛ null یعنی فعال.
+    /// حذف نرم است تا هزینه‌های ثبت‌شدهٔ مراحل و تاریخچه از بین نرود و اشتباه اپراتور برگشت‌پذیر باشد.
+    /// فیلتر سراسری EF این رکوردها را از همهٔ کوئری‌ها بیرون می‌گذارد.
+    /// </summary>
+    public DateTimeOffset? DeletedAt { get; set; }
+
+    /// <summary>چه کسی حذف کرده — برای پاسخ‌گویی در لاگ فعالیت</summary>
+    public Guid? DeletedByUserId { get; set; }
+
     public Tenant Tenant { get; set; } = null!;
     public RugBatch? Batch { get; set; }
     public WorkflowTemplate? WorkflowTemplate { get; set; }
 
     /// <summary>کپی زندهٔ مراحل این فرش — با پیش بردن مرحله وضعیت‌ها عوض می‌شود</summary>
     public ICollection<RugWorkflowStep> WorkflowSteps { get; set; } = [];
+
+    /// <summary>گالری عکس‌های فرش به ترتیب SortOrder</summary>
+    public ICollection<RugImage> Images { get; set; } = [];
+
+    /// <summary>فروش این فرش؛ null یعنی هنوز فروخته نشده</summary>
+    public RugSale? Sale { get; set; }
 
     /// <summary>مساحت متر مربع — فقط محاسباتی، در دیتابیس ذخیره نمی‌شود</summary>
     public decimal AreaSquareMeters => WidthMeters * LengthMeters;

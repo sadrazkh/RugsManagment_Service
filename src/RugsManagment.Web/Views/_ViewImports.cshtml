@@ -1,0 +1,8 @@
+@using RugsManagment.Web
+@using RugsManagment.Web.Models
+@using RugsManagment.Web.Support
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@addTagHelper *, RugsManagment.Web
+
+@* واحد پول کارگاه — به‌جای متن ثابت «تومان» در viewها *@
+@inject RugsManagment.Web.Support.TenantSettingsAccessor Tenant

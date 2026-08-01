@@ -1,0 +1,389 @@
+@using RugsManagment.Application.DTOs.Rugs
+@using RugsManagment.Domain.Enums
+@using RugsManagment.Web.Models.Rugs
+@using RugsManagment.Web.Support
+@model RugListViewModel
+@{
+    ViewData["Title"] = "فرش‌ها";
+    var q = Model.Query;
+    var result = Model.Result;
+
+    (string Label, RugStatus? Value)[] statusFilters =
+    {
+        ("همه", null),
+        ("پیش‌نویس", RugStatus.Draft),
+        ("در جریان", RugStatus.InProgress),
+        ("آمادهٔ فروش", RugStatus.ReadyForSale),
+        ("فروخته‌شده", RugStatus.Sold),
+        ("بایگانی", RugStatus.Archived),
+    };
+
+    // سرستون‌های قابل مرتب‌سازی: عنوان نمایشی + ستون منطقی
+    (string Label, RugSortBy Column)[] sortableHeaders =
+    {
+        ("کد", RugSortBy.Sku),
+        ("عنوان", RugSortBy.Title),
+        ("مساحت", RugSortBy.Area),
+        ("مرحلهٔ جاری", RugSortBy.CurrentStep),
+        ("وضعیت", RugSortBy.Status),
+        ("هزینهٔ کل", RugSortBy.TotalCost),
+    };
+
+    var advancedOpen = q.BatchId.HasValue || q.StepTypeId.HasValue || q.CreatedFrom.HasValue || q.CreatedTo.HasValue;
+}
+
+<div class="space-y-5">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <h1 class="text-2xl font-bold">فرش‌ها</h1>
+            <p class="text-sm text-on-surface-variant" data-numeric>
+                @PersianFormat.Count(result.TotalCount) فرش
+                @if (q.HasActiveFilters)
+                {
+                    <text>با فیلتر فعال</text>
+                }
+            </p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            @if (User.IsInRole(nameof(UserRole.TenantAdmin)))
+            {
+                <a asp-action="Trash"
+                   class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-4 hover:bg-surface-container">
+                    <icon name="trash" class="h-5 w-5" />
+                    سطل زباله
+                </a>
+            }
+            <a asp-action="Create"
+               class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 font-semibold text-on-primary hover:bg-primary-hover">
+                <icon name="plus" class="h-5 w-5" />
+                ثبت فرش
+            </a>
+        </div>
+    </div>
+
+    @*
+        همهٔ فیلترها در یک فرم GET هستند تا وضعیت در آدرس بنشیند:
+        قابل اشتراک، bookmark و سازگار با دکمهٔ back مرورگر.
+    *@
+    <form method="get" asp-action="Index" id="rug-filters" class="space-y-3" data-no-print>
+        @* مرتب‌سازی فعلی هنگام جستجو حفظ می‌شود *@
+        @if (q.SortBy != RugSortBy.CreatedAt)
+        {
+            <input type="hidden" name="sortBy" value="@q.SortBy" />
+        }
+        @if (!q.Descending)
+        {
+            <input type="hidden" name="descending" value="false" />
+        }
+
+        <div class="flex flex-wrap gap-3">
+            <div class="relative min-w-64 flex-1">
+                <label for="rug-search" class="sr-only">جستجو در فرش‌ها</label>
+                <span class="pointer-events-none absolute inset-y-0 right-3 grid place-items-center text-on-surface-variant">
+                    <icon name="search" />
+                </span>
+                <input type="search" id="rug-search" name="search" value="@q.Search"
+                       placeholder="جستجو در کد، عنوان، اصالت، طرح، جنس یا یادداشت…"
+                       autocomplete="off"
+                       data-autosubmit
+                       class="min-h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest pe-11 ps-3 outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            </div>
+
+            <button type="submit"
+                    class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-4 hover:bg-surface-container">
+                <icon name="search" class="h-4 w-4" />
+                جستجو
+            </button>
+
+            @if (q.HasActiveFilters)
+            {
+                <a asp-action="Index"
+                   class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-4 text-on-surface-variant hover:bg-surface-container">
+                    <icon name="close" class="h-4 w-4" />
+                    حذف فیلترها
+                </a>
+            }
+        </div>
+
+        @* فیلتر وضعیت — چیپ‌ها به‌جای select چون پرکاربردترین فیلترند *@
+        <div class="flex flex-wrap gap-2" role="group" aria-label="فیلتر وضعیت">
+            @foreach (var (label, value) in statusFilters)
+            {
+                var isActive = q.Status == value;
+                var route = Model.RouteValues(page: 1);
+                route.Remove("status");
+                if (value.HasValue) route["status"] = value.Value.ToString();
+
+                <a asp-action="Index" asp-all-route-data="route"
+                   aria-current="@(isActive ? "true" : null)"
+                   class="inline-flex min-h-11 items-center rounded-full border px-4 text-sm @(isActive
+                       ? "border-primary bg-primary/10 font-semibold text-primary"
+                       : "border-outline-variant text-on-surface-variant hover:bg-surface-container")">
+                    @label
+                </a>
+            }
+        </div>
+
+        @* فیلترهای کم‌کاربردتر پشت یک آکاردئون — جلوگیری از شلوغی بصری *@
+        <details class="rounded-lg border border-outline-variant bg-surface-container-lowest" @(advancedOpen ? "open" : "")>
+            <summary class="flex min-h-11 items-center gap-2 px-4 text-sm font-medium text-on-surface-variant">
+                <icon name="filter" class="h-4 w-4" />
+                فیلترهای بیشتر
+            </summary>
+            <div class="grid gap-3 border-t border-outline-variant p-4 sm:grid-cols-2 lg:grid-cols-4">
+                <label class="block">
+                    <span class="mb-1 block text-sm">گروه</span>
+                    <select name="batchId"
+                            class="min-h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 outline-none focus:border-primary">
+                        <option value="">همهٔ گروه‌ها</option>
+                        @foreach (var b in Model.Batches)
+                        {
+                            <option value="@b.Id" selected="@(q.BatchId == b.Id)">@b.Name</option>
+                        }
+                    </select>
+                </label>
+
+                <label class="block">
+                    <span class="mb-1 block text-sm">مرحلهٔ جاری</span>
+                    <select name="stepTypeId"
+                            class="min-h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 outline-none focus:border-primary">
+                        <option value="">همهٔ مراحل</option>
+                        @foreach (var s in Model.StepTypes)
+                        {
+                            <option value="@s.Id" selected="@(q.StepTypeId == s.Id)">@s.NameFa</option>
+                        }
+                    </select>
+                </label>
+
+                <label class="block">
+                    <span class="mb-1 block text-sm">ثبت از تاریخ</span>
+                    <input type="date" name="createdFrom" dir="ltr" value="@q.CreatedFrom?.ToString("yyyy-MM-dd")"
+                           class="min-h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 outline-none focus:border-primary" />
+                </label>
+
+                <label class="block">
+                    <span class="mb-1 block text-sm">تا تاریخ</span>
+                    <input type="date" name="createdTo" dir="ltr" value="@q.CreatedTo?.ToString("yyyy-MM-dd")"
+                           class="min-h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 outline-none focus:border-primary" />
+                </label>
+
+                <div class="sm:col-span-2 lg:col-span-4">
+                    <button type="submit"
+                            class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-5 font-semibold text-on-primary hover:bg-primary-hover">
+                        <icon name="check" class="h-4 w-4" />
+                        اعمال فیلترها
+                    </button>
+                </div>
+            </div>
+        </details>
+    </form>
+
+    @if (result.TotalCount == 0)
+    {
+        <div class="rounded-xl border border-dashed border-outline-variant bg-surface-container-lowest p-12 text-center">
+            <span class="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full bg-surface-container text-on-surface-variant">
+                <icon name="@(q.HasActiveFilters ? "search" : "rug")" class="h-7 w-7" />
+            </span>
+
+            @if (!q.HasActiveFilters)
+            {
+                <p class="font-medium text-on-surface">هنوز فرشی ثبت نشده است</p>
+                <p class="mx-auto mt-1 max-w-sm text-sm text-on-surface-variant">
+                    اولین فرش را ثبت کنید تا مسیر گردش کار، هزینه‌ها و برچسب آن ساخته شود.
+                </p>
+                <a asp-action="Create"
+                   class="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-5 font-semibold text-on-primary hover:bg-primary-hover">
+                    <icon name="plus" class="h-5 w-5" />
+                    ثبت اولین فرش
+                </a>
+            }
+            else
+            {
+                <p class="font-medium text-on-surface">
+                    @if (!string.IsNullOrWhiteSpace(q.Search))
+                    {
+                        <text>چیزی برای «@q.Search» پیدا نشد</text>
+                    }
+                    else
+                    {
+                        <text>فرشی با این فیلترها پیدا نشد</text>
+                    }
+                </p>
+                <p class="mx-auto mt-1 max-w-sm text-sm text-on-surface-variant">
+                    املای عبارت را بررسی کنید، بخشی از کد یا عنوان را جستجو کنید، یا فیلترها را بردارید.
+                </p>
+                <a asp-action="Index"
+                   class="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-5 hover:bg-surface-container">
+                    <icon name="close" class="h-4 w-4" />
+                    حذف همهٔ فیلترها
+                </a>
+            }
+        </div>
+    }
+    else
+    {
+        <!-- موبایل: کارت -->
+        <div class="grid gap-3 md:hidden">
+            @foreach (var r in result.Items)
+            {
+                var st = DisplayHelpers.RugStatus(r.Status);
+                <div class="rounded-xl border border-outline-variant bg-surface-container-lowest shadow-sm transition hover:shadow-md">
+                    <div class="flex items-start gap-2 p-4">
+                        <label class="flex min-h-11 min-w-11 items-start justify-center pt-0.5">
+                            <span class="sr-only">انتخاب @r.Sku</span>
+                            <input type="checkbox" data-rug-select="@r.Id"
+                                   class="h-5 w-5 shrink-0 rounded border-outline-variant text-primary" />
+                        </label>
+                        <a asp-action="Details" asp-route-id="@r.Id" class="flex min-w-0 flex-1 gap-3">
+                            @* اندازه ثابت است تا نبودِ عکس باعث پرش چیدمان نشود *@
+                            <span class="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-lg bg-surface-container text-on-surface-variant">
+                                @if (r.ThumbnailUrl is string thumb)
+                                {
+                                    <img src="@thumb" alt="" width="64" height="64" loading="lazy" decoding="async"
+                                         class="h-full w-full object-cover" />
+                                }
+                                else
+                                {
+                                    <icon name="image" class="h-6 w-6" />
+                                }
+                            </span>
+                            <span class="min-w-0 flex-1">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="min-w-0">
+                                    <div class="truncate font-semibold">@(string.IsNullOrEmpty(r.Title) ? "بدون عنوان" : r.Title)</div>
+                                    <div class="font-mono text-xs text-on-surface-variant" dir="ltr">@r.Sku</div>
+                                </div>
+                                <span class="inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs @st.Css">
+                                    <icon name="@st.Icon" class="h-3.5 w-3.5" />
+                                    @st.Label
+                                </span>
+                            </div>
+                            <dl class="mt-3 grid grid-cols-3 gap-2 text-center text-sm" data-numeric>
+                                <div>
+                                    <dt class="text-xs text-on-surface-variant">ابعاد</dt>
+                                    <dd>@PersianFormat.Number(r.WidthMeters)×@PersianFormat.Number(r.LengthMeters)</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs text-on-surface-variant">مساحت</dt>
+                                    <dd>@PersianFormat.Number(r.AreaSquareMeters) م²</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs text-on-surface-variant">مرحله</dt>
+                                    <dd class="truncate">@(r.CurrentStepNameFa ?? "—")</dd>
+                                </div>
+                            </dl>
+                            <p class="mt-2 text-sm" data-numeric>
+                                @PersianFormat.Money(r.TotalInvestment)
+                                <span class="text-xs text-on-surface-variant">@Tenant.Currency</span>
+                            </p>
+                            </span>
+                        </a>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- دسکتاپ: جدول -->
+        <div class="hidden overflow-x-auto rounded-xl border border-outline-variant bg-surface-container-lowest md:block">
+            <table class="w-full min-w-[56rem] text-sm">
+                <caption class="sr-only">فهرست فرش‌های کارگاه با وضعیت، ابعاد و هزینه — سرستون‌ها برای مرتب‌سازی قابل کلیک‌اند</caption>
+                <thead class="bg-surface-container text-on-surface-variant">
+                    <tr>
+                        <th scope="col" class="w-12 p-3"><span class="sr-only">انتخاب</span></th>
+                        <th scope="col" class="w-16 p-3"><span class="sr-only">عکس</span></th>
+                        @foreach (var (label, column) in sortableHeaders)
+                        {
+                            <th scope="col" class="p-0 text-right font-medium" aria-sort="@Model.AriaSort(column)">
+                                <a asp-action="Index" asp-all-route-data="Model.SortRoute(column)"
+                                   class="flex min-h-11 items-center gap-1 px-3 hover:text-primary">
+                                    @label
+                                    @if (Model.SortIcon(column) is string icon)
+                                    {
+                                        <icon name="@icon" class="h-4 w-4 text-primary" />
+                                    }
+                                </a>
+                            </th>
+                        }
+                        <th scope="col" class="p-3"><span class="sr-only">عملیات</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in result.Items)
+                    {
+                        var st = DisplayHelpers.RugStatus(r.Status);
+                        <tr class="border-t border-outline-variant transition-colors even:bg-surface-container-low/60 hover:bg-surface-container/70">
+                            <td class="p-3">
+                                <label class="flex min-h-11 min-w-11 items-center justify-center">
+                                    <span class="sr-only">انتخاب @r.Sku</span>
+                                    <input type="checkbox" data-rug-select="@r.Id"
+                                           class="h-5 w-5 rounded border-outline-variant text-primary" />
+                                </label>
+                            </td>
+                            <td class="p-3">
+                                @* اندازهٔ ثابت: ردیف‌های بی‌عکس نباید ارتفاع جدول را ناهمگون کنند *@
+                                <span class="grid h-11 w-11 place-items-center overflow-hidden rounded-lg bg-surface-container text-on-surface-variant">
+                                    @if (r.ThumbnailUrl is string thumb)
+                                    {
+                                        <img src="@thumb" alt="" width="44" height="44" loading="lazy" decoding="async"
+                                             class="h-full w-full object-cover" />
+                                    }
+                                    else
+                                    {
+                                        <icon name="image" class="h-4 w-4" />
+                                    }
+                                </span>
+                            </td>
+                            <td class="p-3 font-mono text-xs" dir="ltr">@r.Sku</td>
+                            <td class="p-3 font-medium">
+                                @* لینک تمام‌ارتفاع سلول تا هدف کلیک به ۴۴px برسد *@
+                                <a asp-action="Details" asp-route-id="@r.Id"
+                                   class="flex min-h-11 items-center hover:text-primary hover:underline">
+                                    @(string.IsNullOrEmpty(r.Title) ? "بدون عنوان" : r.Title)
+                                </a>
+                            </td>
+                            <td class="p-3 whitespace-nowrap" data-numeric>
+                                @PersianFormat.Number(r.AreaSquareMeters)
+                                <span class="text-xs text-on-surface-variant">م²</span>
+                            </td>
+                            <td class="p-3">@(r.CurrentStepNameFa ?? "—")</td>
+                            <td class="p-3">
+                                <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs @st.Css">
+                                    <icon name="@st.Icon" class="h-3.5 w-3.5" />
+                                    @st.Label
+                                </span>
+                            </td>
+                            <td class="p-3 whitespace-nowrap" data-numeric>
+                                @PersianFormat.Money(r.TotalInvestment)
+                                <span class="text-xs text-on-surface-variant">@Tenant.Currency</span>
+                            </td>
+                            <td class="p-3">
+                                <div class="flex justify-end gap-1.5">
+                                    @if (r.ActiveStepId is Guid stepId)
+                                    {
+                                        <button type="button" data-advance-rug="@r.Id" data-advance-step="@stepId"
+                                                data-advance-label="@r.Sku"
+                                                class="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-primary px-3 text-xs text-primary hover:bg-primary/10">
+                                            <icon name="check" class="h-4 w-4" />
+                                            مرحلهٔ بعد
+                                        </button>
+                                    }
+                                    <a asp-action="Details" asp-route-id="@r.Id"
+                                       class="inline-flex min-h-11 items-center rounded-lg border border-outline-variant px-3 text-xs hover:bg-surface-container">
+                                        جزئیات
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <partial name="_Pager" model="Model" />
+
+        @* جزیرهٔ سبک برای دکمه‌های «مرحلهٔ بعد» داخل لیست *@
+        <div data-island="list-quick-advance" data-skeleton="off"></div>
+        @* نوار عملیات دسته‌ای (انتخاب چند فرش) *@
+        <div data-island="rug-bulk-toolbar" data-skeleton="off"></div>
+    }
+</div>

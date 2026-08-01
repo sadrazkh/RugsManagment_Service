@@ -16,9 +16,21 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IRugManagementService, RugManagementService>();
         services.AddScoped<ITenantManagementService, TenantManagementService>();
+        services.AddScoped<IUserManagementService, UserManagementService>();
+        services.AddScoped<ICustomFieldService, CustomFieldService>();
+        services.AddScoped<ILookupService, LookupService>();
+        services.AddScoped<ILabelTemplateService, LabelTemplateService>();
         services.AddScoped<IWorkflowManagementService, WorkflowManagementService>();
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IRugBatchService, RugBatchService>();
+        services.AddScoped<IRugImageService, RugImageService>();
+        services.AddScoped<IServiceProviderService, ServiceProviderService>();
+        services.AddScoped<IRugSaleService, RugSaleService>();
+        services.AddScoped<IAnalyticsService, AnalyticsService>();
+        services.AddScoped<ITenantSettingsService, TenantSettingsService>();
+        services.AddScoped<IActivityLogService, ActivityLogService>();
+        services.AddScoped<IProfileService, ProfileService>();
+        services.AddScoped<IStepTypeService, StepTypeService>();
         return services;
     }
 }

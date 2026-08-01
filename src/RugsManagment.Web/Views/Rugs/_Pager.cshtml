@@ -1,0 +1,113 @@
+@using RugsManagment.Web.Models.Rugs
+@using RugsManagment.Web.Support
+@model RugListViewModel
+@{
+    var result = Model.Result;
+    if (result.TotalPages <= 1 && result.TotalCount <= result.PageSize)
+    {
+        // یک صفحه و بس — فقط خلاصهٔ تعداد لازم است
+    }
+
+    // پنجرهٔ شماره‌ها: همیشه اول و آخر + دو تا اطراف صفحهٔ جاری، بقیه با «…»
+    var pages = new List<int?>();
+    const int window = 2;
+    var last = result.TotalPages;
+
+    for (var p = 1; p <= last; p++)
+    {
+        var inWindow = p == 1 || p == last || Math.Abs(p - result.Page) <= window;
+        if (inWindow)
+        {
+            pages.Add(p);
+        }
+        else if (pages.Count > 0 && pages[^1] is not null)
+        {
+            pages.Add(null); // جداکننده
+        }
+    }
+}
+
+<nav class="flex flex-wrap items-center justify-between gap-3 border-t border-outline-variant pt-4"
+     aria-label="صفحه‌بندی فهرست فرش‌ها">
+
+    <p class="text-sm text-on-surface-variant" data-numeric aria-live="polite">
+        @if (result.TotalCount == 0)
+        {
+            <text>نتیجه‌ای یافت نشد</text>
+        }
+        else
+        {
+            <text>
+                @PersianFormat.Count(result.FirstItemNumber) تا @PersianFormat.Count(result.LastItemNumber)
+                از @PersianFormat.Count(result.TotalCount) فرش
+            </text>
+        }
+    </p>
+
+    @if (result.TotalPages > 1)
+    {
+        <ul class="flex flex-wrap items-center gap-1">
+            <li>
+                @if (result.HasPrevious)
+                {
+                    @* در RTL «قبلی» به سمت راست اشاره می‌کند *@
+                    <a asp-action="Index" asp-all-route-data="Model.RouteValues(page: result.Page - 1)"
+                       rel="prev"
+                       class="grid h-11 w-11 place-items-center rounded-lg border border-outline-variant hover:bg-surface-container">
+                        <icon name="arrow-right" label="صفحهٔ قبل" />
+                    </a>
+                }
+                else
+                {
+                    <span class="grid h-11 w-11 place-items-center rounded-lg border border-outline-variant opacity-40"
+                          aria-disabled="true">
+                        <icon name="arrow-right" />
+                    </span>
+                }
+            </li>
+
+            @foreach (var p in pages)
+            {
+                <li>
+                    @if (p is null)
+                    {
+                        <span class="grid h-11 w-6 place-items-center text-on-surface-variant" aria-hidden="true">…</span>
+                    }
+                    else if (p == result.Page)
+                    {
+                        <span aria-current="page" data-numeric
+                              class="grid h-11 min-w-11 place-items-center rounded-lg bg-primary px-2 font-semibold text-on-primary">
+                            @PersianFormat.Count(p.Value)
+                        </span>
+                    }
+                    else
+                    {
+                        <a asp-action="Index" asp-all-route-data="Model.RouteValues(page: p.Value)" data-numeric
+                           aria-label="صفحهٔ @PersianFormat.Count(p.Value)"
+                           class="grid h-11 min-w-11 place-items-center rounded-lg border border-outline-variant px-2 hover:bg-surface-container">
+                            @PersianFormat.Count(p.Value)
+                        </a>
+                    }
+                </li>
+            }
+
+            <li>
+                @if (result.HasNext)
+                {
+                    <a asp-action="Index" asp-all-route-data="Model.RouteValues(page: result.Page + 1)"
+                       rel="next"
+                       class="grid h-11 w-11 place-items-center rounded-lg border border-outline-variant hover:bg-surface-container">
+                        <icon name="arrow-left" label="صفحهٔ بعد" />
+                    </a>
+                }
+                else
+                {
+                    <span class="grid h-11 w-11 place-items-center rounded-lg border border-outline-variant opacity-40"
+                          aria-disabled="true">
+                        <icon name="arrow-left" />
+                    </span>
+                }
+            </li>
+        </ul>
+    }
+</nav>

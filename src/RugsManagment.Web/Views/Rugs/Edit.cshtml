@@ -1,0 +1,15 @@
+@{
+    ViewData["Title"] = "ویرایش فرش";
+    var rugId = (Guid)ViewData["RugId"]!;
+}
+<div class="mx-auto max-w-4xl space-y-5">
+    <div class="flex items-center gap-3">
+        @* در RTL «بازگشت» به سمت راست اشاره می‌کند *@
+        <a asp-action="Details" asp-route-id="@rugId"
+           class="grid h-11 w-11 place-items-center rounded-lg border border-outline-variant hover:bg-surface-container">
+            <icon name="arrow-right" label="بازگشت به جزئیات فرش" />
+        </a>
+        <h1 class="text-2xl font-bold">ویرایش فرش</h1>
+    </div>
+    <div data-island="rug-form" data-skeleton="26rem" data-props='@Json.Serialize(new { rugId })'></div>
+</div>

@@ -1,0 +1,188 @@
+@using System.Text.Json
+@using RugsManagment.Application.DTOs.Rugs
+@using RugsManagment.Web.Support
+@model RugDto
+@{
+    ViewData["Title"] = string.IsNullOrEmpty(Model.Title) ? Model.Sku : Model.Title;
+    var st = DisplayHelpers.RugStatus(Model.Status);
+    var labels = ViewData["CustomFieldLabels"] as Dictionary<string, string> ?? new();
+
+    Dictionary<string, JsonElement> metadata = new();
+    if (!string.IsNullOrWhiteSpace(Model.MetadataJson))
+    {
+        try { metadata = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(Model.MetadataJson) ?? new(); }
+        catch { /* متادیتای خراب نباید صفحه را بشکند */ }
+    }
+}
+
+<div class="space-y-5">
+    <!-- سربرگ -->
+    <div class="flex flex-wrap items-start justify-between gap-3">
+        <div class="flex items-center gap-3">
+            @* در RTL «بازگشت» به سمت راست اشاره می‌کند *@
+            <a asp-action="Index"
+               class="grid h-11 w-11 place-items-center rounded-lg border border-outline-variant hover:bg-surface-container">
+                <icon name="arrow-right" label="بازگشت به فهرست فرش‌ها" />
+            </a>
+            <div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <h1 class="text-2xl font-bold">@ViewData["Title"]</h1>
+                    <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs @st.Css">
+                        <icon name="@st.Icon" class="h-3.5 w-3.5" />
+                        @st.Label
+                    </span>
+                </div>
+                <div class="font-mono text-sm text-on-surface-variant" dir="ltr">@Model.Sku</div>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+            <a asp-controller="Labels" asp-action="Print" asp-route-rugIds="@Model.Id"
+               class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-4 hover:bg-surface-container">
+                <icon name="printer" class="h-5 w-5" />
+                چاپ برچسب
+            </a>
+            <a asp-action="Edit" asp-route-id="@Model.Id"
+               class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 font-semibold text-on-primary hover:bg-primary-hover">
+                <icon name="edit" class="h-5 w-5" />
+                ویرایش
+            </a>
+
+            @* حذف فقط دست مدیر کارگاه است. تأیید با <details> انجام می‌شود نه confirm()،
+               چون CSP اسکریپت inline را اجازه نمی‌دهد و این شکل بدون هیچ جاوااسکریپتی کار می‌کند. *@
+            @if (User.IsInRole(nameof(RugsManagment.Domain.Enums.UserRole.TenantAdmin)))
+            {
+                <details class="relative">
+                    <summary class="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-lg border border-outline-variant px-4 text-error hover:bg-error-container/40">
+                        <icon name="trash" class="h-5 w-5" />
+                        حذف
+                    </summary>
+                    <div class="absolute end-0 z-20 mt-2 w-72 rounded-xl border border-outline-variant bg-surface-container-lowest p-4 shadow-lg">
+                        <p class="text-sm">
+                            فرش به <span class="font-semibold">سطل زباله</span> می‌رود. مراحل و هزینه‌ها حفظ می‌شوند
+                            و هر زمان می‌توانید بازگردانیدش.
+                        </p>
+                        <form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="mt-3 flex justify-end">
+                            <button type="submit"
+                                    class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-error px-4 font-semibold text-on-error hover:opacity-90">
+                                <icon name="trash" class="h-5 w-5" />
+                                انتقال به سطل زباله
+                            </button>
+                        </form>
+                    </div>
+                </details>
+            }
+        </div>
+    </div>
+
+    <div class="grid gap-5 lg:grid-cols-3">
+        <!-- ستون راست: مشخصات -->
+        <div class="space-y-5 lg:col-span-2">
+            @* گالری عکس — آپلود، ترتیب و انتخاب عکس شاخص *@
+            <div data-island="rug-gallery" data-skeleton="16rem" data-props='@Json.Serialize(new { rugId = Model.Id })'></div>
+
+            <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
+                <h3 class="mb-4 flex items-center gap-2 text-sm font-semibold text-primary">
+                    <icon name="info" class="h-4 w-4" />
+                    مشخصات
+                </h3>
+                <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
+                    <div><dt class="text-on-surface-variant">اصالت</dt><dd>@(Model.Origin ?? "—")</dd></div>
+                    <div><dt class="text-on-surface-variant">طرح</dt><dd>@(Model.Pattern ?? "—")</dd></div>
+                    <div><dt class="text-on-surface-variant">جنس</dt><dd>@(Model.Material ?? "—")</dd></div>
+                    <div>
+                        <dt class="text-on-surface-variant">رجشمار</dt>
+                        <dd data-numeric>@(Model.KnotDensity.HasValue ? PersianFormat.Count(Model.KnotDensity.Value) : "—")</dd>
+                    </div>
+                    <div>
+                        <dt class="text-on-surface-variant">ابعاد</dt>
+                        <dd data-numeric>@PersianFormat.Number(Model.WidthMeters) × @PersianFormat.Number(Model.LengthMeters) متر</dd>
+                    </div>
+                    <div>
+                        <dt class="text-on-surface-variant">مساحت</dt>
+                        <dd data-numeric>@PersianFormat.Number(Model.AreaSquareMeters) م²</dd>
+                    </div>
+                </dl>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Notes))
+                {
+                    <div class="mt-4 rounded-lg bg-surface-container px-4 py-3 text-sm">@Model.Notes</div>
+                }
+            </section>
+
+            @if (metadata.Count > 0)
+            {
+                <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
+                    <h3 class="mb-4 flex items-center gap-2 text-sm font-semibold text-primary">
+                        <icon name="settings" class="h-4 w-4" />
+                        مشخصات سفارشی
+                    </h3>
+                    <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
+                        @foreach (var kv in metadata)
+                        {
+                            <div>
+                                <dt class="text-on-surface-variant">@(labels.TryGetValue(kv.Key, out var lbl) ? lbl : kv.Key)</dt>
+                                <dd>@kv.Value.ToString()</dd>
+                            </div>
+                        }
+                    </dl>
+                </section>
+            }
+        </div>
+
+        <!-- ستون چپ: مالی و گردش کار -->
+        <div class="space-y-5">
+            <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
+                <h3 class="mb-4 text-sm font-semibold text-primary">خلاصهٔ مالی</h3>
+                <dl class="space-y-2 text-sm" data-numeric>
+                    <div class="flex justify-between gap-3">
+                        <dt class="text-on-surface-variant">قیمت خرید</dt>
+                        <dd>@Tenant.Money(Model.Costs.PurchaseCost)</dd>
+                    </div>
+                    <div class="flex justify-between gap-3">
+                        <dt class="text-on-surface-variant">مجموع هزینهٔ مراحل</dt>
+                        <dd>@Tenant.Money(Model.Costs.TotalProcessCost)</dd>
+                    </div>
+                    <div class="flex justify-between gap-3 border-t border-outline-variant pt-2 font-semibold">
+                        <dt>سرمایه‌گذاری کل</dt>
+                        <dd>@Tenant.Money(Model.Costs.TotalInvestment)</dd>
+                    </div>
+                    <div class="flex justify-between gap-3">
+                        <dt class="text-on-surface-variant">قیمت فروش هدف</dt>
+                        <dd>@Tenant.Money(Model.Costs.TargetSalePrice)</dd>
+                    </div>
+
+                    @if (Model.Costs.ActualProfit is decimal actualProfit)
+                    {
+                        @* فرش فروخته شده: سود واقعی جای تخمین را می‌گیرد و تخمین فقط برای مقایسه می‌ماند *@
+                        <div class="flex justify-between gap-3 border-t border-outline-variant pt-2 font-bold @(actualProfit >= 0 ? "text-success" : "text-error")">
+                            <dt>سود واقعی</dt>
+                            <dd>@Tenant.Money(actualProfit)</dd>
+                        </div>
+                        @if (Model.Costs.EstimatedMargin is decimal estimated && estimated != actualProfit)
+                        {
+                            <div class="flex justify-between gap-3 text-xs text-on-surface-variant">
+                                <dt>سود تخمینی (پیش‌بینی)</dt>
+                                <dd>@Tenant.Money(estimated)</dd>
+                            </div>
+                        }
+                    }
+                    else if (Model.Costs.EstimatedMargin.HasValue)
+                    {
+                        <div class="flex justify-between gap-3 font-semibold @(Model.Costs.EstimatedMargin >= 0 ? "text-success" : "text-error")">
+                            <dt>سود تخمینی</dt>
+                            <dd>@Tenant.Money(Model.Costs.EstimatedMargin)</dd>
+                        </div>
+                    }
+                </dl>
+            </section>
+
+            @* ثبت/ویرایش فروش و نمایش سود واقعی *@
+            <div data-island="rug-sale" data-skeleton="12rem"
+                 data-props='@Json.Serialize(new { rugId = Model.Id, totalInvestment = Model.Costs.TotalInvestment })'></div>
+
+            @* جزیرهٔ گردش کار: تایم‌لاین، حرکت مراحل با مودال، ویرایش مسیر *@
+            <div data-island="rug-workflow" data-skeleton="20rem" data-props='@Json.Serialize(new { rugId = Model.Id })'></div>
+        </div>
+    </div>
+</div>
