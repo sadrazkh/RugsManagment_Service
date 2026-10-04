@@ -8,9 +8,9 @@ namespace RugsManagment.Web.Controllers;
 
 /// <summary>
 /// صفحات طرف‌های خدمات (قالیشوی، رفوگر، …) و تسویه‌حساب.
-/// مالی است، پس فقط مدیر کارگاه.
+/// مالی است، پس فقط Business (بازرگان و تنظیم‌کننده).
 /// </summary>
-[Authorize(Roles = nameof(UserRole.TenantAdmin))]
+[Authorize(Policy = Policies.Business)]
 public class ProvidersController(IServiceProviderService providers) : Controller
 {
     /// <summary>فهرست طرف‌ها همراه مانده‌حساب.</summary>

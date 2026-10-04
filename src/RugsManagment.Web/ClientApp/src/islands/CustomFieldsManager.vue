@@ -1,7 +1,8 @@
 <script setup lang="ts">
 /** مدیریت فیلدهای سفارشی کارگاه: افزودن/ویرایش/حذف. مقادیر در Rug.MetadataJson ذخیره می‌شوند. */
 import { onMounted, reactive, ref } from 'vue'
-import { api } from '@/lib/api'
+import { api, errorMessage } from '@/lib/api'
+import { CUSTOM_FIELD_TYPE_LABELS } from '@/lib/labels'
 import { confirmDialog, toast } from '@/lib/ui'
 import type { CustomFieldDefinition, CustomFieldType } from '@/lib/types'
 
@@ -10,7 +11,7 @@ const loading = ref(true)
 const error = ref('')
 const saving = ref(false)
 
-const typeLabels: Record<number, string> = { 0: 'متن', 1: 'عدد', 2: 'تاریخ', 3: 'انتخابی', 4: 'بله/خیر' }
+const typeLabels = CUSTOM_FIELD_TYPE_LABELS
 
 const draft = reactive({
   key: '', label: '', fieldType: 0 as CustomFieldType, options: '', isRequired: false,
@@ -19,7 +20,7 @@ const draft = reactive({
 async function load() {
   loading.value = true
   try { fields.value = await api.get<CustomFieldDefinition[]>('/api/custom-fields') }
-  catch (e) { error.value = (e as Error).message }
+  catch (e) { error.value = errorMessage(e) }
   finally { loading.value = false }
 }
 
@@ -37,7 +38,7 @@ async function add() {
     })
     Object.assign(draft, { key: '', label: '', fieldType: 0, options: '', isRequired: false })
     await load()
-  } catch (e) { error.value = (e as Error).message }
+  } catch (e) { error.value = errorMessage(e) }
   finally { saving.value = false }
 }
 
@@ -48,7 +49,7 @@ async function toggleActive(f: CustomFieldDefinition) {
       isRequired: f.isRequired, sortOrder: f.sortOrder, isActive: !f.isActive,
     })
     await load()
-  } catch (e) { error.value = (e as Error).message }
+  } catch (e) { error.value = errorMessage(e) }
 }
 
 async function remove(f: CustomFieldDefinition) {
@@ -65,7 +66,7 @@ async function remove(f: CustomFieldDefinition) {
     toast.success('فیلد حذف شد.')
     await load()
   } catch (e) {
-    toast.error((e as Error).message)
+    toast.error(errorMessage(e))
   }
 }
 
@@ -74,10 +75,10 @@ onMounted(load)
 
 <template>
   <div class="space-y-5">
-    <div v-if="error" class="rounded-lg bg-error-container px-4 py-3 text-sm text-error">{{ error }}</div>
+    <div v-if="error" class="rounded-lg bg-error-container px-4 py-3 text-sm text-on-error-container" role="alert">{{ error }}</div>
 
     <!-- افزودن -->
-    <section class="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
+    <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
       <h2 class="mb-4 text-sm font-semibold text-primary">فیلد جدید</h2>
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <label class="block">
@@ -104,13 +105,13 @@ onMounted(load)
         </label>
       </div>
       <button :disabled="saving" @click="add"
-              class="mt-4 rounded-lg bg-primary px-5 py-2.5 font-semibold text-on-primary hover:opacity-90 disabled:opacity-60">
+              class="mt-4 min-h-11 rounded-lg bg-primary px-5 font-semibold text-on-primary hover:bg-primary-hover disabled:opacity-60">
         افزودن فیلد
       </button>
     </section>
 
     <!-- فهرست -->
-    <section class="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
+    <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
       <h2 class="mb-4 text-sm font-semibold text-primary">فیلدهای تعریف‌شده</h2>
       <div v-if="loading" class="py-6 text-center text-on-surface-variant">در حال بارگذاری…</div>
       <div v-else-if="fields.length === 0" class="py-6 text-center text-on-surface-variant">فیلدی تعریف نشده است.</div>
@@ -122,10 +123,10 @@ onMounted(load)
           </div>
           <div class="flex items-center gap-2">
             <button @click="toggleActive(f)"
-                    class="rounded-lg border border-outline-variant px-3 py-1.5 text-xs hover:bg-surface-container">
+                    class="min-h-11 rounded-lg border border-outline-variant px-3 text-xs hover:bg-surface-container">
               {{ f.isActive ? 'غیرفعال' : 'فعال' }}
             </button>
-            <button @click="remove(f)" class="rounded-lg border border-outline-variant px-3 py-1.5 text-xs text-error hover:bg-error-container">حذف</button>
+            <button @click="remove(f)" class="min-h-11 rounded-lg border border-outline-variant px-3 text-xs text-error hover:bg-error-container">حذف</button>
           </div>
         </li>
       </ul>
@@ -138,6 +139,9 @@ onMounted(load)
   width: 100%;
   border-radius: 0.5rem;
   border: 1px solid var(--color-outline-variant);
+  min-height: 2.75rem;
+  background: var(--color-surface-container-lowest);
+  color: var(--color-on-surface);
   padding: 0.625rem 0.75rem;
   outline: none;
 }

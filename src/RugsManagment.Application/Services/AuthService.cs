@@ -8,13 +8,14 @@ using RugsManagment.Application.Mapping;
 namespace RugsManagment.Application.Services;
 
 /// <summary>
-/// ورود و احراز هویت — بررسی رمز، به‌روزرسانی آخرین ورود، صدور JWT از طریق IJwtTokenGenerator.
+/// ورود و احراز هویت — بررسی رمز و به‌روزرسانی آخرین ورود.
+///
+/// خودِ کوکی را لایهٔ وب می‌سازد؛ اینجا فقط کاربر و مهر امنیتی‌اش برگردانده می‌شود.
+/// (صدور توکنِ قدیمی حذف شد: میزبان فعلی فقط کوکی دارد و توکنی که صادر می‌شد هیچ‌جا مصرف نمی‌شد.)
 /// </summary>
-public sealed class AuthService(
-    IUserRepository users,
-    IJwtTokenGenerator tokenGenerator) : IAuthService
+public sealed class AuthService(IUserRepository users) : IAuthService
 {
-    public async Task<AuthResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
+    public async Task<AuthResult> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
         var user = await users.GetByEmailAsync(request.Email.Trim().ToLowerInvariant(), cancellationToken)
             ?? throw new UnauthorizedAccessException("ایمیل یا رمز عبور اشتباه است.");
@@ -36,20 +37,13 @@ public sealed class AuthService(
                 throw new UnauthorizedAccessException("اشتراک این کارگاه به پایان رسیده است. برای تمدید با پشتیبانی تماس بگیرید.");
         }
 
+        // کاربر tracked است و ردیابی تغییرات EF فقط همین ستون را می‌نویسد. users.Update(user) عمداً صدا زده
+        // نمی‌شود: همهٔ ستون‌ها را Modified می‌کرد و اگر مدیر در فاصلهٔ خواندن تا ذخیره (PBKDF2 بالا) حساب را
+        // غیرفعال/تنزل داده یا رمزش را بازنشانی کرده بود، ذخیرهٔ ورود مقادیر کهنه (IsActive، Role، رمز و مهر قدیمی)
+        // را بی‌صدا برمی‌گرداند — User توکن هم‌زمانی ندارد که این تداخل را بگیرد.
         user.LastLoginAt = DateTimeOffset.UtcNow;
-        users.Update(user);
 
-        var (token, expires) = tokenGenerator.Generate(user);
-        return new AuthResponse(token, expires, user.ToDto());
-    }
-
-    public async Task<AuthResponse> RefreshAsync(Guid userId, CancellationToken cancellationToken = default)
-    {
-        var user = await users.GetByIdAsync(userId, cancellationToken)
-            ?? throw new UnauthorizedAccessException("کاربر یافت نشد.");
-
-        var (token, expires) = tokenGenerator.Generate(user);
-        return new AuthResponse(token, expires, user.ToDto());
+        return new AuthResult(user.ToDto(), user.SecurityStamp);
     }
 
     /// <summary>ساخت هش رمز با PBKDF2 + salt تصادفی — برای ثبت کاربر جدید</summary>
@@ -83,10 +77,4 @@ public sealed class AuthService(
 
         return CryptographicOperations.FixedTimeEquals(expected, actual);
     }
-}
-
-/// <summary>ساخت توکن JWT — پیاده‌سازی در Infrastructure با کلید appsettings</summary>
-public interface IJwtTokenGenerator
-{
-    (string Token, DateTimeOffset ExpiresAt) Generate(Domain.Entities.User user);
 }

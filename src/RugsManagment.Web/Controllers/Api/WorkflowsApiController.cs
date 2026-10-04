@@ -8,7 +8,10 @@ using RugsManagment.Web.Auth;
 
 namespace RugsManagment.Web.Controllers.Api;
 
-/// <summary>API قالب‌های گردش کار و مسیر هر فرش. ساخت/ویرایش قالب فقط مدیر کارگاه.</summary>
+/// <summary>
+/// API قالب‌های گردش کار و مسیر هر فرش. خواندن قالب‌ها و ویرایش مسیر یک فرش برای هر کاربر کارگاه؛ ساخت و
+/// ویرایش قالب و افزودن سریع طرف خدمات فقط تنظیم‌کننده (Configure).
+/// </summary>
 [Route("api/workflows")]
 public class WorkflowsApiController(
     IWorkflowManagementService workflows,
@@ -19,17 +22,17 @@ public class WorkflowsApiController(
         => Ok(await workflows.ListTemplatesAsync(User.RequireTenantId(), ct));
 
     [HttpPost("templates")]
-    [Authorize(Roles = nameof(UserRole.TenantAdmin))]
+    [Authorize(Policy = Policies.Configure)]
     public async Task<IActionResult> CreateTemplate([FromBody] CreateWorkflowTemplateRequest request, CancellationToken ct)
         => Ok(await workflows.CreateTemplateAsync(User.RequireTenantId(), request, ct));
 
     [HttpPut("templates/{id:guid}")]
-    [Authorize(Roles = nameof(UserRole.TenantAdmin))]
+    [Authorize(Policy = Policies.Configure)]
     public async Task<IActionResult> UpdateTemplate(Guid id, [FromBody] UpdateWorkflowTemplateRequest request, CancellationToken ct)
         => Ok(await workflows.UpdateTemplateAsync(User.RequireTenantId(), id, request, ct));
 
     [HttpPost("providers")]
-    [Authorize(Roles = nameof(UserRole.TenantAdmin))]
+    [Authorize(Policy = Policies.Configure)]
     public async Task<IActionResult> CreateProvider([FromBody] CreateServiceProviderRequest request, CancellationToken ct)
         => Ok(await workflows.CreateProviderAsync(User.RequireTenantId(), request, ct));
 

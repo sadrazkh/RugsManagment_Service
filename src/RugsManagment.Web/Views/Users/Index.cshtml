@@ -1,17 +1,18 @@
 @model IReadOnlyList<RugsManagment.Application.DTOs.Auth.UserDto>
 @{
     ViewData["Title"] = "کاربران کارگاه";
-    string RoleFa(string r) => r switch
-    {
-        "TenantAdmin" => "مدیر کارگاه",
-        "Operator" => "اپراتور",
-        _ => r
-    };
 }
 
 <div class="space-y-6">
     <div class="flex flex-wrap items-center justify-between gap-3">
-        <h1 class="text-2xl font-bold">کاربران کارگاه</h1>
+        <div class="flex items-center gap-3">
+            @* در RTL «بازگشت» به سمت راست اشاره می‌کند *@
+            <a href="/settings"
+               class="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-outline-variant hover:bg-surface-container">
+                <icon name="arrow-right" label="بازگشت به تنظیمات" />
+            </a>
+            <h1 class="text-2xl font-bold">کاربران کارگاه</h1>
+        </div>
         <a asp-action="Create"
            class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 font-semibold text-on-primary hover:bg-primary-hover">
             <icon name="plus" class="h-5 w-5" />
@@ -27,7 +28,7 @@
             </span>
             <p class="font-medium text-on-surface">هنوز کاربری اضافه نشده است</p>
             <p class="mx-auto mt-1 max-w-sm text-sm text-on-surface-variant">
-                برای اپراتورهای کارگاه حساب بسازید تا بتوانند مراحل فرش‌ها را ثبت کنند.
+                برای بازرگان و انباردار حساب بسازید تا هر کدام با نمای سادهٔ خودش کار کند.
             </p>
             <a asp-action="Create"
                class="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-5 font-semibold text-on-primary hover:bg-primary-hover">
@@ -38,7 +39,7 @@
     }
     else
     {
-        <div class="overflow-x-auto rounded-xl border border-outline-variant bg-surface-container-lowest">
+        <div class="relative overflow-x-auto rounded-xl border border-outline-variant bg-surface-container-lowest">
             <table class="w-full text-sm">
                 <caption class="sr-only">فهرست کاربران کارگاه با نقش و ایمیل</caption>
                 <thead class="bg-surface-container text-on-surface-variant">
@@ -46,6 +47,7 @@
                         <th scope="col" class="p-3 text-right font-medium">نام</th>
                         <th scope="col" class="hidden p-3 text-right font-medium sm:table-cell">ایمیل</th>
                         <th scope="col" class="p-3 text-right font-medium">نقش</th>
+                        <th scope="col" class="p-3 text-right font-medium">وضعیت</th>
                         <th scope="col" class="p-3"><span class="sr-only">عملیات</span></th>
                     </tr>
                 </thead>
@@ -56,7 +58,23 @@
                             <td class="p-3 font-medium">@u.FullName</td>
                             <td class="hidden p-3 text-on-surface-variant sm:table-cell" dir="ltr">@u.Email</td>
                             <td class="p-3">
-                                <span class="rounded-full bg-secondary-container px-2.5 py-1 text-xs text-on-secondary-container">@RoleFa(u.Role)</span>
+                                <span class="rounded-full px-2.5 py-1 text-xs @RoleLabels.ChipCss(u.Role)">@RoleLabels.For(u.Role)</span>
+                            </td>
+                            <td class="p-3">
+                                @if (u.IsActive)
+                                {
+                                    <span class="inline-flex items-center gap-1 text-xs text-success">
+                                        <icon name="check" class="h-3.5 w-3.5" />
+                                        فعال
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="inline-flex items-center gap-1 text-xs text-on-surface-variant">
+                                        <icon name="close" class="h-3.5 w-3.5" />
+                                        غیرفعال
+                                    </span>
+                                }
                             </td>
                             <td class="p-3 text-left">
                                 <a asp-action="Edit" asp-route-id="@u.Id"

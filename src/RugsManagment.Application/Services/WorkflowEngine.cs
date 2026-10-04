@@ -93,8 +93,7 @@ public sealed class WorkflowEngine(
         CancellationToken cancellationToken = default)
     {
         var step = GetActiveOrPendingStep(rug, stepId);
-        if (request.ServiceProviderId.HasValue)
-            step.ServiceProviderId = request.ServiceProviderId;
+        ApplyServiceProvider(step, request);
 
         step.FieldValuesJson = request.FieldValuesJson ?? step.FieldValuesJson;
         step.Notes = request.Notes ?? step.Notes;
@@ -135,8 +134,7 @@ public sealed class WorkflowEngine(
         if (step.Status is WorkflowStepStatus.Cancelled)
             throw new InvalidOperationException("مرحله لغو شده قابل ویرایش نیست.");
 
-        if (request.ServiceProviderId.HasValue)
-            step.ServiceProviderId = request.ServiceProviderId;
+        ApplyServiceProvider(step, request);
         if (request.Notes is not null)
             step.Notes = request.Notes;
         ApplyStepPricing(step, request);
@@ -353,6 +351,15 @@ public sealed class WorkflowEngine(
             step);
     }
 
+    /// <summary>
+    /// فقط مقادیرِ دارای مقدار روی مرحله نوشته می‌شوند؛ null یعنی «دست نزن».
+    ///
+    /// مبلغ دستی با یک مبلغ دستیِ تازه عوض می‌شود و فقط با پرچم صریح <c>ClearManualOverride</c> پاک می‌شود.
+    /// «روش قیمت‌گذاری بدون مبلغ دستی» به‌تنهایی پاکش نمی‌کند، چون تزریق نرخ توافقیِ طرف خدمات (و تکمیل
+    /// سریع/گروهی) دقیقاً همین شکل درخواست را می‌سازند و مبلغی که اپراتور دستی وارد کرده بود بی‌صدا با نرخ
+    /// دیگری جایگزین می‌شد. از طرف دیگر بدون پرچم، مبلغ دستی هرگز پاک‌شدنی نبود و انتخاب روش/نرخ بعد از آن بی‌اثر
+    /// می‌ماند؛ پرچم را فقط ویرایشگر هزینه وقتی می‌فرستد که کاربر حالت دستی را خاموش کرده باشد.
+    /// </summary>
     private static void ApplyStepPricing(RugWorkflowStep step, AdvanceStepRequest request)
     {
         if (request.PricingModel.HasValue)
@@ -361,13 +368,26 @@ public sealed class WorkflowEngine(
             step.AppliedUnitRate = request.UnitRate;
         if (request.PricingConfigJson is not null)
             step.PricingConfigJson = string.IsNullOrWhiteSpace(request.PricingConfigJson) ? null : request.PricingConfigJson;
+
         if (request.ManualCostOverride.HasValue)
             step.ManualCostOverride = request.ManualCostOverride;
-        else if (request.ManualCostOverride is null && request.PricingModel.HasValue)
+        else if (request.ClearManualOverride == true)
             step.ManualCostOverride = null;
 
         if (request.Adjustment.HasValue)
             step.Adjustment = request.Adjustment;
+    }
+
+    /// <summary>
+    /// انجام‌دهندهٔ مرحله: شناسهٔ صریح جایگزین می‌شود؛ null یعنی «همان قبلی»؛ و فقط پرچم صریح
+    /// <c>ClearServiceProvider</c> (انتخاب «—» در پنل) انجام‌دهنده را برمی‌دارد. شناسهٔ صریح بر پرچم مقدم است.
+    /// </summary>
+    private static void ApplyServiceProvider(RugWorkflowStep step, AdvanceStepRequest request)
+    {
+        if (request.ServiceProviderId.HasValue)
+            step.ServiceProviderId = request.ServiceProviderId;
+        else if (request.ClearServiceProvider == true)
+            step.ServiceProviderId = null;
     }
 
     /// <summary>اولین مرحله Pending را InProgress می‌کند؛ اگر مرحله‌ای نماند → آماده فروش</summary>

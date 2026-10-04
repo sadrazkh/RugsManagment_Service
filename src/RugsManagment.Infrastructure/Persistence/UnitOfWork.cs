@@ -31,4 +31,6 @@ public class UnitOfWork(AppDbContext db) : IUnitOfWork
             throw new DuplicateKeyException();
         }
     }
+
+    public void Reset() => db.ChangeTracker.Clear();
 }

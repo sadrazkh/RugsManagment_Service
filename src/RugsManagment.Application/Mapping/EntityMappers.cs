@@ -1,4 +1,5 @@
 using RugsManagment.Application.Abstractions.Services;
+using RugsManagment.Application.Common;
 using RugsManagment.Application.DTOs.Auth;
 using RugsManagment.Application.DTOs.CustomFields;
 using RugsManagment.Application.DTOs.Dashboard;
@@ -67,7 +68,21 @@ public static class EntityMappers
             .Where(code => code.Length > 0)
             .ToList());
 
-    /// <summary>فرش کامل با مراحل و خلاصهٔ هزینه — برای صفحهٔ جزئیات</summary>
+    /// <summary>
+    /// فرش کامل برای بینندهٔ جاری: برای غیر Business مبلغ‌ها null است (<see cref="MoneyRedaction"/>).
+    /// سرویس‌هایی که DTO را به کاربر برمی‌گردانند همین را صدا می‌زنند، نه نسخهٔ بی‌بیننده را.
+    /// </summary>
+    public static RugDto ToDto(this Rug rug, IWorkflowEngine workflowEngine, IMoneyVisibility money)
+        => money.Redact(rug.ToDto(workflowEngine));
+
+    /// <summary>نوع مرحله برای بینندهٔ جاری (نرخ پیش‌فرض برای غیر Business null).</summary>
+    public static ProcessStepTypeDto ToDto(this ProcessStepType t, IMoneyVisibility money)
+        => money.Redact(t.ToDto());
+
+    /// <summary>
+    /// فرش کامل با مراحل و خلاصهٔ هزینه — بدون پنهان‌سازی (برای محاسبه‌های داخلی و آزمون‌ها). پاسخی که به
+    /// کاربر می‌رسد باید از نسخهٔ <c>IMoneyVisibility</c>دار بگذرد.
+    /// </summary>
     public static RugDto ToDto(this Rug rug, IWorkflowEngine workflowEngine)
     {
         var costs = workflowEngine.CalculateRugCosts(rug);
@@ -139,7 +154,8 @@ public static class EntityMappers
         step.FieldValuesJson,
         step.Notes,
         step.Adjustment,
-        step.CompletedByName);
+        step.CompletedByName,
+        step.ManualCostOverride);
 
     /// <summary>
     /// خلاصهٔ هزینه. اگر فرش فروخته شده باشد، سود واقعی هم کنار سود تخمینی می‌آید
@@ -154,7 +170,14 @@ public static class EntityMappers
         sale?.NetAmount,
         sale is null ? null : sale.NetAmount - summary.TotalInvestment);
 
-    /// <summary>ساخت آمار داشبورد از لیست فرش‌ها — بدون کوئری اضافی</summary>
+    /// <summary>آمار داشبورد برای بینندهٔ جاری: کارت‌های مالی برای غیر Business null.</summary>
+    public static DashboardStatsDto ToDashboard(
+        IReadOnlyList<Rug> rugs,
+        IWorkflowEngine workflowEngine,
+        IMoneyVisibility money)
+        => money.Redact(ToDashboard(rugs, workflowEngine));
+
+    /// <summary>ساخت آمار داشبورد از لیست فرش‌ها — بدون کوئری اضافی (بدون پنهان‌سازی)</summary>
     public static DashboardStatsDto ToDashboard(
         IReadOnlyList<Rug> rugs,
         IWorkflowEngine workflowEngine)

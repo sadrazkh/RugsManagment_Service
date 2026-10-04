@@ -1,0 +1,42 @@
+@using RugsManagment.Web.Auth
+@using RugsManagment.Web.Home
+@using RugsManagment.Web.Navigation
+@inject IUserPreferencesAccessor Preferences
+@*
+    خانه (/) — برای هر کاربر کارگاه. خودِ صفحه فقط سلام و راهنمای شروع است؛ کاشی‌ها و کارت‌ها را
+    HomeCardsViewComponent از IHomeCardها می‌سازد، پس فازهای بعد کارت اضافه می‌کنند و این فایل را نه.
+*@
+@{
+    ViewData["Title"] = "خانه";
+    ViewData["HelpPage"] = "home";
+
+    const string CoachKey = "home";
+
+    var terms = await AppShell.TermsAsync(Context);
+    var steps = MerchantSteps.For(Policies.IsBusiness(User), terms)
+        .Select(s => $"{s.Title} — {s.Text}")
+        .ToArray();
+
+    // راهنمای شروع تا وقتی کاربر «فهمیدم» نزده (CoachDismissedJson)
+    var showCoach = Preferences.Current is { } prefs && !prefs.CoachDismissed.Contains(CoachKey);
+    var tenantName = User.GetTenantName();
+}
+
+<div class="space-y-6">
+    <header class="flex flex-wrap items-end justify-between gap-2">
+        <div>
+            <h1 class="text-2xl font-bold">سلام، @User.GetDisplayName()</h1>
+            <p class="text-on-surface-variant" data-numeric>
+                امروز @PersianFormat.DateLong(DateTimeOffset.UtcNow)@(tenantName is null ? null : $" · {tenantName}")
+            </p>
+        </div>
+    </header>
+
+    @if (showCoach)
+    {
+        <div data-island="home-coach" data-skeleton="off"
+             data-props='@Json.Serialize(new { steps, tip = MerchantSteps.HelpTip, dismissKey = CoachKey })'></div>
+    }
+
+    @await Component.InvokeAsync("HomeCards")
+</div>

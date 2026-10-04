@@ -5,7 +5,10 @@ using RugsManagment.Web.Auth;
 
 namespace RugsManagment.Web.Controllers.Api;
 
-/// <summary>API گروه‌ها/محموله‌ها — محدود به کارگاه کاربر.</summary>
+/// <summary>
+/// API «ورودی‌ها» (<c>RugBatch</c>: فرش‌های یک فروشنده در یک روز) — محدود به کارگاه کاربر، برای هر کاربر کارگاه.
+/// واژهٔ «محموله» مال اظهار صادراتی است و این‌جا به کار نمی‌رود.
+/// </summary>
 [Route("api/batches")]
 public class BatchesApiController(IRugBatchService batches) : ApiControllerBase
 {

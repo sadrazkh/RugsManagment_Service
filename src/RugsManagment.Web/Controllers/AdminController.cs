@@ -1,15 +1,20 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using RugsManagment.Application.DTOs.Tenants;
 using RugsManagment.Application.Services;
 using RugsManagment.Domain.Enums;
+using RugsManagment.Web.Auth;
 using RugsManagment.Web.Models.Admin;
 
 namespace RugsManagment.Web.Controllers;
 
 /// <summary>پنل ادمین کل — ساخت و مدیریت کارگاه‌های فروشنده. فقط SystemAdmin.</summary>
 [Authorize(Roles = nameof(UserRole.SystemAdmin))]
-public class AdminController(ITenantManagementService tenants) : Controller
+public class AdminController(
+    ITenantManagementService tenants,
+    IUserManagementService users,
+    IMemoryCache cache) : Controller
 {
     public async Task<IActionResult> Index(CancellationToken ct)
     {
@@ -54,6 +59,11 @@ public class AdminController(ITenantManagementService tenants) : Controller
 
         await tenants.UpdateAsync(id, new UpdateTenantRequest(
             t.Name, !t.IsActive, t.ContactPhone, t.ContactEmail, t.SubscriptionExpiresAt), ct);
+
+        // وضعیت «کارگاه فعال است؟» در کش اعتبارسنجیِ هر کاربرِ همین کارگاه هست. پاکش می‌کنیم تا غیرفعال‌سازی
+        // همان درخواست بعدیِ کاربرانش اثر کند (نه ۵ دقیقه بعد) و فعال‌سازی هم کسی را با وضعیتِ کهنه بیرون نیندازد.
+        var tenantUsers = await users.ListByTenantAsync(id, ct);
+        SecurityStampValidator.Evict(cache, tenantUsers.Select(u => u.Id));
 
         TempData["Toast"] = t.IsActive ? "کارگاه غیرفعال شد." : "کارگاه فعال شد.";
         return RedirectToAction(nameof(Index));

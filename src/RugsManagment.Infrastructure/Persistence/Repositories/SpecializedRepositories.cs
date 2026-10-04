@@ -16,7 +16,7 @@ public class TenantRepository(AppDbContext db) : Repository<Tenant>(db), ITenant
         => await Db.Tenants.FirstOrDefaultAsync(t => t.Slug == slug, cancellationToken);
 }
 
-/// <summary>کاربر همراه Tenant — برای نمایش نام کارگاه در JWT و DTO</summary>
+/// <summary>کاربر همراه Tenant — برای نمایش نام کارگاه در کوکی ورود و DTO</summary>
 public class UserRepository(AppDbContext db) : Repository<User>(db), IUserRepository
 {
     public override async Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
@@ -31,6 +31,11 @@ public class UserRepository(AppDbContext db) : Repository<User>(db), IUserReposi
 /// </summary>
 public class RugRepository(AppDbContext db) : Repository<Rug>(db), IRugRepository
 {
+    /// <summary>
+    /// AsSplitQuery: دو مجموعهٔ مستقل (عکس‌ها و مراحل) در یک JOIN ضرب دکارتی می‌سازند —
+    /// فرشی با ۱۲ عکس و ۱۰ مرحله ۱۲۰ ردیف تکراری برمی‌گرداند و با هر عکس/مرحلهٔ تازه بدتر می‌شود.
+    /// با تقسیم، هر مجموعه کوئری جدای خودش را دارد و تعداد ردیف‌ها جمع می‌شود نه ضرب.
+    /// </summary>
     public async Task<Rug?> GetWithWorkflowAsync(Guid id, Guid tenantId, CancellationToken cancellationToken = default)
         => await Db.Rugs
             .Include(r => r.Batch)
@@ -40,6 +45,7 @@ public class RugRepository(AppDbContext db) : Repository<Rug>(db), IRugRepositor
                 .ThenInclude(s => s.ProcessStepType)
             .Include(r => r.WorkflowSteps)
                 .ThenInclude(s => s.ServiceProvider)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(r => r.Id == id && r.TenantId == tenantId, cancellationToken);
 
     public async Task<IReadOnlyList<Rug>> ListByTenantAsync(
@@ -375,11 +381,17 @@ public class RugBatchRepository(AppDbContext db) : Repository<RugBatch>(db), IRu
             .OrderByDescending(b => b.ReceivedAt ?? b.CreatedAt)
             .ToListAsync(cancellationToken);
 
+    /// <summary>
+    /// AsSplitQuery: مجموعهٔ تودرتو (فرش‌ها ← مراحل) در یک JOIN، ستون‌های گروه و هر فرش را به
+    /// تعداد مراحلش تکرار می‌کند (گروه ۲۰۰ فرشی با ۸ مرحله = ۱۶۰۰ ردیف پهن). با تقسیم، هر سطح
+    /// یک کوئری جدا و بدون تکرار است.
+    /// </summary>
     public async Task<RugBatch?> GetWithRugsAsync(Guid id, Guid tenantId, CancellationToken cancellationToken = default)
         => await Db.RugBatches
             .Include(b => b.Rugs)
                 .ThenInclude(r => r.WorkflowSteps)
                     .ThenInclude(s => s.ProcessStepType)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(b => b.Id == id && b.TenantId == tenantId, cancellationToken);
 }
 

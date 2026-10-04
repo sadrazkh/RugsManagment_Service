@@ -22,6 +22,13 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasIndex(u => u.Email).IsUnique();
         builder.Property(u => u.Email).HasMaxLength(256).IsRequired();
         builder.Property(u => u.FullName).HasMaxLength(200).IsRequired();
+        // مهر امنیتی نشست؛ مقدار فعلی ۳۲ نویسهٔ hex است و ۶۴ جا برای قالب دیگری در آینده می‌ماند
+        builder.Property(u => u.SecurityStamp).HasMaxLength(64).IsRequired();
+
+        // ترجیحات کاربر: UiMode، TextScale و GridEnter مثل بقیهٔ enumها int ذخیره می‌شوند. پیش‌فرض هر نقش را
+        // کد می‌گذارد (User.ApplyRoleDefaultPreferences) و migration همان را برای کاربران قدیمی پر کرده است.
+        builder.Property(u => u.CoachDismissedJson).HasColumnType("jsonb");
+
         builder.HasOne(u => u.Tenant).WithMany(t => t.Users).HasForeignKey(u => u.TenantId);
     }
 }
@@ -87,6 +94,12 @@ public class CustomFieldDefinitionConfiguration : IEntityTypeConfiguration<Custo
         builder.Property(f => f.Key).HasMaxLength(60).IsRequired();
         builder.Property(f => f.Label).HasMaxLength(120).IsRequired();
         builder.Property(f => f.OptionsJson).HasColumnType("jsonb");
+
+        // پیش‌فرض دیتابیسی true تا فیلدهای موجود هنگام migration «قابل خروجی» بمانند. Sentinel = true یعنی EF
+        // فقط وقتی مقدار را نمی‌فرستد که true است (همان پیش‌فرض)؛ false صریح همیشه نوشته می‌شود — بدون آن،
+        // false (پیش‌فرض CLR) با پیش‌فرض دیتابیس جایگزین و بی‌صدا true می‌شد.
+        builder.Property(f => f.Exportable).HasDefaultValue(true).HasSentinel(true);
+
         builder.HasOne(f => f.Tenant).WithMany().HasForeignKey(f => f.TenantId).OnDelete(DeleteBehavior.Cascade);
     }
 }
@@ -170,6 +183,8 @@ public class AuditEntryConfiguration : IEntityTypeConfiguration<AuditEntry>
         builder.Property(a => a.EntityType).HasMaxLength(60).IsRequired();
         builder.Property(a => a.EntityLabel).HasMaxLength(200);
         builder.Property(a => a.Summary).HasMaxLength(500).IsRequired();
+        // جزئیات ساخت‌یافته (چه از چه به چه شد)؛ بدون مبلغ تومانی
+        builder.Property(a => a.DetailsJson).HasColumnType("jsonb");
 
         builder.HasOne(a => a.Tenant).WithMany()
             .HasForeignKey(a => a.TenantId).OnDelete(DeleteBehavior.Cascade);

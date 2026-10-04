@@ -7,11 +7,10 @@ using RugsManagment.Domain.Enums;
 namespace RugsManagment.Infrastructure.Persistence.Seed;
 
 /// <summary>
-/// دادهٔ اولیه هنگام بالا آمدن API:
-/// 1) اجرای migration
-/// 2) انواع مرحله (قالیشویی، دارکشی، …)
-/// 3) ادمین سیستم
-/// 4) کارگاه دمو + دو قالب مسیر نمونه
+/// دادهٔ اولیه هنگام بالا آمدن برنامه (migration پیش از این، کار <see cref="Migrator"/> است):
+/// 1) انواع مرحله (قالیشویی، دارکشی، …)
+/// 2) ادمین سیستم
+/// 3) کارگاه دمو + دو قالب مسیر نمونه
 /// </summary>
 public static class DatabaseSeeder
 {
@@ -19,7 +18,6 @@ public static class DatabaseSeeder
     {
         using var scope = services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        //await db.Database.MigrateAsync();
 
         if (!await db.ProcessStepTypes.AnyAsync())
         {
@@ -45,6 +43,8 @@ public static class DatabaseSeeder
                 PasswordHash = AuthService.HashPassword("Admin@12345"),
                 IsActive = true
             };
+            // پیش‌فرض‌های نقش (حالت کامل)؛ پیش‌فرض خودِ موجودیت «ساده» است
+            admin.ApplyRoleDefaultPreferences();
             db.Users.Add(admin);
             await db.SaveChangesAsync();
         }
@@ -70,6 +70,7 @@ public static class DatabaseSeeder
                 PasswordHash = AuthService.HashPassword("Demo@12345"),
                 IsActive = true
             };
+            demoAdmin.ApplyRoleDefaultPreferences();
             db.Users.Add(demoAdmin);
 
             var washing = await db.ProcessStepTypes.FirstAsync(s => s.Code == "washing");
@@ -132,7 +133,7 @@ public static class DatabaseSeeder
             FieldType = CustomFieldType.Text, SortOrder = 0, IsActive = true
         });
 
-        var batch = new RugBatch { TenantId = tenant.Id, Name = "محمولهٔ نمونه", Description = "فرش‌های ورودی نمونه", ReceivedAt = DateTimeOffset.UtcNow.AddDays(-3) };
+        var batch = new RugBatch { TenantId = tenant.Id, Name = "ورودی نمونه", Description = "فرش‌های ورودی نمونه", ReceivedAt = DateTimeOffset.UtcNow.AddDays(-3) };
         db.RugBatches.Add(batch);
 
         var month = DateTime.UtcNow.ToString("yyyyMM");

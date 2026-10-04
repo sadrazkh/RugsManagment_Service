@@ -64,7 +64,10 @@ public record StepPricingOverride(
     Domain.Enums.StepPricingModel? Model,
     decimal? UnitRate);
 
-/// <summary>دادهٔ ارسالی هنگام تکمیل مرحله از UI</summary>
+/// <summary>
+/// دادهٔ ارسالی هنگام تکمیل مرحله از UI. هر فیلد null یعنی «دست نزن».
+/// دو پرچم آخر تنها راهِ صریحِ «پاک کن» هستند، چون null برای مبلغ دستی و انجام‌دهنده معنای «نگه دار» دارد.
+/// </summary>
 public record AdvanceStepRequest(
     Guid? ServiceProviderId,
     decimal? ManualCostOverride,
@@ -74,7 +77,11 @@ public record AdvanceStepRequest(
     string? FieldValuesJson,
     string? Notes,
     bool MarkCompleted = true,
-    decimal? Adjustment = null);
+    decimal? Adjustment = null,
+    /// <summary>true = مبلغ دستیِ ذخیره‌شده پاک شود (مگر همین درخواست مبلغ دستی تازه‌ای بفرستد).</summary>
+    bool? ClearManualOverride = null,
+    /// <summary>true = انجام‌دهنده برداشته شود (مگر همین درخواست انجام‌دهندهٔ صریحی بفرستد).</summary>
+    bool? ClearServiceProvider = null);
 
 /// <summary>خلاصهٔ مالی یک فرش برای نمایش</summary>
 public record RugCostSummary(

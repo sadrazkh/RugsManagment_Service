@@ -4,19 +4,36 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>آفلاین</title>
+  <!--
+    فونت خودمیزبان: Service Worker پوشهٔ /fonts/ را cache-first نگه می‌دارد، پس همین صفحهٔ آفلاین هم
+    (بعد از اولین بازدید سایت) فارسی را با Vazirmatn نشان می‌دهد؛ اگر هنوز کش نشده بود، Tahoma.
+  -->
+  <link rel="stylesheet" href="/fonts/vazirmatn.css" />
   <style>
-    body { font-family: Tahoma, sans-serif; display: grid; place-items: center; min-height: 100vh; margin: 0; background: #fbf9f5; color: #1b1c1a; }
-    .box { text-align: center; padding: 2rem; }
-    .m { width: 64px; height: 64px; display: grid; place-items: center; border-radius: 16px; background: #6b0008; color: #fff; font-size: 32px; margin: 0 auto 1rem; }
-    button { margin-top: 1rem; background: #6b0008; color: #fff; border: 0; border-radius: 8px; padding: .6rem 1.2rem; font: inherit; cursor: pointer; }
+    body { font-family: 'Vazirmatn', Tahoma, sans-serif; display: grid; place-items: center; min-height: 100vh; margin: 0; background: #fbf9f5; color: #1b1c1a; line-height: 1.8; }
+    .box { text-align: center; padding: 2rem; max-width: 28rem; }
+    .m { width: 64px; height: 64px; display: grid; place-items: center; border-radius: 16px; background: #6b0008; color: #fff; font-size: 32px; font-weight: 700; margin: 0 auto 1rem; }
+    h1 { font-size: 1.5rem; margin: 0 0 .5rem; }
+    p { color: #58413f; margin: 0; }
+    .retry { display: inline-flex; align-items: center; min-height: 44px; margin-top: 1.25rem; background: #6b0008; color: #fff; border-radius: 8px; padding: 0 1.25rem; font-weight: 600; text-decoration: none; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #14100f; color: #f0ebe9; }
+      p { color: #d4bcba; }
+      .m, .retry { background: #ffb3ac; color: #410003; }
+    }
   </style>
 </head>
 <body>
   <div class="box">
     <div class="m">ف</div>
     <h1>اتصال اینترنت برقرار نیست</h1>
-    <p>برای مشاهدهٔ این صفحه به اینترنت نیاز دارید.</p>
-    <button onclick="location.reload()">تلاش دوباره</button>
+    <p>برای دیدن این صفحه اینترنت لازم است.</p>
+    <!--
+      لینک ساده به‌جای onclick: CSP اسکریپت inline (از جمله onclick) را مسدود می‌کند.
+      href خالی یعنی «همین آدرس» — این صفحه به‌جای صفحهٔ درخواستی نشان داده شده، پس با اتصال دوباره
+      همان صفحه باز می‌شود.
+    -->
+    <a class="retry" href="">تلاش دوباره</a>
   </div>
 </body>
 </html>

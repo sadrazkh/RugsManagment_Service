@@ -6,15 +6,23 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.8">
+    <!-- هم‌نسخه با EF زمان اجرای Web (10.0.10) و ابزار dotnet-ef در .config/dotnet-tools.json -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <!--
+      نسخهٔ EF صریح است چون Design (PrivateAssets=all) به پروژه‌های مصرف‌کننده نمی‌رسد و Npgsql فقط
+      EF ≥ 10.0.4 می‌خواهد؛ بدون این، پروژهٔ تست EF 10.0.4 می‌گرفت و با اسمبلیِ کامپایل‌شده روی 10.0.10 نمی‌خواند (CS1705).
+    -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.10" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.8" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.8" />
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.8" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.18.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- تست‌های یکپارچه تصمیم دروازهٔ پشتیبانِ Migrator را مستقیم صدا می‌زنند -->
+    <InternalsVisibleTo Include="RugsManagment.IntegrationTests" />
   </ItemGroup>
 
   <PropertyGroup>

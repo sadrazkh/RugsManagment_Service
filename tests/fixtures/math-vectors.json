@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "about": "Shared rounding vectors (spec G.4 / L.1). Run by xUnit (Domain Num/AreaMath) and vitest (lib/num.ts). Decimals are strings so neither side reads them through a float; 'raw' values are deliberate floats. Rounding is always half away from zero; a lot is rounded per piece, then multiplied by qty.",
+  "ops": {
+    "round": "round(value, scale)",
+    "snap": "parse the float 'raw', round to scale (cleans Excel noise such as 2.2999999999999998)",
+    "pieceArea": "piece = round(round(length,2) * round(width,2), 2); line = piece * qty",
+    "snapArea": "length/width given as floats (raw); snap each to 2 dp, then pieceArea",
+    "pieceUsd": "piece = round(area * rate, 2); line = piece * qty",
+    "pieceMoney": "piece = round(rate * area, scale); line = piece * qty",
+    "perPiece": "piece = round(rate, scale); line = piece * qty",
+    "convertPiece": "piece = round(amount * rate, scale); line = piece * qty (FX applied per piece, never to the line total)"
+  },
+  "vectors": [
+    { "id": "round-2.675", "kind": "money", "scale": 2, "op": "round", "value": "2.675", "expected": "2.68" },
+    { "id": "round-neg-2.675", "kind": "money", "scale": 2, "op": "round", "value": "-2.675", "expected": "-2.68" },
+    { "id": "round-0.005", "kind": "money", "scale": 2, "op": "round", "value": "0.005", "expected": "0.01" },
+    { "id": "round-2.665", "kind": "money", "scale": 2, "op": "round", "value": "2.665", "expected": "2.67" },
+    { "id": "round-0.5-scale0", "kind": "money", "scale": 0, "op": "round", "value": "0.5", "expected": "1" },
+    { "id": "round-neg-0.5-scale0", "kind": "money", "scale": 0, "op": "round", "value": "-0.5", "expected": "-1" },
+    { "id": "round-7.288-scale0", "kind": "money", "scale": 0, "op": "round", "value": "7.288", "expected": "7" },
+
+    { "id": "snap-2.30", "kind": "area", "scale": 2, "op": "snap", "raw": 2.2999999999999998, "expected": "2.30" },
+    { "id": "snap-2.07", "kind": "area", "scale": 2, "op": "snap", "raw": 2.0699999999999998, "expected": "2.07" },
+    { "id": "snap-0.56", "kind": "area", "scale": 2, "op": "snap", "raw": 0.56000000000000005, "expected": "0.56" },
+
+    { "id": "R17", "kind": "area", "scale": 2, "op": "pieceArea", "length": "1.93", "width": "1.50", "qty": 1, "piece": "2.90", "line": "2.90" },
+    { "id": "R57", "kind": "area", "scale": 2, "op": "pieceArea", "length": "2.30", "width": "1.65", "qty": 1, "piece": "3.80", "line": "3.80" },
+    { "id": "R107", "kind": "area", "scale": 2, "op": "pieceArea", "length": "1.51", "width": "0.50", "qty": 1, "piece": "0.76", "line": "0.76" },
+    { "id": "R149", "kind": "area", "scale": 2, "op": "pieceArea", "length": "0.77", "width": "0.50", "qty": 1, "piece": "0.39", "line": "0.39" },
+    { "id": "R176", "kind": "area", "scale": 2, "op": "pieceArea", "length": "1.49", "width": "0.50", "qty": 1, "piece": "0.75", "line": "0.75" },
+    { "id": "R197", "kind": "area", "scale": 2, "op": "pieceArea", "length": "0.79", "width": "0.50", "qty": 1, "piece": "0.40", "line": "0.40" },
+    { "id": "pair-2.50x0.37", "kind": "area", "scale": 2, "op": "pieceArea", "length": "2.50", "width": "0.37", "qty": 1, "piece": "0.93", "line": "0.93" },
+    { "id": "pair-1.50x0.83", "kind": "area", "scale": 2, "op": "pieceArea", "length": "1.50", "width": "0.83", "qty": 1, "piece": "1.25", "line": "1.25" },
+    { "id": "pair-1.05x0.50", "kind": "area", "scale": 2, "op": "pieceArea", "length": "1.05", "width": "0.50", "qty": 1, "piece": "0.53", "line": "0.53" },
+    { "id": "pair-0.45x0.45", "kind": "area", "scale": 2, "op": "pieceArea", "length": "0.45", "width": "0.45", "qty": 1, "piece": "0.20", "line": "0.20" },
+    { "id": "lot-0.40x0.40x50", "kind": "area", "scale": 2, "op": "pieceArea", "length": "0.40", "width": "0.40", "qty": 50, "piece": "0.16", "line": "8.00" },
+    { "id": "snapped-R57", "kind": "area", "scale": 2, "op": "snapArea", "lengthRaw": 2.2999999999999998, "widthRaw": 1.65, "qty": 1, "piece": "3.80", "line": "3.80" },
+
+    { "id": "usd-lot-45.55", "kind": "usd", "scale": 2, "op": "pieceUsd", "area": "0.16", "rate": "45.55", "qty": 50, "piece": "7.29", "line": "364.50" },
+    { "id": "usd-lot-45", "kind": "usd", "scale": 2, "op": "pieceUsd", "area": "0.16", "rate": "45", "qty": 50, "piece": "7.20", "line": "360.00" },
+    { "id": "usd-R57", "kind": "usd", "scale": 2, "op": "pieceUsd", "area": "3.80", "rate": "45", "qty": 1, "piece": "171.00", "line": "171.00" },
+
+    { "id": "money-perM2-lot-s0", "kind": "money", "scale": 0, "op": "pieceMoney", "area": "0.16", "rate": "45.55", "qty": 50, "piece": "7", "line": "350" },
+    { "id": "money-perM2-lot-s2", "kind": "money", "scale": 2, "op": "pieceMoney", "area": "0.16", "rate": "45.55", "qty": 50, "piece": "7.29", "line": "364.50" },
+    { "id": "money-perM2-9m-s0", "kind": "money", "scale": 0, "op": "pieceMoney", "area": "0.16", "rate": "9000000", "qty": 50, "piece": "1440000", "line": "72000000" },
+    { "id": "money-perPiece-fraction-s0", "kind": "money", "scale": 0, "op": "perPiece", "rate": "12345.5", "qty": 3, "piece": "12346", "line": "37038" },
+    { "id": "money-fx-per-piece-s0", "kind": "money", "scale": 0, "op": "convertPiece", "amount": "7.29", "rate": "105000.5", "qty": 50, "piece": "765454", "line": "38272700" },
+    { "id": "money-rial-to-toman-s0", "kind": "money", "scale": 0, "op": "convertPiece", "amount": "12345", "rate": "0.1", "qty": 4, "piece": "1235", "line": "4940" }
+  ]
+}

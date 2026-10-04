@@ -36,13 +36,15 @@ public sealed class StepTypeService(
     IRepository<WorkflowTemplateStep> templateSteps,
     IRepository<RugWorkflowStep> rugSteps,
     IAuditLog audit,
-    IUnitOfWork unitOfWork) : IStepTypeService
+    IUnitOfWork unitOfWork,
+    IMoneyVisibility money) : IStepTypeService
 {
+    /// <summary>فهرست مرحله‌ها؛ نرخ پیش‌فرض برای غیر Business null است (پاسخ نوشتن فقط به تنظیم‌کننده می‌رسد).</summary>
     public async Task<IReadOnlyList<ProcessStepTypeDto>> ListAsync(
         Guid tenantId, bool onlyActive = true, CancellationToken ct = default)
     {
         var list = await stepTypes.ListForTenantAsync(tenantId, onlyActive, ct);
-        return list.Select(t => t.ToDto()).ToList();
+        return list.Select(t => t.ToDto(money)).ToList();
     }
 
     public async Task<ProcessStepTypeDto> CreateAsync(

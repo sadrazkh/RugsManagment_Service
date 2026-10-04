@@ -18,6 +18,11 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <!-- داده‌های آزمونِ مشترک بین تست‌های واحد و یکپارچه (tests/fixtures) کنار خروجی کپی می‌شوند -->
+  <ItemGroup>
+    <None Include="..\fixtures\*.json" CopyToOutputDirectory="PreserveNewest" LinkBase="fixtures" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\src\RugsManagment.Application\RugsManagment.Application.csproj" />
     <ProjectReference Include="..\..\src\RugsManagment.Domain\RugsManagment.Domain.csproj" />

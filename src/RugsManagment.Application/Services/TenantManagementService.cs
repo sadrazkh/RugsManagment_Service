@@ -15,10 +15,15 @@ public interface ITenantManagementService
     Task<TenantDto> UpdateAsync(Guid id, UpdateTenantRequest request, CancellationToken ct = default);
 }
 
+/// <remarks>
+/// کارگاه تازه بلافاصله بعد از ذخیره پیش‌فرض‌هایش را از <see cref="ITenantSeedRunner"/> می‌گیرد (ردیف
+/// ترجیحات و هر چه فازهای بعد اضافه کنند)؛ همان runner در هر استارت هم برای کارگاه‌های قدیمی اجرا می‌شود.
+/// </remarks>
 public sealed class TenantManagementService(
     ITenantRepository tenants,
     IUserRepository users,
-    IUnitOfWork unitOfWork) : ITenantManagementService
+    IUnitOfWork unitOfWork,
+    ITenantSeedRunner seedRunner) : ITenantManagementService
 {
     public async Task<IReadOnlyList<TenantDto>> ListAsync(CancellationToken ct = default)
     {
@@ -56,9 +61,13 @@ public sealed class TenantManagementService(
             PasswordHash = AuthService.HashPassword(request.AdminPassword),
             IsActive = true
         };
+        admin.ApplyRoleDefaultPreferences();
 
         await users.AddAsync(admin, ct);
         await unitOfWork.SaveChangesAsync(ct);
+
+        // بعد از ذخیرهٔ کارگاه: پیش‌فرض‌ها کلید خارجی به همین ردیف دارند
+        await seedRunner.SeedTenantAsync(tenant.Id, ct);
         return tenant.ToDto();
     }
 

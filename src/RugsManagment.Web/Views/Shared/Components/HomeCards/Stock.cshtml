@@ -1,0 +1,50 @@
+@using RugsManagment.Application.Common
+@using RugsManagment.Web.Home.Cards
+@using RugsManagment.Web.Navigation
+@model HomeStockModel
+@* کارت انبار: تخته (Σ تعداد) و متراژ فرش‌هایی که هنوز جایی نرفته‌اند. بدون پول، برای همه. *@
+<section class="h-full rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm"
+         aria-labelledby="home-stock-title">
+    <h2 id="home-stock-title" class="flex items-center gap-2 text-base font-semibold text-primary">
+        <icon name="warehouse" class="h-5 w-5" />
+        انبار
+    </h2>
+
+    @if (Model.Pieces == 0)
+    {
+        <p class="mt-4 text-on-surface-variant">انبار خالی است.</p>
+        <div class="mt-4 flex flex-wrap gap-2">
+            <a href="@NavBuilder.Resolve(Context, Model.NewRugHref)"
+               class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 font-semibold text-on-primary hover:bg-primary-hover">
+                <icon name="plus" class="h-5 w-5" />
+                ثبت فرش تازه
+            </a>
+            @if (Model.ImportHref is not null)
+            {
+                <a href="@NavBuilder.Resolve(Context, Model.ImportHref)"
+                   class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-4 font-medium hover:bg-surface-container">
+                    <icon name="upload" class="h-5 w-5" />
+                    ورود از اکسل
+                </a>
+            }
+        </div>
+    }
+    else
+    {
+        <dl class="mt-4 flex flex-wrap gap-x-8 gap-y-3">
+            <div>
+                <dt class="text-sm text-on-surface-variant">تخته</dt>
+                <dd class="text-3xl font-bold" data-numeric>@Messages.FormatNumber(Model.Pieces)</dd>
+            </div>
+            <div>
+                <dt class="text-sm text-on-surface-variant">متر</dt>
+                <dd class="text-3xl font-bold" data-numeric>@Messages.FormatNumber(Model.AreaM2)</dd>
+            </div>
+        </dl>
+        <a asp-controller="Rugs" asp-action="Index"
+           class="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-4 text-sm font-medium hover:bg-surface-container">
+            دیدن فرش‌ها
+            <icon name="chevron-left" class="h-4 w-4" />
+        </a>
+    }
+</section>

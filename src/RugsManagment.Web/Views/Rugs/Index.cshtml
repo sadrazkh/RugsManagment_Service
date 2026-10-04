@@ -1,35 +1,38 @@
 @using RugsManagment.Application.DTOs.Rugs
 @using RugsManagment.Domain.Enums
+@using RugsManagment.Web.Auth
 @using RugsManagment.Web.Models.Rugs
 @using RugsManagment.Web.Support
 @model RugListViewModel
+@inject IUserPreferencesAccessor Prefs
 @{
     ViewData["Title"] = "فرش‌ها";
     var q = Model.Query;
     var result = Model.Result;
 
-    (string Label, RugStatus? Value)[] statusFilters =
-    {
-        ("همه", null),
-        ("پیش‌نویس", RugStatus.Draft),
-        ("در جریان", RugStatus.InProgress),
-        ("آمادهٔ فروش", RugStatus.ReadyForSale),
-        ("فروخته‌شده", RugStatus.Sold),
-        ("بایگانی", RugStatus.Archived),
-    };
+    // نمای ساده (بازرگان، انباردار، پیش‌نمایش تنظیم‌کننده): مرحله‌های کارگاه، فیلتر وضعیت کارگاهی و دکمهٔ
+    // «مرحلهٔ بعد» پنهان‌اند و کد فرش فقط کوچک زیر عنوان می‌آید، نه به‌عنوان ستون اصلی. فقط پوسته است؛ دسترسی‌ها
+    // همان می‌ماند.
+    var simple = Prefs.IsSimple;
+
+    // مبلغ‌ها فقط برای Business (بازرگان و تنظیم‌کننده). سرویس هم برای انباردار null می‌فرستد؛ این شرط ستون و
+    // مرتب‌سازی را هم برمی‌دارد تا جای خالیِ «—» نماند و ترتیبِ «هزینهٔ کل» چیزی لو ندهد.
+    var showMoney = Tenant.CanSeeMoney;
+    var canTrash = Policies.IsBusiness(User);
 
     // سرستون‌های قابل مرتب‌سازی: عنوان نمایشی + ستون منطقی
-    (string Label, RugSortBy Column)[] sortableHeaders =
+    var sortableHeaders = new List<(string Label, RugSortBy Column)>();
+    if (!simple) sortableHeaders.Add(("کد", RugSortBy.Sku));
+    sortableHeaders.Add(("عنوان", RugSortBy.Title));
+    sortableHeaders.Add(("مساحت", RugSortBy.Area));
+    if (!simple)
     {
-        ("کد", RugSortBy.Sku),
-        ("عنوان", RugSortBy.Title),
-        ("مساحت", RugSortBy.Area),
-        ("مرحلهٔ جاری", RugSortBy.CurrentStep),
-        ("وضعیت", RugSortBy.Status),
-        ("هزینهٔ کل", RugSortBy.TotalCost),
-    };
+        sortableHeaders.Add(("مرحلهٔ جاری", RugSortBy.CurrentStep));
+        sortableHeaders.Add(("وضعیت", RugSortBy.Status));
+    }
+    if (showMoney) sortableHeaders.Add(("هزینهٔ کل", RugSortBy.TotalCost));
 
-    var advancedOpen = q.BatchId.HasValue || q.StepTypeId.HasValue || q.CreatedFrom.HasValue || q.CreatedTo.HasValue;
+    var advancedOpen = q.BatchId.HasValue || (!simple && q.StepTypeId.HasValue) || q.CreatedFrom.HasValue || q.CreatedTo.HasValue;
 }
 
 <div class="space-y-5">
@@ -45,7 +48,7 @@
             </p>
         </div>
         <div class="flex flex-wrap gap-2">
-            @if (User.IsInRole(nameof(UserRole.TenantAdmin)))
+            @if (canTrash)
             {
                 <a asp-action="Trash"
                    class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-4 hover:bg-surface-container">
@@ -56,7 +59,7 @@
             <a asp-action="Create"
                class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 font-semibold text-on-primary hover:bg-primary-hover">
                 <icon name="plus" class="h-5 w-5" />
-                ثبت فرش
+                ثبت فرش تازه
             </a>
         </div>
     </div>
@@ -74,6 +77,11 @@
         @if (!q.Descending)
         {
             <input type="hidden" name="descending" value="false" />
+        }
+        @* در نمای ساده فیلتر وضعیت دیده نمی‌شود ولی اگر از لینکی آمده باشد حفظ می‌شود *@
+        @if (simple && q.Status.HasValue)
+        {
+            <input type="hidden" name="status" value="@q.Status" />
         }
 
         <div class="flex flex-wrap gap-3">
@@ -105,24 +113,38 @@
             }
         </div>
 
-        @* فیلتر وضعیت — چیپ‌ها به‌جای select چون پرکاربردترین فیلترند *@
-        <div class="flex flex-wrap gap-2" role="group" aria-label="فیلتر وضعیت">
-            @foreach (var (label, value) in statusFilters)
-            {
-                var isActive = q.Status == value;
-                var route = Model.RouteValues(page: 1);
-                route.Remove("status");
-                if (value.HasValue) route["status"] = value.Value.ToString();
-
-                <a asp-action="Index" asp-all-route-data="route"
-                   aria-current="@(isActive ? "true" : null)"
-                   class="inline-flex min-h-11 items-center rounded-full border px-4 text-sm @(isActive
+        @* فیلتر وضعیت — چیپ‌ها به‌جای select چون پرکاربردترین فیلترند؛ وضعیت کارگاهی فقط در نمای کامل *@
+        @if (!simple)
+        {
+            <div class="flex flex-wrap gap-2" role="group" aria-label="فیلتر وضعیت">
+                @{
+                    var allRoute = Model.RouteValues(page: 1);
+                    allRoute.Remove("status");
+                    var allActive = q.Status is null;
+                }
+                <a asp-action="Index" asp-all-route-data="allRoute"
+                   aria-current="@(allActive ? "true" : null)"
+                   class="inline-flex min-h-11 items-center rounded-full border px-4 text-sm @(allActive
                        ? "border-primary bg-primary/10 font-semibold text-primary"
                        : "border-outline-variant text-on-surface-variant hover:bg-surface-container")">
-                    @label
+                    همه
                 </a>
-            }
-        </div>
+                @foreach (var status in DisplayHelpers.RugStatusOrder)
+                {
+                    var isActive = q.Status == status;
+                    var route = Model.RouteValues(page: 1);
+                    route["status"] = status.ToString();
+
+                    <a asp-action="Index" asp-all-route-data="route"
+                       aria-current="@(isActive ? "true" : null)"
+                       class="inline-flex min-h-11 items-center rounded-full border px-4 text-sm @(isActive
+                           ? "border-primary bg-primary/10 font-semibold text-primary"
+                           : "border-outline-variant text-on-surface-variant hover:bg-surface-container")">
+                        @DisplayHelpers.RugStatus(status).Label
+                    </a>
+                }
+            </div>
+        }
 
         @* فیلترهای کم‌کاربردتر پشت یک آکاردئون — جلوگیری از شلوغی بصری *@
         <details class="rounded-lg border border-outline-variant bg-surface-container-lowest" @(advancedOpen ? "open" : "")>
@@ -132,10 +154,10 @@
             </summary>
             <div class="grid gap-3 border-t border-outline-variant p-4 sm:grid-cols-2 lg:grid-cols-4">
                 <label class="block">
-                    <span class="mb-1 block text-sm">گروه</span>
+                    <span class="mb-1 block text-sm">ورودی</span>
                     <select name="batchId"
                             class="min-h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 outline-none focus:border-primary">
-                        <option value="">همهٔ گروه‌ها</option>
+                        <option value="">همهٔ ورودی‌ها</option>
                         @foreach (var b in Model.Batches)
                         {
                             <option value="@b.Id" selected="@(q.BatchId == b.Id)">@b.Name</option>
@@ -143,17 +165,24 @@
                     </select>
                 </label>
 
-                <label class="block">
-                    <span class="mb-1 block text-sm">مرحلهٔ جاری</span>
-                    <select name="stepTypeId"
-                            class="min-h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 outline-none focus:border-primary">
-                        <option value="">همهٔ مراحل</option>
-                        @foreach (var s in Model.StepTypes)
-                        {
-                            <option value="@s.Id" selected="@(q.StepTypeId == s.Id)">@s.NameFa</option>
-                        }
-                    </select>
-                </label>
+                @if (!simple)
+                {
+                    <label class="block">
+                        <span class="mb-1 block text-sm">مرحلهٔ جاری</span>
+                        <select name="stepTypeId"
+                                class="min-h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 outline-none focus:border-primary">
+                            <option value="">همهٔ مراحل</option>
+                            @foreach (var s in Model.StepTypes)
+                            {
+                                <option value="@s.Id" selected="@(q.StepTypeId == s.Id)">@s.NameFa</option>
+                            }
+                        </select>
+                    </label>
+                }
+                else if (q.StepTypeId.HasValue)
+                {
+                    <input type="hidden" name="stepTypeId" value="@q.StepTypeId" />
+                }
 
                 <label class="block">
                     <span class="mb-1 block text-sm">ثبت از تاریخ</span>
@@ -189,7 +218,7 @@
             {
                 <p class="font-medium text-on-surface">هنوز فرشی ثبت نشده است</p>
                 <p class="mx-auto mt-1 max-w-sm text-sm text-on-surface-variant">
-                    اولین فرش را ثبت کنید تا مسیر گردش کار، هزینه‌ها و برچسب آن ساخته شود.
+                    اولین فرش را ثبت کنید؛ بعد می‌توانید برچسبش را چاپ کنید.
                 </p>
                 <a asp-action="Create"
                    class="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-5 font-semibold text-on-primary hover:bg-primary-hover">
@@ -226,7 +255,7 @@
         <div class="grid gap-3 md:hidden">
             @foreach (var r in result.Items)
             {
-                var st = DisplayHelpers.RugStatus(r.Status);
+                var st = DisplayHelpers.RugStatus(r.Status, simple);
                 <div class="rounded-xl border border-outline-variant bg-surface-container-lowest shadow-sm transition hover:shadow-md">
                     <div class="flex items-start gap-2 p-4">
                         <label class="flex min-h-11 min-w-11 items-start justify-center pt-0.5">
@@ -258,7 +287,7 @@
                                     @st.Label
                                 </span>
                             </div>
-                            <dl class="mt-3 grid grid-cols-3 gap-2 text-center text-sm" data-numeric>
+                            <dl class="mt-3 grid @(simple ? "grid-cols-2" : "grid-cols-3") gap-2 text-center text-sm" data-numeric>
                                 <div>
                                     <dt class="text-xs text-on-surface-variant">ابعاد</dt>
                                     <dd>@PersianFormat.Number(r.WidthMeters)×@PersianFormat.Number(r.LengthMeters)</dd>
@@ -267,15 +296,21 @@
                                     <dt class="text-xs text-on-surface-variant">مساحت</dt>
                                     <dd>@PersianFormat.Number(r.AreaSquareMeters) م²</dd>
                                 </div>
-                                <div>
-                                    <dt class="text-xs text-on-surface-variant">مرحله</dt>
-                                    <dd class="truncate">@(r.CurrentStepNameFa ?? "—")</dd>
-                                </div>
+                                @if (!simple)
+                                {
+                                    <div>
+                                        <dt class="text-xs text-on-surface-variant">مرحله</dt>
+                                        <dd class="truncate">@(r.CurrentStepNameFa ?? "—")</dd>
+                                    </div>
+                                }
                             </dl>
-                            <p class="mt-2 text-sm" data-numeric>
-                                @PersianFormat.Money(r.TotalInvestment)
-                                <span class="text-xs text-on-surface-variant">@Tenant.Currency</span>
-                            </p>
+                            @if (showMoney)
+                            {
+                                <p class="mt-2 text-sm" data-numeric>
+                                    @PersianFormat.Money(r.TotalInvestment)
+                                    <span class="text-xs text-on-surface-variant">@Tenant.Currency</span>
+                                </p>
+                            }
                             </span>
                         </a>
                     </div>
@@ -284,9 +319,9 @@
         </div>
 
         <!-- دسکتاپ: جدول -->
-        <div class="hidden overflow-x-auto rounded-xl border border-outline-variant bg-surface-container-lowest md:block">
-            <table class="w-full min-w-[56rem] text-sm">
-                <caption class="sr-only">فهرست فرش‌های کارگاه با وضعیت، ابعاد و هزینه — سرستون‌ها برای مرتب‌سازی قابل کلیک‌اند</caption>
+        <div class="relative hidden overflow-x-auto rounded-xl border border-outline-variant bg-surface-container-lowest md:block">
+            <table class="w-full @(simple ? "min-w-[40rem]" : "min-w-[56rem]") text-sm">
+                <caption class="sr-only">فهرست فرش‌های کارگاه — سرستون‌ها برای مرتب‌سازی قابل کلیک‌اند</caption>
                 <thead class="bg-surface-container text-on-surface-variant">
                     <tr>
                         <th scope="col" class="w-12 p-3"><span class="sr-only">انتخاب</span></th>
@@ -303,6 +338,11 @@
                                     }
                                 </a>
                             </th>
+                            @if (simple && column == RugSortBy.Area)
+                            {
+                                @* نمای ساده: به‌جای وضعیت کارگاهی فقط اینکه فرش کجاست (در انبار، فروخته‌شده، …) *@
+                                <th scope="col" class="p-3 text-right font-medium">وضعیت</th>
+                            }
                         }
                         <th scope="col" class="p-3"><span class="sr-only">عملیات</span></th>
                     </tr>
@@ -310,7 +350,7 @@
                 <tbody>
                     @foreach (var r in result.Items)
                     {
-                        var st = DisplayHelpers.RugStatus(r.Status);
+                        var st = DisplayHelpers.RugStatus(r.Status, simple);
                         <tr class="border-t border-outline-variant transition-colors even:bg-surface-container-low/60 hover:bg-surface-container/70">
                             <td class="p-3">
                                 <label class="flex min-h-11 min-w-11 items-center justify-center">
@@ -333,32 +373,46 @@
                                     }
                                 </span>
                             </td>
-                            <td class="p-3 font-mono text-xs" dir="ltr">@r.Sku</td>
+                            @if (!simple)
+                            {
+                                <td class="p-3 font-mono text-xs" dir="ltr">@r.Sku</td>
+                            }
                             <td class="p-3 font-medium">
                                 @* لینک تمام‌ارتفاع سلول تا هدف کلیک به ۴۴px برسد *@
                                 <a asp-action="Details" asp-route-id="@r.Id"
-                                   class="flex min-h-11 items-center hover:text-primary hover:underline">
-                                    @(string.IsNullOrEmpty(r.Title) ? "بدون عنوان" : r.Title)
+                                   class="flex min-h-11 flex-col justify-center hover:text-primary hover:underline">
+                                    <span>@(string.IsNullOrEmpty(r.Title) ? "بدون عنوان" : r.Title)</span>
+                                    @if (simple)
+                                    {
+                                        @* کد فرش در نمای ساده فقط کوچک، هرگز ستون اصلی *@
+                                        <span class="font-mono text-xs font-normal text-on-surface-variant" dir="ltr">@r.Sku</span>
+                                    }
                                 </a>
                             </td>
                             <td class="p-3 whitespace-nowrap" data-numeric>
                                 @PersianFormat.Number(r.AreaSquareMeters)
                                 <span class="text-xs text-on-surface-variant">م²</span>
                             </td>
-                            <td class="p-3">@(r.CurrentStepNameFa ?? "—")</td>
+                            @if (!simple)
+                            {
+                                <td class="p-3">@(r.CurrentStepNameFa ?? "—")</td>
+                            }
                             <td class="p-3">
                                 <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs @st.Css">
                                     <icon name="@st.Icon" class="h-3.5 w-3.5" />
                                     @st.Label
                                 </span>
                             </td>
-                            <td class="p-3 whitespace-nowrap" data-numeric>
-                                @PersianFormat.Money(r.TotalInvestment)
-                                <span class="text-xs text-on-surface-variant">@Tenant.Currency</span>
-                            </td>
+                            @if (showMoney)
+                            {
+                                <td class="p-3 whitespace-nowrap" data-numeric>
+                                    @PersianFormat.Money(r.TotalInvestment)
+                                    <span class="text-xs text-on-surface-variant">@Tenant.Currency</span>
+                                </td>
+                            }
                             <td class="p-3">
                                 <div class="flex justify-end gap-1.5">
-                                    @if (r.ActiveStepId is Guid stepId)
+                                    @if (!simple && r.ActiveStepId is Guid stepId)
                                     {
                                         <button type="button" data-advance-rug="@r.Id" data-advance-step="@stepId"
                                                 data-advance-label="@r.Sku"
@@ -381,9 +435,12 @@
 
         <partial name="_Pager" model="Model" />
 
-        @* جزیرهٔ سبک برای دکمه‌های «مرحلهٔ بعد» داخل لیست *@
-        <div data-island="list-quick-advance" data-skeleton="off"></div>
-        @* نوار عملیات دسته‌ای (انتخاب چند فرش) *@
+        @if (!simple)
+        {
+            @* جزیرهٔ سبک برای دکمه‌های «مرحلهٔ بعد» داخل لیست (فقط نمای کامل) *@
+            <div data-island="list-quick-advance" data-skeleton="off"></div>
+        }
+        @* نوار عملیات دسته‌ای (انتخاب چند فرش)؛ پنهان کردن کارهای کارگاهی در نمای ساده با خود جزیره است *@
         <div data-island="rug-bulk-toolbar" data-skeleton="off"></div>
     }
 </div>

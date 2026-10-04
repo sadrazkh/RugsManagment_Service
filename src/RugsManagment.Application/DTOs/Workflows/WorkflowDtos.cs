@@ -11,7 +11,8 @@ public record ProcessStepTypeDto(
     string Icon,
     int SortOrder,
     StepPricingModel DefaultPricingModel,
-    decimal DefaultUnitRate,
+    /// <summary>نرخ پیش‌فرض (تومان)؛ برای غیر Business null</summary>
+    decimal? DefaultUnitRate,
     string? FieldSchemaJson,
     /// <summary>مدت معمول انجام (روز) — مبنای هشدار کهنگی</summary>
     int? ExpectedDurationDays = null,

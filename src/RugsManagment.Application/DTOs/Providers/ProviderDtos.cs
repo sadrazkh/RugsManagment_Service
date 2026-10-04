@@ -18,7 +18,8 @@ public record ProviderRateDto(
     Guid ProcessStepTypeId,
     string StepNameFa,
     StepPricingModel PricingModel,
-    decimal UnitRate,
+    /// <summary>نرخ توافقی (تومان)؛ در فهرست و جزئیات طرف برای غیر Business null</summary>
+    decimal? UnitRate,
     string? Notes);
 
 public record SaveServiceProviderRequest(

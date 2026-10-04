@@ -1,0 +1,25 @@
+@{
+    ViewData["Title"] = "ترجیحات کارگاه";
+}
+
+@*
+    قاب صفحهٔ ترجیحات؛ خودِ فرم جزیرهٔ preferences-form است (islands/settings/PreferencesForm.island.vue) که
+    از /api/settings/preferences می‌خواند، نسخه را نگه می‌دارد و با PUT ذخیره می‌کند. props ندارد.
+*@
+<div class="mx-auto max-w-3xl space-y-5">
+    <div class="flex items-center gap-3">
+        @* در RTL «بازگشت» به سمت راست اشاره می‌کند *@
+        <a href="/settings"
+           class="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-outline-variant hover:bg-surface-container">
+            <icon name="arrow-right" label="بازگشت به تنظیمات" />
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold">ترجیحات کارگاه</h1>
+            <p class="text-sm text-on-surface-variant">
+                شمارهٔ فرش، واژهٔ «نگله» یا «عدل»، متراژ هدف هر نگله، ارزش گمرکی و مشخصات صادرکننده.
+            </p>
+        </div>
+    </div>
+
+    <div data-island="preferences-form" data-skeleton="28rem"></div>
+</div>

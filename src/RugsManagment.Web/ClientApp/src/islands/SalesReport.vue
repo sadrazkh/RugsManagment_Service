@@ -6,8 +6,9 @@
  */
 import { computed, onMounted, reactive, ref } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
-import { api } from '@/lib/api'
+import { api, errorMessage } from '@/lib/api'
 import { faDate, faMoney, faNumber } from '@/lib/format'
+import { paymentMethodLabel } from '@/lib/labels'
 import { toast } from '@/lib/ui'
 
 interface Sale {
@@ -37,8 +38,6 @@ interface Summary {
   marginPercent?: number
 }
 
-const METHODS = ['نقدی', 'کارت', 'حواله', 'چک', 'اقساطی']
-
 const summary = ref<Summary | null>(null)
 const sales = ref<Sale[]>([])
 const loading = ref(true)
@@ -54,7 +53,7 @@ const queryString = computed(() => {
   return p.toString()
 })
 
-const methodLabel = (v: number) => METHODS[v] ?? '—'
+const methodLabel = paymentMethodLabel
 
 async function load() {
   loading.value = true
@@ -65,7 +64,7 @@ async function load() {
     summary.value = data.summary
     sales.value = data.sales
   } catch (e) {
-    toast.error((e as Error).message)
+    toast.error(errorMessage(e))
   } finally {
     loading.value = false
   }

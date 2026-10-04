@@ -25,7 +25,8 @@ public record RugListItemDto(
     string? CurrentStepNameFa,
     /// <summary>شناسهٔ مرحلهٔ در حال انجام — برای دکمهٔ «مرحلهٔ بعد» در لیست؛ null یعنی مرحلهٔ فعالی نیست</summary>
     Guid? ActiveStepId,
-    decimal TotalInvestment,
+    /// <summary>سرمایهٔ کل (خرید + مراحل)؛ برای غیر Business null</summary>
+    decimal? TotalInvestment,
     /// <summary>مراحل تمام‌شده (تکمیل یا رد‌شده) — برای نوار پیشرفت بدون لود کردن خود مراحل</summary>
     int CompletedStepCount,
     int TotalStepCount,
@@ -54,6 +55,8 @@ public enum RugSortBy
     Sku = 1,
     Title = 2,
     Area = 3,
+
+    /// <summary>برای غیر Business به <see cref="CreatedAt"/> برمی‌گردد تا ترتیب، هزینه را لو ندهد.</summary>
     TotalCost = 4,
     Status = 5,
     CurrentStep = 6

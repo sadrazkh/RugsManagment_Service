@@ -7,11 +7,25 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import { api } from '@/lib/api'
+import { moneyVisible } from '@/lib/context'
 import { faDate, faMoney, faNumber } from '@/lib/format'
+import { stepStatus } from '@/lib/labels'
 import AppIcon from '@/components/AppIcon.vue'
 import CostRuleEditor from '@/components/CostRuleEditor.vue'
 import StepFieldsForm from '@/components/StepFieldsForm.vue'
-import type { Rug } from '@/lib/types'
+import type { Rug, RugWorkflowStep } from '@/lib/types'
+
+/**
+ * مبلغ مرحله‌ها فقط برای Business (A.5). انباردار نه مبلغ هر مرحله را می‌بیند و نه ویرایشگر هزینه را؛
+ * تکمیل مرحله برای او بی‌مبلغ فرستاده می‌شود و سرور نرخ توافقی یا پیش‌فرض را می‌گذارد.
+ */
+const canSeeMoney = moneyVisible()
+
+/** هزینهٔ مؤثر یک مرحله، یا null وقتی سرور پنهانش کرده (غیر Business). */
+function stepCost(step: RugWorkflowStep): number | null {
+  const cost = step.effectiveCost as number | null | undefined
+  return canSeeMoney && typeof cost === 'number' && cost > 0 ? cost : null
+}
 
 const costEditor = ref<InstanceType<typeof CostRuleEditor> | null>(null)
 const stepFields = ref<InstanceType<typeof StepFieldsForm> | null>(null)
@@ -19,7 +33,16 @@ const stepFields = ref<InstanceType<typeof StepFieldsForm> | null>(null)
 const props = defineProps<{ rugId: string }>()
 
 interface Provider { id: string; name: string }
-interface StepType { id: string; nameFa: string; fieldSchemaJson?: string }
+interface StepType { id: string; nameFa: string; fieldSchemaJson?: string; defaultPricingModel?: number; defaultUnitRate?: number }
+
+/** فیلدهای قیمت‌گذاری که سرور در RugWorkflowStepDto می‌فرستد ولی در types.ts نیامده‌اند. */
+interface StepPricingFields {
+  serviceProviderId?: string | null
+  appliedPricingModel?: string | null
+  appliedUnitRate?: number | null
+  pricingConfigJson?: string | null
+  adjustment?: number | null
+}
 interface Template { id: string; name: string; isDefault: boolean }
 interface Row { uid: number; processStepTypeId: string; stepNameFa: string; isOptional: boolean }
 
@@ -35,19 +58,34 @@ const error = ref('')
 const hasCompleted = computed(() => orderedSteps.value.some((s) => s.status === 2 || s.status === 3))
 const noPath = computed(() => orderedSteps.value.length === 0)
 
-const statusLabel: Record<number, string> = { 0: 'در صف', 1: 'در حال انجام', 2: 'تکمیل', 3: 'رد‌شده', 4: 'لغو' }
-const statusCss: Record<number, string> = {
-  0: 'bg-surface-container text-on-surface-variant', 1: 'bg-secondary-container text-on-secondary-container',
-  2: 'bg-success/10 text-success', 3: 'bg-surface-container text-on-surface-variant line-through', 4: 'bg-error-container text-error',
-}
 
 const orderedSteps = computed(() => [...(rug.value?.workflowSteps ?? [])].sort((a, b) => a.orderIndex - b.orderIndex))
 const currentStep = computed(() => orderedSteps.value.find((s) => s.status === 1) ?? null)
 
+/**
+ * قیمت‌گذاری فعلی مرحلهٔ جاری + پیش‌فرض نوع آن، برای پر کردن اولیهٔ ویرایشگر هزینه.
+ * ویرایشگر تا وقتی کاربر چیزی را عوض نکند null می‌فرستد؛ این فقط برای نمایشِ درست است.
+ */
+const currentPricing = computed(() => {
+  const step = currentStep.value as (RugWorkflowStep & StepPricingFields) | null
+  if (!step) return null
+  const type = stepTypes.value.find((t) => t.id === step.processStepTypeId)
+  return {
+    appliedPricingModel: step.appliedPricingModel ?? null,
+    appliedUnitRate: step.appliedUnitRate ?? null,
+    pricingConfigJson: step.pricingConfigJson ?? null,
+    manualCostOverride: step.manualCostOverride ?? null,
+    adjustment: step.adjustment ?? null,
+    defaultPricingModel: type?.defaultPricingModel ?? null,
+    defaultUnitRate: type?.defaultUnitRate ?? null,
+  }
+})
+
 // ── مودال حرکت ──
+// assignedProviderId: انجام‌دهنده‌ای که هنگام باز شدن از پیش انتخاب شد؛ برای تشخیص «کاربر «—» را انتخاب کرد»
 const modal = reactive({
   open: false, kind: 'forward' as 'forward' | 'back',
-  providerId: '', date: '', notes: '',
+  providerId: '', assignedProviderId: '', date: '', notes: '',
 })
 
 // ── ویرایش مسیر ──
@@ -79,7 +117,13 @@ async function applyTemplate() {
 }
 
 function openForward() {
-  Object.assign(modal, { open: true, kind: 'forward', providerId: '', date: new Date().toISOString().slice(0, 10), notes: '' })
+  // انجام‌دهندهٔ فعلی مرحله از قبل انتخاب می‌شود (فقط اگر در فهرست طرف‌های فعال همین کارگاه باشد)
+  const assigned = (currentStep.value as (RugWorkflowStep & StepPricingFields) | null)?.serviceProviderId ?? ''
+  const providerId = providers.value.some((p) => p.id === assigned) ? assigned : ''
+  Object.assign(modal, {
+    open: true, kind: 'forward', providerId, assignedProviderId: providerId,
+    date: new Date().toISOString().slice(0, 10), notes: '',
+  })
 }
 function openBack() {
   Object.assign(modal, { open: true, kind: 'back', notes: '' })
@@ -127,10 +171,21 @@ const currentSchema = computed(() => {
   if (!currentStep.value) return null
   return stepTypes.value.find((t) => t.id === currentStep.value!.processStepTypeId)?.fieldSchemaJson ?? null
 })
+/**
+ * بدنهٔ تکمیل/ذخیرهٔ مرحله. اگر کاربر به هزینه دست نزده، روش و نرخ null می‌روند تا سرور
+ * قیمت ذخیره‌شده، نرخ توافقیِ انجام‌دهنده یا نرخ پیش‌فرض مرحله را بگذارد (نه نرخ صفر).
+ *
+ * انجام‌دهنده: serviceProviderId=null در سرور یعنی «همان قبلی»؛ پس اگر مرحله انجام‌دهنده داشت و کاربر «—» را
+ * انتخاب کرد، clearServiceProvider صریح فرستاده می‌شود تا واقعاً برداشته شود (و نرخ توافقی‌اش هم اعمال نشود).
+ */
 function movePayload(markCompleted: boolean) {
-  const pricing = costEditor.value?.toPayload() ?? { manualCostOverride: null, pricingModel: null, unitRate: null, pricingConfigJson: null, adjustment: null }
+  const pricing = costEditor.value?.toPayload() ?? {
+    manualCostOverride: null, pricingModel: null, unitRate: null, pricingConfigJson: null, adjustment: null, clearManualOverride: null,
+  }
+  const unassign = !!modal.assignedProviderId && !modal.providerId
   return {
     serviceProviderId: modal.providerId || null,
+    clearServiceProvider: unassign ? true : null,
     ...pricing,
     fieldValuesJson: fieldValues(),
     notes: modal.notes || null, markCompleted,
@@ -275,8 +330,11 @@ onMounted(load)
               </span>
             </div>
             <div class="flex items-center gap-2">
-              <span v-if="s.effectiveCost > 0" class="text-xs" data-numeric>{{ faMoney(s.effectiveCost) }}</span>
-              <span class="rounded-full px-2 py-0.5 text-xs" :class="statusCss[s.status]">{{ statusLabel[s.status] }}</span>
+              <span v-if="stepCost(s) !== null" class="text-xs" data-numeric>{{ faMoney(stepCost(s)) }}</span>
+              <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs" :class="stepStatus(s.status).css">
+                <AppIcon :name="stepStatus(s.status).icon" class="h-3.5 w-3.5" />
+                {{ stepStatus(s.status).label }}
+              </span>
             </div>
           </li>
         </ol>
@@ -313,7 +371,7 @@ onMounted(load)
         <p class="mb-4 text-sm text-on-surface-variant">جزئیات این مرحله را وارد کنید سپس به مرحلهٔ بعد بروید.</p>
         <div v-if="error" class="mb-3 rounded-lg bg-error-container px-3 py-2 text-sm text-error">{{ error }}</div>
         <div class="space-y-3">
-          <CostRuleEditor ref="costEditor" :width="rug?.widthMeters ?? 0" :length="rug?.lengthMeters ?? 0" />
+          <CostRuleEditor v-if="canSeeMoney" ref="costEditor" :width="rug?.widthMeters ?? 0" :length="rug?.lengthMeters ?? 0" :current="currentPricing" />
           <!-- فرم اختصاصی این نوع مرحله (اگر تعریف شده باشد) -->
           <StepFieldsForm ref="stepFields" :schema-json="currentSchema" :values-json="currentStep?.fieldValuesJson" />
           <div class="grid grid-cols-2 gap-3">

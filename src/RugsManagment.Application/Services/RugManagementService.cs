@@ -47,7 +47,11 @@ public interface IRugManagementService
 
 /// <summary>
 /// هماهنگ‌کنندهٔ کار با فرش: از دیتابیس می‌خواند، موتور WorkflowEngine را صدا می‌زند، ذخیره می‌کند.
-/// tenantId همیشه از JWT کاربر می‌آید تا فرش کارگاه دیگر دیده نشود.
+/// tenantId همیشه از کوکی ورود کاربر می‌آید تا فرش کارگاه دیگر دیده نشود.
+///
+/// پول (A.5): هر DTO که برمی‌گردد از <see cref="IMoneyVisibility"/> می‌گذرد (برای انباردار مبلغ‌ها null)، و
+/// هر درخواستی که عضو پولیِ پرشده دارد از کاربر غیر Business با ۴۰۳ رد می‌شود. عضو پولیِ null رد نمی‌شود
+/// و مقدار ذخیره‌شده را دست نمی‌زند (erratum E5)، چون فرم قدیمی فرش تا فاز بعد همه را دوباره می‌فرستد.
 /// </summary>
 public sealed class RugManagementService(
     IRugRepository rugs,
@@ -55,23 +59,30 @@ public sealed class RugManagementService(
     IWorkflowEngine workflowEngine,
     IRepository<RugWorkflowStep> rugSteps,
     IServiceProviderService providerRates,
+    IServiceProviderRepository providers,
+    IRugBatchRepository batches,
     ICurrentUser currentUser,
     IAuditLog audit,
-    IUnitOfWork unitOfWork) : IRugManagementService
+    IUnitOfWork unitOfWork,
+    IMoneyVisibility money) : IRugManagementService
 {
     public async Task<IReadOnlyList<RugDto>> ListAsync(Guid tenantId, RugStatus? status, CancellationToken ct = default)
     {
         var list = await rugs.ListByTenantAsync(tenantId, status, ct);
-        return list.Select(r => r.ToDto(workflowEngine)).ToList();
+        return list.Select(r => r.ToDto(workflowEngine, money)).ToList();
     }
 
-    public Task<PagedResult<RugListItemDto>> SearchAsync(Guid tenantId, RugQuery query, CancellationToken ct = default)
-        => rugs.SearchAsync(tenantId, query, ct);
+    /// <summary>
+    /// فهرست صفحه‌بندی‌شده. برای غیر Business مرتب‌سازی «هزینهٔ کل» به «تاریخ ثبت» برمی‌گردد و ستون سرمایه
+    /// null می‌شود، تا نه عدد و نه ترتیب ردیف‌ها هزینه را لو دهد.
+    /// </summary>
+    public async Task<PagedResult<RugListItemDto>> SearchAsync(Guid tenantId, RugQuery query, CancellationToken ct = default)
+        => money.Redact(await rugs.SearchAsync(tenantId, money.GuardSort(query), ct));
 
     public async Task<RugDto?> GetAsync(Guid tenantId, Guid rugId, CancellationToken ct = default)
     {
         var rug = await rugs.GetWithWorkflowAsync(rugId, tenantId, ct);
-        return rug?.ToDto(workflowEngine);
+        return rug?.ToDto(workflowEngine, money);
     }
 
     /// <summary>
@@ -80,6 +91,8 @@ public sealed class RugManagementService(
     /// </summary>
     public async Task<RugDto> CreateAsync(Guid tenantId, CreateRugRequest request, CancellationToken ct = default)
     {
+        money.EnsureMayWriteMoney(request.PurchaseCost, request.TargetSalePrice);
+
         const int maxAttempts = 5;
         for (var attempt = 1; ; attempt++)
         {
@@ -89,13 +102,19 @@ public sealed class RugManagementService(
             }
             catch (DuplicateKeyException) when (attempt < maxAttempts)
             {
-                // برخورد SKU با ثبت هم‌زمان — با شمارهٔ تازه دوباره تلاش می‌کنیم
+                // برخورد SKU با ثبت هم‌زمان — با شمارهٔ تازه دوباره تلاش می‌کنیم.
+                // Reset لازم است: فرشِ شکست‌خورده (با مراحل و ردیف تاریخچه‌اش) هنوز «Added» در DbContext
+                // مانده؛ بدون پاک‌کردن، SaveChangesِ تلاش بعدی دوباره همان‌ها را با همان SKU درج می‌کرد
+                // و هر پنج تلاش با همان خطا شکست می‌خورد.
+                unitOfWork.Reset();
             }
         }
     }
 
     private async Task<RugDto> CreateOnceAsync(Guid tenantId, CreateRugRequest request, CancellationToken ct)
     {
+        await EnsureProvidersOwnedAsync(tenantId, request.CustomSteps?.Select(s => s.ServiceProviderId), ct);
+
         var sku = await rugs.GenerateNextSkuAsync(tenantId, ct);
         var rug = new Rug
         {
@@ -145,11 +164,15 @@ public sealed class RugManagementService(
 
         var created = await rugs.GetWithWorkflowAsync(rug.Id, tenantId, ct)
             ?? throw new InvalidOperationException("بارگذاری فرش بعد از ثبت ناموفق بود.");
-        return created.ToDto(workflowEngine);
+        return created.ToDto(workflowEngine, money);
     }
 
     public async Task<RugDto> UpdateAsync(Guid tenantId, Guid rugId, UpdateRugRequest request, CancellationToken ct = default)
     {
+        // قیمت‌ها پایین‌تر با «?? مقدار فعلی» نوشته می‌شوند، پس null (که فرم انباردار می‌فرستد) مقدار
+        // ذخیره‌شده را نگه می‌دارد؛ فقط مبلغِ پرشده از غیر Business رد می‌شود (E5).
+        money.EnsureMayWriteMoney(request.PurchaseCost, request.TargetSalePrice);
+
         var rug = await rugs.GetWithWorkflowAsync(rugId, tenantId, ct)
             ?? throw new KeyNotFoundException("فرش یافت نشد.");
 
@@ -170,7 +193,7 @@ public sealed class RugManagementService(
 
         rugs.Update(rug);
         await unitOfWork.SaveChangesAsync(ct);
-        return rug.ToDto(workflowEngine);
+        return rug.ToDto(workflowEngine, money);
     }
 
     // ── سطل زباله ─────────────────────────────────────────────────
@@ -214,7 +237,7 @@ public sealed class RugManagementService(
 
         // بعد از بازگردانی، فیلتر سراسری دیگر مانع نیست و می‌شود کامل خواندش
         var restored = await rugs.GetWithWorkflowAsync(rugId, tenantId, ct)!;
-        return restored!.ToDto(workflowEngine);
+        return restored!.ToDto(workflowEngine, money);
     }
 
     public Task<IReadOnlyList<DeletedRugDto>> ListDeletedAsync(Guid tenantId, CancellationToken ct = default)
@@ -223,8 +246,13 @@ public sealed class RugManagementService(
     public async Task<RugDto> AdvanceStepAsync(
         Guid tenantId, Guid rugId, Guid stepId, AdvanceRugStepRequest request, CancellationToken ct = default)
     {
+        // تکمیل بدون مبلغ برای انباردار مجاز است: نرخ توافقی یا پیش‌فرض پایین‌تر تزریق می‌شود
+        money.EnsureMayWriteStepPricing(request);
+
         var rug = await rugs.GetWithWorkflowAsync(rugId, tenantId, ct)
             ?? throw new KeyNotFoundException("فرش یافت نشد.");
+
+        await EnsureProvidersOwnedAsync(tenantId, [request.ServiceProviderId], ct);
 
         var target = rug.WorkflowSteps.FirstOrDefault(s => s.Id == stepId);
         var stepName = target?.ProcessStepType?.NameFa ?? "مرحله";
@@ -248,7 +276,7 @@ public sealed class RugManagementService(
             $"مرحلهٔ «{stepName}» تکمیل شد.", rug.Sku);
 
         await unitOfWork.SaveChangesAsync(ct);
-        return rug.ToDto(workflowEngine);
+        return rug.ToDto(workflowEngine, money);
     }
 
     /// <summary>
@@ -267,8 +295,12 @@ public sealed class RugManagementService(
     public async Task<RugDto> UpdateStepPricingAsync(
         Guid tenantId, Guid rugId, Guid stepId, AdvanceRugStepRequest request, CancellationToken ct = default)
     {
+        money.EnsureMayWriteStepPricing(request);
+
         var rug = await rugs.GetWithWorkflowAsync(rugId, tenantId, ct)
             ?? throw new KeyNotFoundException("فرش یافت نشد.");
+
+        await EnsureProvidersOwnedAsync(tenantId, [request.ServiceProviderId], ct);
 
         request = await ApplyProviderRateAsync(tenantId, rug, stepId, request, ct);
         await workflowEngine.UpdateStepPricingAsync(rug, stepId, ToAdvanceRequest(request with { MarkCompleted = false }), ct);
@@ -276,7 +308,7 @@ public sealed class RugManagementService(
         rug.UpdatedAt = DateTimeOffset.UtcNow;
         rugs.Update(rug);
         await unitOfWork.SaveChangesAsync(ct);
-        return rug.ToDto(workflowEngine);
+        return rug.ToDto(workflowEngine, money);
     }
 
     public async Task<RugDto> SkipStepAsync(Guid tenantId, Guid rugId, Guid stepId, CancellationToken ct = default)
@@ -294,7 +326,7 @@ public sealed class RugManagementService(
             $"مرحلهٔ «{stepName}» رد شد.", rug.Sku);
 
         await unitOfWork.SaveChangesAsync(ct);
-        return rug.ToDto(workflowEngine);
+        return rug.ToDto(workflowEngine, money);
     }
 
     public async Task<RugDto> GoBackStepAsync(Guid tenantId, Guid rugId, CancellationToken ct = default)
@@ -311,7 +343,7 @@ public sealed class RugManagementService(
             $"به مرحلهٔ «{current?.ProcessStepType?.NameFa ?? "قبلی"}» بازگشت.", rug.Sku);
 
         await unitOfWork.SaveChangesAsync(ct);
-        return rug.ToDto(workflowEngine);
+        return rug.ToDto(workflowEngine, money);
     }
 
     public async Task<RugDto> ActivateStepAsync(Guid tenantId, Guid rugId, Guid stepId, CancellationToken ct = default)
@@ -322,7 +354,7 @@ public sealed class RugManagementService(
         rug.UpdatedAt = DateTimeOffset.UtcNow;
         rugs.Update(rug);
         await unitOfWork.SaveChangesAsync(ct);
-        return rug.ToDto(workflowEngine);
+        return rug.ToDto(workflowEngine, money);
     }
 
     public async Task<RugDto> UpdateWorkflowAsync(
@@ -330,6 +362,8 @@ public sealed class RugManagementService(
     {
         var rug = await rugs.GetWithWorkflowAsync(rugId, tenantId, ct)
             ?? throw new KeyNotFoundException("فرش یافت نشد.");
+
+        await EnsureProvidersOwnedAsync(tenantId, request.PendingSteps.Select(s => s.ServiceProviderId), ct);
 
         var custom = request.PendingSteps
             .Select(s => new CustomWorkflowStepRequest(s.ProcessStepTypeId, s.IsOptional, s.ServiceProviderId, null))
@@ -342,7 +376,7 @@ public sealed class RugManagementService(
 
         rug.UpdatedAt = DateTimeOffset.UtcNow;
         await unitOfWork.SaveChangesAsync(ct);
-        return rug.ToDto(workflowEngine);
+        return rug.ToDto(workflowEngine, money);
     }
 
     /// <summary>
@@ -369,7 +403,7 @@ public sealed class RugManagementService(
 
         // بارگذاری دوباره برای داشتن نام مراحل (navigation ProcessStepType)
         var reloaded = await rugs.GetWithWorkflowAsync(rugId, tenantId, ct)!;
-        return reloaded!.ToDto(workflowEngine);
+        return reloaded!.ToDto(workflowEngine, money);
     }
 
     public async Task<BulkOperationResultDto> BulkGoBackAsync(Guid tenantId, BulkRugIdsRequest request, CancellationToken ct = default)
@@ -402,9 +436,21 @@ public sealed class RugManagementService(
             await rugSteps.AddAsync(step, ct);
     }
 
+    /// <summary>
+    /// تکمیل گروهی مرحلهٔ جاری چند فرش — با همان قواعد تکمیل تکی:
+    /// نرخ توافقیِ طرف خدمات (یا نرخ پیش‌فرض مرحله) تزریق می‌شود، «چه کسی تکمیل کرد» ثبت می‌شود
+    /// و برای هر فرش یک ردیف تاریخچه نوشته می‌شود. قبلاً هیچ‌کدام از این‌ها انجام نمی‌شد، پس
+    /// همان مرحله از مسیر گروهی هزینهٔ متفاوتی با مسیر تکی می‌گرفت و ردی در تاریخچه نمی‌ماند.
+    /// </summary>
     public async Task<BulkOperationResultDto> BulkAdvanceAsync(
         Guid tenantId, BulkAdvanceRequest request, CancellationToken ct = default)
     {
+        // مبلغِ پرشده از غیر Business کل درخواست را ۴۰۳ می‌کند، پیش از دست زدن به هر فرش
+        money.EnsureMayWriteStepPricing(request.Step);
+
+        // طرف خدمات برای همهٔ فرش‌ها یکی است؛ اگر مال کارگاه دیگر باشد کل درخواست ۴۰۴ است
+        await EnsureProvidersOwnedAsync(tenantId, [request.Step.ServiceProviderId], ct);
+
         var errors = new List<BulkItemErrorDto>();
         var ok = 0;
         foreach (var rugId in request.RugIds.Distinct())
@@ -415,9 +461,31 @@ public sealed class RugManagementService(
                     ?? throw new KeyNotFoundException("فرش یافت نشد.");
                 var step = rug.WorkflowSteps.FirstOrDefault(s => s.Status == WorkflowStepStatus.InProgress)
                     ?? throw new InvalidOperationException("مرحله جاری یافت نشد.");
-                await workflowEngine.AdvanceStepAsync(rug, step.Id, ToAdvanceRequest(request.Step), ct);
+                var stepName = step.ProcessStepType?.NameFa ?? "مرحله";
+
+                var itemRequest = request.Step;
+
+                // اگر مقادیر فرم فرستاده شده، مثل تکمیل تکی با اسکیمای همان نوع مرحله سنجیده و پاک می‌شوند.
+                // (بدون مقدار، رفتار تکمیل سریع گروهی عوض نمی‌شود.)
+                if (itemRequest.FieldValuesJson is not null)
+                {
+                    itemRequest = itemRequest with
+                    {
+                        FieldValuesJson = StepFieldSchema.ValidateValues(
+                            step.ProcessStepType?.FieldSchemaJson, itemRequest.FieldValuesJson)
+                    };
+                }
+
+                // هر فرش نرخ توافقیِ طرفِ مرحلهٔ خودش را می‌گیرد، نه یک نرخ مشترک
+                itemRequest = await ApplyProviderRateAsync(tenantId, rug, step.Id, itemRequest, ct);
+                await workflowEngine.AdvanceStepAsync(rug, step.Id, ToAdvanceRequest(itemRequest), ct);
+
+                StampCompletedBy(rug, step.Id);
                 rug.UpdatedAt = DateTimeOffset.UtcNow;
                 rugs.Update(rug);
+
+                audit.Record(AuditAction.StepAdvanced, nameof(Rug), rug.Id,
+                    $"مرحلهٔ «{stepName}» تکمیل شد (گروهی).", rug.Sku);
                 ok++;
             }
             catch (Exception ex)
@@ -432,6 +500,8 @@ public sealed class RugManagementService(
     public async Task<BulkOperationResultDto> BulkUpdateFieldsAsync(
         Guid tenantId, BulkUpdateFieldsRequest request, CancellationToken ct = default)
     {
+        money.EnsureMayWriteMoney(request.TargetSalePrice);
+
         var errors = new List<BulkItemErrorDto>();
         var ok = 0;
 
@@ -447,6 +517,15 @@ public sealed class RugManagementService(
 
         if (changes.Count == 0)
             throw new InvalidOperationException("هیچ فیلدی برای تغییر انتخاب نشده است.");
+
+        // گروه مقصد باید مال همین کارگاه باشد. بدون این بررسی، شناسهٔ ناموجود به نقض کلید خارجی
+        // (خطای ۵۰۰ و برگشت کل عملیات) می‌رسید و شناسهٔ گروه کارگاه دیگر بی‌صدا ذخیره می‌شد.
+        if (request.BatchId is Guid targetBatchId && targetBatchId != Guid.Empty)
+        {
+            var owned = await batches.ListAsync(b => b.Id == targetBatchId && b.TenantId == tenantId, ct);
+            if (owned.Count == 0)
+                throw new InvalidOperationException("گروه انتخاب‌شده یافت نشد.");
+        }
 
         foreach (var rugId in request.RugIds.Distinct())
         {
@@ -493,6 +572,8 @@ public sealed class RugManagementService(
     public async Task<BulkOperationResultDto> BulkUpdateWorkflowAsync(
         Guid tenantId, BulkUpdateWorkflowRequest request, CancellationToken ct = default)
     {
+        await EnsureProvidersOwnedAsync(tenantId, request.PendingSteps.Select(s => s.ServiceProviderId), ct);
+
         var errors = new List<BulkItemErrorDto>();
         var ok = 0;
         var custom = request.PendingSteps
@@ -525,7 +606,8 @@ public sealed class RugManagementService(
     /// نرخ توافقیِ همان طرف برای همان نوع مرحله اعمال می‌شود.
     ///
     /// ترتیب اولویت (از قوی به ضعیف):
-    ///   مبلغ دستی ← نرخ صریحِ همین ثبت ← نرخ توافقی طرف ← نرخ پیش‌فرض نوع مرحله
+    ///   مبلغ دستی ← نرخ صریحِ همین ثبت ← قیمتِ صریحِ ذخیره‌شده روی مرحله (با همان طرف)
+    ///   ← نرخ توافقی طرف ← نرخ پیش‌فرض نوع مرحله
     /// </summary>
     private async Task<AdvanceRugStepRequest> ApplyProviderRateAsync(
         Guid tenantId, Rug rug, Guid stepId, AdvanceRugStepRequest request, CancellationToken ct)
@@ -537,6 +619,22 @@ public sealed class RugManagementService(
         var step = rug.WorkflowSteps.FirstOrDefault(s => s.Id == stepId);
         if (step is null) return request;
 
+        // انجام‌دهنده برداشته می‌شود («—»): مرحله دیگر طرفی ندارد که نرخ توافقی‌اش تزریق شود
+        if (request.ClearServiceProvider == true && request.ServiceProviderId is null)
+            return request;
+
+        // قیمتی که قبلاً صریح روی مرحله ذخیره شده («فقط ذخیره» با نرخ ویژه، یا پیکربندی ترکیبی) با همان
+        // انجام‌دهنده دست نمی‌خورد. ویرایشگرِ هزینه همین قیمت را پیش‌پر و پیش‌نمایش می‌کند و اگر کاربر چیزی را
+        // عوض نکند null می‌فرستد؛ بدون این بررسی، «تکمیل» نرخ توافقیِ طرف را جای قیمتی می‌نشاند که کاربر روی
+        // صفحه دیده بود. مرحله‌ای که هنوز قیمتی ذخیره ندارد، یا انجام‌دهنده‌اش همین حالا عوض می‌شود، همچنان
+        // نرخ توافقی (طرف جدید) را می‌گیرد.
+        var providerUnchanged = request.ServiceProviderId is null || request.ServiceProviderId == step.ServiceProviderId;
+        var hasExplicitPricing = step.AppliedPricingModel.HasValue
+                                 || step.AppliedUnitRate.HasValue
+                                 || !string.IsNullOrWhiteSpace(step.PricingConfigJson);
+        if (providerUnchanged && hasExplicitPricing)
+            return request;
+
         // طرفِ همین ثبت، وگرنه طرفی که قبلاً روی مرحله نشسته
         var providerId = request.ServiceProviderId ?? step.ServiceProviderId;
         if (providerId is null) return request;
@@ -545,6 +643,27 @@ public sealed class RugManagementService(
         if (rate is null) return request;
 
         return request with { PricingModel = rate.PricingModel, UnitRate = rate.UnitRate };
+    }
+
+    /// <summary>
+    /// هر طرف خدماتی که به مرحله نسبت داده می‌شود باید مال همین کارگاه باشد.
+    /// بدون این بررسی، شناسهٔ طرفِ کارگاه دیگر روی مرحله می‌نشست و کار این کارگاه به حساب
+    /// (و ماندهٔ بدهیِ) طرفِ کارگاه دیگر اضافه می‌شد. طرفِ کارگاه دیگر = «یافت نشد» (۴۰۴).
+    /// </summary>
+    private async Task EnsureProvidersOwnedAsync(Guid tenantId, IEnumerable<Guid?>? providerIds, CancellationToken ct)
+    {
+        var ids = (providerIds ?? [])
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+
+        if (ids.Count == 0)
+            return;
+
+        var owned = await providers.ListAsync(p => ids.Contains(p.Id) && p.TenantId == tenantId, ct);
+        if (owned.Count != ids.Count)
+            throw new KeyNotFoundException("طرف خدمات یافت نشد.");
     }
 
     private static AdvanceStepRequest ToAdvanceRequest(AdvanceRugStepRequest request) => new(
@@ -556,5 +675,7 @@ public sealed class RugManagementService(
         request.FieldValuesJson,
         request.Notes,
         request.MarkCompleted,
-        request.Adjustment);
+        request.Adjustment,
+        request.ClearManualOverride,
+        request.ClearServiceProvider);
 }

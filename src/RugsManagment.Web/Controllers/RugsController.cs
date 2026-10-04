@@ -2,15 +2,17 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RugsManagment.Application.DTOs.Rugs;
 using RugsManagment.Application.Services;
+using RugsManagment.Domain.Common;
 using RugsManagment.Domain.Enums;
 using RugsManagment.Web.Auth;
+using RugsManagment.Web.Filters;
 using RugsManagment.Web.Models.Rugs;
 using RugsManagment.Web.Support;
 
 namespace RugsManagment.Web.Controllers;
 
 /// <summary>صفحات فرش (لیست/جزئیات/ثبت/ویرایش). فرم‌های تعاملی جزیرهٔ Vue هستند.</summary>
-[Authorize(Roles = $"{nameof(UserRole.TenantAdmin)},{nameof(UserRole.Operator)}")]
+[Authorize(Policy = Policies.Floor)]
 public class RugsController(
     IRugManagementService rugs,
     ICustomFieldService customFields,
@@ -77,16 +79,19 @@ public class RugsController(
     }
 
     // ── سطل زباله ─────────────────────────────────────────────────
-    // حذف و بازگردانی فقط دست مدیر کارگاه است: اپراتور فرش را پیش می‌برد، از چرخه بیرون نمی‌برد.
+    // حذف و بازگردانی کار بازرگان و تنظیم‌کننده است (Business): انباردار فرش را پیش می‌برد، از چرخه بیرون نمی‌برد.
+    // تعارض‌های دامنه (مثلاً فرشِ داخل نگله، شمارهٔ تکراری هنگام بازگردانی) همین‌جا toast خطا + بازگشت به
+    // صفحهٔ همان فرش / سطل زباله می‌شوند (۳۰۲، نه ۵۰۰)؛ هر خطای دامنهٔ دیگری را DomainExceptionPageFilter
+    // به صفحهٔ قبل برمی‌گرداند.
 
     [HttpGet]
-    [Authorize(Roles = nameof(UserRole.TenantAdmin))]
+    [Authorize(Policy = Policies.Business)]
     public async Task<IActionResult> Trash(CancellationToken ct)
         => View(await rugs.ListDeletedAsync(User.RequireTenantId(), ct));
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = nameof(UserRole.TenantAdmin))]
+    [Authorize(Policy = Policies.Business)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         try
@@ -97,10 +102,11 @@ public class RugsController(
         {
             return NotFound();
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex) when (ex is InvalidOperationException or DomainConflictException)
         {
-            // مثلاً فرش فروخته‌شده — کاربر باید بداند چرا نشد، نه اینکه صفحه بی‌صدا برگردد
-            TempData["Toast"] = ex.Message;
+            // مثلاً فرش فروخته‌شده یا (از فاز محموله) فرشِ داخل نگله — کاربر باید بداند چرا نشد، نه اینکه صفحه
+            // بی‌صدا برگردد. همیشه به صفحهٔ همان فرش، حتی اگر مرورگر Referer نفرستاده باشد.
+            PageToast.SetError(TempData, ex.Message);
             return RedirectToAction(nameof(Details), new { id });
         }
 
@@ -110,7 +116,7 @@ public class RugsController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = nameof(UserRole.TenantAdmin))]
+    [Authorize(Policy = Policies.Business)]
     public async Task<IActionResult> Restore(Guid id, CancellationToken ct)
     {
         try
@@ -120,6 +126,12 @@ public class RugsController(
         catch (KeyNotFoundException)
         {
             return NotFound();
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or DomainConflictException)
+        {
+            // مثلاً (از فاز ۲) شمارهٔ این فرش حالا مال فرش دیگری است — پیام در همان سطل زباله
+            PageToast.SetError(TempData, ex.Message);
+            return RedirectToAction(nameof(Trash));
         }
 
         TempData["Toast"] = "فرش بازگردانده شد.";

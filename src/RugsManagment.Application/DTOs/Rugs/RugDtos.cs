@@ -2,7 +2,13 @@ using RugsManagment.Domain.Enums;
 
 namespace RugsManagment.Application.DTOs.Rugs;
 
-/// <summary>نمای کامل یک فرش برای API — همان چیزی که Vue مصرف می‌کند</summary>
+/// <summary>
+/// نمای کامل یک فرش برای API — همان چیزی که Vue مصرف می‌کند.
+///
+/// عضوهای پولی (<see cref="PurchaseCost"/>، <see cref="TargetSalePrice"/>، <see cref="Costs"/> و مبلغ‌های هر
+/// مرحله) برای کسی که سیاست Business را ندارد null است (<c>MoneyRedaction.Redact</c>)؛ null یعنی «نمی‌بیند»،
+/// نه «صفر». فرانت هر جا این‌ها را نشان می‌دهد باید null را تحمل کند.
+/// </summary>
 public record RugDto(
     Guid Id,
     string Sku,
@@ -25,7 +31,8 @@ public record RugDto(
     string? CurrentStepNameFa,
     int CurrentStepIndex,
     IReadOnlyList<RugWorkflowStepDto> WorkflowSteps,
-    RugCostSummaryDto Costs,
+    /// <summary>خلاصهٔ هزینه؛ برای غیر Business null</summary>
+    RugCostSummaryDto? Costs,
     string? MetadataJson = null,
     /// <summary>گالری عکس‌ها به ترتیب نمایش؛ خالی یعنی هنوز عکسی آپلود نشده</summary>
     IReadOnlyList<RugImageDto>? Images = null);
@@ -44,7 +51,8 @@ public record RugWorkflowStepDto(
     string? ServiceProviderName,
     DateTimeOffset? StartedAt,
     DateTimeOffset? CompletedAt,
-    decimal EffectiveCost,
+    /// <summary>هزینهٔ مؤثر مرحله؛ مثل بقیهٔ مبلغ‌های مرحله برای غیر Business null</summary>
+    decimal? EffectiveCost,
     decimal? CalculatedCost,
     string? AppliedPricingModel,
     decimal? AppliedUnitRate,
@@ -53,7 +61,12 @@ public record RugWorkflowStepDto(
     string? Notes,
     decimal? Adjustment = null,
     /// <summary>کاربری که این مرحله را تکمیل کرد — «چه کسی این کار را انجام داد»</summary>
-    string? CompletedByName = null);
+    string? CompletedByName = null,
+    /// <summary>
+    /// مبلغ دستیِ ذخیره‌شده (اگر هست). بر هر روش و نرخی مقدم است؛ ویرایشگر هزینه با آن حالت «دستی» را
+    /// از پیش پر می‌کند تا پیش‌نمایش همان هزینه‌ای را نشان دهد که واقعاً ذخیره شده.
+    /// </summary>
+    decimal? ManualCostOverride = null);
 
 public record RugCostSummaryDto(
     decimal TotalProcessCost,
@@ -105,6 +118,9 @@ public record UpdateRugRequest(
     string? Notes,
     string? MetadataJson = null);
 
+/// <summary>
+/// تکمیل/قیمت‌گذاری یک مرحله. فیلد null یعنی «دست نزن / سرور تصمیم بگیرد».
+/// </summary>
 public record AdvanceRugStepRequest(
     Guid? ServiceProviderId,
     decimal? ManualCostOverride,
@@ -114,7 +130,17 @@ public record AdvanceRugStepRequest(
     string? FieldValuesJson,
     string? Notes,
     bool MarkCompleted = true,
-    decimal? Adjustment = null);
+    decimal? Adjustment = null,
+    /// <summary>
+    /// true = مبلغ دستیِ ذخیره‌شده پاک شود و مرحله به روش/نرخِ انتخاب‌شده برگردد. ویرایشگر هزینه فقط وقتی
+    /// می‌فرستد که کاربر حالت دستی را خاموش کرده باشد؛ تزریق نرخ توافقی و تکمیل گروهی هرگز آن را نمی‌گذارند.
+    /// </summary>
+    bool? ClearManualOverride = null,
+    /// <summary>
+    /// true = انجام‌دهندهٔ مرحله برداشته شود (انتخاب «—»). null در ServiceProviderId به‌تنهایی یعنی «همان قبلی».
+    /// با برداشتن انجام‌دهنده نرخ توافقی هم تزریق نمی‌شود.
+    /// </summary>
+    bool? ClearServiceProvider = null);
 
 public record UpdateRugWorkflowRequest(IReadOnlyList<CustomRugStepRequest> PendingSteps);
 

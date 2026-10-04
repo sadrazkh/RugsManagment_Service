@@ -14,10 +14,21 @@ namespace RugsManagment.Application.Abstractions.Services;
 /// </summary>
 public interface IAuditLog
 {
+    /// <param name="action">نوع رویداد</param>
+    /// <param name="entityType">نوع موجودیت (Rug، User، TenantPreferences، …)</param>
+    /// <param name="entityId">شناسهٔ موجودیت، اگر یکی است</param>
+    /// <param name="summary">خلاصهٔ فارسی برای خواندن</param>
+    /// <param name="entityLabel">عنوان خواندنی موجودیت</param>
+    /// <param name="details">
+    /// جزئیات ساخت‌یافته (اختیاری) که به‌صورت JSON در <c>AuditEntry.DetailsJson</c> می‌نشیند — مثلاً
+    /// <c>{ changes: { baleTerm: { from: "Negleh", to: "Adl" } } }</c>. هرگز مبلغ تومانی در آن نگذارید:
+    /// تاریخچه برای همهٔ نقش‌ها خواندنی است و پنهان‌سازی پول به آن نمی‌رسد.
+    /// </param>
     void Record(
         AuditAction action,
         string entityType,
         Guid? entityId,
         string summary,
-        string? entityLabel = null);
+        string? entityLabel = null,
+        object? details = null);
 }

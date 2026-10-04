@@ -1,0 +1,19 @@
+/*
+ * فونت Vazirmatn، خودمیزبان (نسخهٔ v33.003، فایل متغیرِ وزن ۱۰۰ تا ۹۰۰، مجوز SIL OFL 1.1 در OFL.txt کنار همین فایل).
+ *
+ * چرا خودمیزبان: پیش‌تر فونت از jsDelivr می‌آمد؛ Service Worker آن را کش نمی‌کرد، پس صفحهٔ آفلاین، چاپ و
+ * PWA بی‌اینترنت بی‌فونت فارسی می‌ماندند و هر صفحه به یک دامنهٔ بیرونی وابسته بود. حالا /fonts/ در فهرست
+ * cache-first همان Service Worker است.
+ *
+ * یک فایل متغیر (۱۱۱ کیلوبایت) جای نه فایل وزن‌دار را می‌گیرد: medium/semibold/bold همه از همین می‌آیند.
+ * این فایل CSS جدا (نه داخل app.css) است تا صفحه‌های بی‌layout (چاپ، کارت راهنما، offline.html) هم با یک
+ * <link> همین فونت را بگیرند.
+ */
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('/fonts/Vazirmatn-Variable.woff2') format('woff2-variations'),
+       url('/fonts/Vazirmatn-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}

@@ -2,16 +2,18 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RugsManagment.Application.DTOs.Sales;
 using RugsManagment.Application.Services;
-using RugsManagment.Domain.Enums;
 using RugsManagment.Web.Auth;
 
 namespace RugsManagment.Web.Controllers.Api;
 
 /// <summary>
-/// فروش فرش. ثبت فروش کار روزمرهٔ اپراتور است، ولی گزارش کل فروش و سود
-/// اطلاعات مالی کارگاه است و فقط برای مدیر باز می‌شود.
+/// فروش فرش و گزارش فروش و سود.
+///
+/// کل کلاس Business است: هم خواندن و ثبت فروش یک فرش (مبلغ فروش، تخفیف، دریافتی) و هم گزارش کل پول است،
+/// و انباردار هیچ مبلغ تومانی نمی‌بیند. صفحهٔ جزئیات فرش جزیرهٔ فروش را هم برای او اصلاً رندر نمی‌کند.
 /// </summary>
 [Route("api/sales")]
+[Authorize(Policy = Policies.Business)]
 public class SalesApiController(IRugSaleService sales) : ApiControllerBase
 {
     [HttpGet("rug/{rugId:guid}")]
@@ -32,9 +34,8 @@ public class SalesApiController(IRugSaleService sales) : ApiControllerBase
         return NoContent();
     }
 
-    /// <summary>گزارش فروش و سود واقعی — فقط مدیر کارگاه.</summary>
+    /// <summary>گزارش فروش و سود واقعی.</summary>
     [HttpGet("report")]
-    [Authorize(Roles = nameof(UserRole.TenantAdmin))]
     public async Task<IActionResult> Report([FromQuery] SalesQuery query, CancellationToken ct)
         => Ok(await sales.GetReportAsync(User.RequireTenantId(), query, ct));
 }

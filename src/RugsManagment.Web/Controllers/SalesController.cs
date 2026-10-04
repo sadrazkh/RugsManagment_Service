@@ -8,8 +8,8 @@ using RugsManagment.Web.Support;
 
 namespace RugsManagment.Web.Controllers;
 
-/// <summary>گزارش فروش و سود واقعی — اطلاعات مالی کارگاه، فقط مدیر.</summary>
-[Authorize(Roles = nameof(UserRole.TenantAdmin))]
+/// <summary>گزارش فروش و سود واقعی — اطلاعات مالی کارگاه، فقط Business (بازرگان و تنظیم‌کننده).</summary>
+[Authorize(Policy = Policies.Business)]
 public class SalesController(IRugSaleService sales) : Controller
 {
     public IActionResult Index() => View();

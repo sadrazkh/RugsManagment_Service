@@ -8,8 +8,10 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import MoneyInput from '@/components/MoneyInput.vue'
-import { api } from '@/lib/api'
-import { faDate, faMoney } from '@/lib/format'
+import { api, errorMessage } from '@/lib/api'
+import { moneyVisible } from '@/lib/context'
+import { currencyLabel, faDate, faMoney } from '@/lib/format'
+import { PAYMENT_METHOD_LABELS } from '@/lib/labels'
 import { confirmDialog, toast } from '@/lib/ui'
 
 interface Sale {
@@ -29,15 +31,16 @@ interface Sale {
   actualProfit: number
 }
 
-const props = defineProps<{ rugId: string; totalInvestment: number }>()
+/**
+ * فروش و سود پول داخلی است و فقط برای Business (A.5)؛ صفحهٔ جزئیات این جزیره را برای انباردار نمی‌گذارد،
+ * و اگر گذاشت هم چیزی نشان داده و از `/api/sales` خواسته نمی‌شود. سرمایه برای غیر Business null است.
+ */
+const props = defineProps<{ rugId: string; totalInvestment: number | null }>()
 
-const PAYMENT_METHODS = [
-  { value: 0, label: 'نقدی' },
-  { value: 1, label: 'کارت' },
-  { value: 2, label: 'حواله' },
-  { value: 3, label: 'چک' },
-  { value: 4, label: 'اقساطی' },
-]
+const canSeeMoney = moneyVisible()
+const unit = currencyLabel()
+
+const PAYMENT_METHODS = PAYMENT_METHOD_LABELS.map((label, value) => ({ value, label }))
 
 const sale = ref<Sale | null>(null)
 const loading = ref(true)
@@ -64,8 +67,8 @@ const methodLabel = (v: number) => PAYMENT_METHODS.find((m) => m.value === v)?.l
 
 /** پیش‌نمایش زنده — کاربر قبل از ذخیره سود را می‌بیند. */
 const preview = computed(() => {
-  const net = Math.max(0, form.salePrice - form.discount)
-  return { net, profit: net - props.totalInvestment }
+  const net = Math.max(0, (form.salePrice ?? 0) - (form.discount ?? 0))
+  return { net, profit: net - (props.totalInvestment ?? 0) }
 })
 
 async function load() {
@@ -75,7 +78,7 @@ async function load() {
     sale.value = data ?? null
     if (data) fillForm(data)
   } catch (e) {
-    toast.error((e as Error).message)
+    toast.error(errorMessage(e))
   } finally {
     loading.value = false
   }
@@ -109,7 +112,7 @@ function startSale() {
 /** در فروش نقدی، «دریافتی» را با مبلغ خالص هم‌گام نگه می‌داریم تا کاربر دوباره تایپ نکند. */
 function syncReceived() {
   if (form.paymentMethod !== 4 && form.paymentMethod !== 3) {
-    form.receivedAmount = Math.max(0, form.salePrice - form.discount)
+    form.receivedAmount = Math.max(0, (form.salePrice ?? 0) - (form.discount ?? 0))
   }
 }
 
@@ -118,7 +121,7 @@ async function save() {
     toast.warning('نام خریدار الزامی است.')
     return
   }
-  if (form.salePrice <= 0) {
+  if (!(Number(form.salePrice) > 0)) {
     toast.warning('مبلغ فروش باید بزرگ‌تر از صفر باشد.')
     return
   }
@@ -129,8 +132,8 @@ async function save() {
       buyerName: form.buyerName,
       buyerPhone: form.buyerPhone || null,
       salePrice: form.salePrice,
-      discount: form.discount,
-      receivedAmount: form.receivedAmount,
+      discount: form.discount ?? 0,
+      receivedAmount: form.receivedAmount ?? 0,
       paymentMethod: form.paymentMethod,
       soldAt: form.soldAt ? new Date(form.soldAt).toISOString() : null,
       reference: form.reference || null,
@@ -143,7 +146,7 @@ async function save() {
     // وضعیت فرش در سربرگ صفحه عوض شده — بارگذاری دوباره تا همه‌جا هماهنگ باشد
     window.setTimeout(() => window.location.reload(), 600)
   } catch (e) {
-    toast.error((e as Error).message)
+    toast.error(errorMessage(e))
   } finally {
     saving.value = false
   }
@@ -163,15 +166,17 @@ async function cancelSale() {
     toast.success('فروش لغو شد.')
     window.setTimeout(() => window.location.reload(), 600)
   } catch (e) {
-    toast.error((e as Error).message)
+    toast.error(errorMessage(e))
   }
 }
 
-onMounted(load)
+onMounted(() => {
+  if (canSeeMoney) void load()
+})
 </script>
 
 <template>
-  <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
+  <section v-if="canSeeMoney" class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
     <div class="mb-4 flex items-center justify-between gap-3">
       <h2 class="flex items-center gap-2 text-sm font-semibold text-primary">
         <AppIcon name="check" class="h-4 w-4" />
@@ -199,12 +204,12 @@ onMounted(load)
           <input v-model="form.buyerPhone" dir="ltr" class="fld" />
         </label>
         <label class="block">
-          <span class="mb-1 block text-sm">مبلغ فروش (تومان) <span class="text-error">*</span></span>
-          <MoneyInput v-model="form.salePrice" @update:modelValue="syncReceived" />
+          <span class="mb-1 block text-sm">مبلغ فروش <span class="text-error">*</span></span>
+          <MoneyInput v-model="form.salePrice" :suffix="unit" @update:model-value="syncReceived" />
         </label>
         <label class="block">
-          <span class="mb-1 block text-sm">تخفیف (تومان)</span>
-          <MoneyInput v-model="form.discount" @update:modelValue="syncReceived" />
+          <span class="mb-1 block text-sm">تخفیف</span>
+          <MoneyInput v-model="form.discount" :suffix="unit" @update:model-value="syncReceived" />
         </label>
         <label class="block">
           <span class="mb-1 block text-sm">نحوهٔ پرداخت</span>
@@ -213,8 +218,8 @@ onMounted(load)
           </select>
         </label>
         <label class="block">
-          <span class="mb-1 block text-sm">مبلغ دریافتی (تومان)</span>
-          <MoneyInput v-model="form.receivedAmount" />
+          <span class="mb-1 block text-sm">مبلغ دریافتی</span>
+          <MoneyInput v-model="form.receivedAmount" :suffix="unit" />
         </label>
         <label class="block">
           <span class="mb-1 block text-sm">تاریخ فروش</span>
@@ -238,7 +243,7 @@ onMounted(load)
         </div>
         <div>
           <dt class="text-xs text-on-surface-variant">سرمایه‌گذاری</dt>
-          <dd>{{ faMoney(totalInvestment) }}</dd>
+          <dd>{{ totalInvestment === null ? '—' : faMoney(totalInvestment) }}</dd>
         </div>
         <div>
           <dt class="text-xs text-on-surface-variant">سود</dt>

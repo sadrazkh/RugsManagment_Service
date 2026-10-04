@@ -69,8 +69,12 @@ public sealed class RugBatchService(
 
     public async Task AssignRugsAsync(Guid tenantId, Guid batchId, BatchRugIdsRequest request, CancellationToken ct = default)
     {
-        _ = await batches.GetByIdAsync(batchId, ct)
-            ?? throw new KeyNotFoundException("گروه یافت نشد.");
+        // گروه باید مال همین کارگاه باشد؛ وگرنه فرش‌های این کارگاه به گروهِ کارگاه دیگر وصل می‌شدند.
+        // گروه کارگاه دیگر درست مثل گروه ناموجود «یافت نشد» است (۴۰۴) تا وجودش لو نرود.
+        var batch = await batches.GetByIdAsync(batchId, ct);
+        if (batch is null || batch.TenantId != tenantId)
+            throw new KeyNotFoundException("گروه یافت نشد.");
+
         foreach (var rugId in request.RugIds.Distinct())
         {
             var rug = await rugs.GetWithWorkflowAsync(rugId, tenantId, ct)

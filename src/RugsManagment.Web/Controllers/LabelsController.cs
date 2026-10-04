@@ -1,13 +1,16 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RugsManagment.Application.Services;
-using RugsManagment.Domain.Enums;
 using RugsManagment.Web.Auth;
+using RugsManagment.Web.Filters;
 
 namespace RugsManagment.Web.Controllers;
 
-/// <summary>طراح برچسب. مشاهده/چاپ برای همه؛ طراحی برای مدیر کارگاه.</summary>
-[Authorize(Roles = $"{nameof(UserRole.TenantAdmin)},{nameof(UserRole.Operator)}")]
+/// <summary>
+/// برچسب‌ها. فهرست و چاپ برای هر کاربر کارگاه (Floor) — بازرگان و انباردار برچسب چاپ می‌کنند؛ طراحی و حذف
+/// قالب پیکربندی کارگاه است و فقط تنظیم‌کننده (Configure).
+/// </summary>
+[Authorize(Policy = Policies.Floor)]
 public class LabelsController(ILabelTemplateService labels) : Controller
 {
     public async Task<IActionResult> Index(CancellationToken ct)
@@ -16,7 +19,7 @@ public class LabelsController(ILabelTemplateService labels) : Controller
         return View(list);
     }
 
-    [Authorize(Roles = nameof(UserRole.TenantAdmin))]
+    [Authorize(Policy = Policies.Configure)]
     public IActionResult Design(Guid? id)
     {
         ViewData["TemplateId"] = id;
@@ -26,7 +29,7 @@ public class LabelsController(ILabelTemplateService labels) : Controller
     /// <summary>
     /// صفحهٔ چاپ برچسب برای یک یا چند فرش.
     ///
-    /// آدرس قابل اشتراک است تا اپراتور بتواند همان صفحه را دوباره باز و چاپ کند.
+    /// آدرس قابل اشتراک است تا انباردار بتواند همان صفحه را دوباره باز و چاپ کند.
     /// اگر قالبی انتخاب نشده باشد، اولین قالب کارگاه استفاده می‌شود.
     /// </summary>
     [HttpGet]
@@ -38,13 +41,13 @@ public class LabelsController(ILabelTemplateService labels) : Controller
 
         if (templates.Count == 0)
         {
-            TempData["Toast"] = "برای چاپ ابتدا یک قالب برچسب بسازید.";
+            PageToast.SetWarning(TempData, "برای چاپ ابتدا یک قالب برچسب بسازید.");
             return RedirectToAction(nameof(Index));
         }
 
         if (rugIds.Length == 0)
         {
-            TempData["Toast"] = "فرشی برای چاپ انتخاب نشده است.";
+            PageToast.SetWarning(TempData, "فرشی برای چاپ انتخاب نشده است.");
             return RedirectToAction("Index", "Rugs");
         }
 
@@ -59,7 +62,7 @@ public class LabelsController(ILabelTemplateService labels) : Controller
     }
 
     [HttpPost]
-    [Authorize(Roles = nameof(UserRole.TenantAdmin))]
+    [Authorize(Policy = Policies.Configure)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
