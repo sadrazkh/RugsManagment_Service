@@ -171,7 +171,9 @@ public sealed class AnalyticsService(IRugRepository rugs, IWorkflowEngine workfl
                 .ToList();
 
             var net = soldInMonth.Sum(r => r.Sale!.NetAmount);
-            var profit = soldInMonth.Sum(r => r.Sale!.NetAmount - workflowEngine.CalculateRugCosts(r).TotalInvestment);
+            // سود واقعی از عکس بهای لحظهٔ فروش (CostAtSale ?? بهای امروز، D.6)؛ بهای امروز از RugCostTotal که
+            // ListByTenantAsync یک‌جا برای همهٔ فرش‌ها پیش‌بارگذاری کرده
+            var profit = soldInMonth.Sum(r => r.Sale!.ActualProfit(workflowEngine.CalculateRugCosts(r).TotalInvestment));
 
             return new TrendPointDto(b.Key, b.Label, added, soldInMonth.Count, net, profit);
         }).ToList();

@@ -73,7 +73,11 @@ public static class EntityMappers
     /// سرویس‌هایی که DTO را به کاربر برمی‌گردانند همین را صدا می‌زنند، نه نسخهٔ بی‌بیننده را.
     /// </summary>
     public static RugDto ToDto(this Rug rug, IWorkflowEngine workflowEngine, IMoneyVisibility money)
-        => money.Redact(rug.ToDto(workflowEngine));
+    {
+        var dto = money.Redact(rug.ToDto(workflowEngine));
+        // سطرهای خرید پول‌اند (A.5)؛ همین‌جا هم پنهان می‌شوند تا پنهان‌سازی به یک فایل دیگر وابسته نماند
+        return money.CanSeeMoney ? dto : dto with { PurchaseCost = null, PurchaseLines = null };
+    }
 
     /// <summary>نوع مرحله برای بینندهٔ جاری (نرخ پیش‌فرض برای غیر Business null).</summary>
     public static ProcessStepTypeDto ToDto(this ProcessStepType t, IMoneyVisibility money)
@@ -87,6 +91,7 @@ public static class EntityMappers
     {
         var costs = workflowEngine.CalculateRugCosts(rug);
         var current = rug.WorkflowSteps.FirstOrDefault(s => s.Status == Domain.Enums.WorkflowStepStatus.InProgress);
+        var lines = rug.PurchaseLines.OrderBy(l => l.SortOrder).ThenBy(l => l.CreatedAt).ThenBy(l => l.Id).ToList();
         return new RugDto(
             rug.Id,
             rug.Sku,
@@ -97,8 +102,11 @@ public static class EntityMappers
             rug.KnotDensity,
             rug.WidthMeters,
             rug.LengthMeters,
+            // مساحت یک تخته در اندازهٔ مؤثر، گردشده (I.3)
             rug.AreaSquareMeters,
-            rug.PurchaseCost,
+            // جمع سطرهای خرید همین فرش، نه سهم خرید یکجا و نه ستون منسوخ (B.4)؛ بی سطر null، تا رفت‌وبرگشت فرم قدیمی
+            // (که null را «دست نزن» می‌خواند) سطر «قیمت خرید» صفر نسازد
+            lines.Count == 0 ? null : lines.Sum(l => l.Amount),
             rug.TargetSalePrice,
             rug.Status,
             rug.ImageUrl,
@@ -111,8 +119,34 @@ public static class EntityMappers
             rug.WorkflowSteps.OrderBy(s => s.OrderIndex).Select(s => s.ToDto()).ToList(),
             costs.ToDto(rug.Sale),
             rug.MetadataJson,
-            rug.Images.OrderBy(i => i.SortOrder).Select(i => i.ToDto()).ToList());
+            rug.Images.OrderBy(i => i.SortOrder).Select(i => i.ToDto()).ToList(),
+            // ── فاز ۲ (I.3) ──
+            SerialNo: rug.SerialNo,
+            Quantity: rug.Quantity,
+            IntakeLength: rug.IntakeLength,
+            IntakeWidth: rug.IntakeWidth,
+            FinalLength: rug.FinalLength,
+            FinalWidth: rug.FinalWidth,
+            TotalAreaM2: rug.TotalAreaM2,
+            // جای فرش تا جایی که فاز ۲ می‌بیند؛ نگله و صادرشده را enricher فاز محموله پر می‌کند
+            Location: RugLocationRules.Resolve(rug.DeletedAt is not null, rug.Sale is not null, inShipment: false, shipmentFinalized: false),
+            ShipmentId: null,
+            ShipmentNumber: null,
+            BaleId: null,
+            BaleNumber: null,
+            UsdPerM2: null,
+            LineUsd: null,
+            Version: workflowEngine.RowVersion(rug),
+            PurchaseLines: lines.Select(l => l.ToDto()).ToList(),
+            IntakeAreaM2: rug.IntakeAreaM2,
+            FinalMeasuredAt: rug.FinalMeasuredAt,
+            BatchNumber: rug.Batch is { Number: > 0 } batch ? batch.Number : null,
+            SellerName: string.IsNullOrWhiteSpace(rug.Batch?.SellerName) ? null : rug.Batch.SellerName);
     }
+
+    /// <summary>یک سطر خرید به DTO (مبلغ همان که پاس سازگاری نوشته).</summary>
+    public static PurchaseLineDto ToDto(this RugPurchaseLine line) => new(
+        line.Id, line.CategoryId, line.Label, line.Basis, line.Rate, line.Amount, line.SortOrder, line.Notes);
 
     /// <summary>
     /// آدرس‌ها از مسیر کنترلر media ساخته می‌شوند، نه از مسیر فایل سیستمی:
@@ -159,7 +193,9 @@ public static class EntityMappers
 
     /// <summary>
     /// خلاصهٔ هزینه. اگر فرش فروخته شده باشد، سود واقعی هم کنار سود تخمینی می‌آید
-    /// تا تفاوت «آنچه انتظار داشتیم» و «آنچه شد» دیده شود.
+    /// تا تفاوت «آنچه انتظار داشتیم» و «آنچه شد» دیده شود. سود واقعی از عکس بهای لحظهٔ فروش است
+    /// (<see cref="RugSale.ActualProfit"/>، D.6)، نه از بهای امروز؛ هزینه‌ای که بعد از فروش ثبت شود سود آن فروش را بی‌صدا
+    /// عوض نمی‌کند.
     /// </summary>
     public static RugCostSummaryDto ToDto(this RugCostSummary summary, RugSale? sale = null) => new(
         summary.TotalProcessCost,
@@ -168,7 +204,14 @@ public static class EntityMappers
         summary.TargetSalePrice,
         summary.EstimatedMargin,
         sale?.NetAmount,
-        sale is null ? null : sale.NetAmount - summary.TotalInvestment);
+        sale?.ActualProfit(summary.TotalInvestment),
+        StepCost: summary.StepCost,
+        ExpenseCost: summary.ExpenseCost,
+        CostPerM2: summary.CostPerM2,
+        CostPerPiece: summary.CostPerPiece,
+        ExportRevenueShare: summary.ExportRevenueShare,
+        Computed: summary.Computed,
+        CostAtSale: sale?.CostAtSale);
 
     /// <summary>آمار داشبورد برای بینندهٔ جاری: کارت‌های مالی برای غیر Business null.</summary>
     public static DashboardStatsDto ToDashboard(
@@ -223,7 +266,8 @@ public static class EntityMappers
             .Sum(x => x.Costs.EstimatedMargin!.Value);
 
         var actualSales = sold.Sum(x => x.Rug.Sale!.NetAmount);
-        var actualProfit = sold.Sum(x => x.Rug.Sale!.NetAmount - x.Costs.TotalInvestment);
+        // سود واقعی از عکس بهای لحظهٔ فروش (D.6)
+        var actualProfit = sold.Sum(x => x.Rug.Sale!.ActualProfit(x.Costs.TotalInvestment));
         var outstanding = sold.Sum(x => x.Rug.Sale!.OutstandingAmount);
         var batchCount = rugs.Where(r => r.BatchId.HasValue).Select(r => r.BatchId).Distinct().Count();
         // فرش‌های در جریان که هزینهٔ مرحلهٔ جاری‌شان هنوز ثبت نشده

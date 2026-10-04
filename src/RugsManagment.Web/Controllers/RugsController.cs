@@ -42,7 +42,9 @@ public class RugsController(
 
         // اگر کاربر روی صفحه‌ای فراتر از آخرین صفحه باشد (مثلاً بعد از حذف)، به آخرین صفحه برگرد
         if (displayQuery.Page > result.TotalPages && result.TotalCount > 0)
-            return RedirectToAction(nameof(Index), BuildRoute(displayQuery with { Page = result.TotalPages }));
+            // همان کلیدهای لینک‌های صفحه (همهٔ فیلترها، روزِ انتخاب‌شده نه UTC)؛ نسخهٔ دستی قبلی withoutBatch و
+            // فیلترهای فاز ۲ را می‌انداخت و تاریخ را یک روز عقب می‌برد
+            return RedirectToAction(nameof(Index), RugListViewModel.ToRouteValues(displayQuery, page: result.TotalPages));
 
         return View(new RugListViewModel
         {
@@ -137,19 +139,4 @@ public class RugsController(
         TempData["Toast"] = "فرش بازگردانده شد.";
         return RedirectToAction(nameof(Trash));
     }
-
-    /// <summary>کوئری را به route value تبدیل می‌کند (فقط برای redirect داخلی این کنترلر).</summary>
-    private static object BuildRoute(RugQuery query) => new
-    {
-        search = query.Search,
-        status = query.Status,
-        batchId = query.BatchId,
-        stepTypeId = query.StepTypeId,
-        createdFrom = query.CreatedFrom?.ToString("yyyy-MM-dd"),
-        createdTo = query.CreatedTo?.ToString("yyyy-MM-dd"),
-        sortBy = query.SortBy,
-        descending = query.Descending,
-        page = query.Page,
-        pageSize = query.PageSize
-    };
 }

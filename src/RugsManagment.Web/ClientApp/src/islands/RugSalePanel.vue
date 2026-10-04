@@ -12,6 +12,7 @@ import { api, errorMessage } from '@/lib/api'
 import { moneyVisible } from '@/lib/context'
 import { currencyLabel, faDate, faMoney } from '@/lib/format'
 import { PAYMENT_METHOD_LABELS } from '@/lib/labels'
+import { message } from '@/lib/messages'
 import { confirmDialog, toast } from '@/lib/ui'
 
 interface Sale {
@@ -46,6 +47,40 @@ const sale = ref<Sale | null>(null)
 const loading = ref(true)
 const saving = ref(false)
 const editing = ref(false)
+const refreshing = ref(false)
+
+/**
+ * D.6: سود فروش با «بهای لحظهٔ فروش» حساب می‌شود (`sale.totalInvestment` = CostAtSale)؛ اگر بهای امروز فرش (prop صفحه) از آن
+ * فرق کند، چیپ «هزینه پس از فروش تغییر کرده» با کار «به‌روزرسانی بهای تمام‌شده» دیده می‌شود. null یعنی فرقی نیست.
+ */
+const costChange = computed(() => {
+  if (!sale.value || props.totalInvestment === null) return null
+  const diff = props.totalInvestment - sale.value.totalInvestment
+  return diff === 0 ? null : diff
+})
+
+const costChangeText = computed(() => {
+  const diff = costChange.value
+  if (diff === null) return ''
+  return message('W_COST_AFTER_SALE', { amount: `${diff > 0 ? '+' : '−'}${faMoney(Math.abs(diff))}` })
+})
+
+/** «به‌روزرسانی بهای تمام‌شده»: عکس بهای فروش = بهای امروز؛ ویرایش عادی فروش این کار را نمی‌کند. */
+async function refreshCost() {
+  refreshing.value = true
+  try {
+    const saved = await api.post<Sale>(`/api/sales/rug/${props.rugId}/refresh-cost`)
+    sale.value = saved
+    fillForm(saved)
+    toast.success('بهای تمام‌شدهٔ فروش به‌روز شد.')
+    // سود واقعی و چیپ بخش «بهای تمام‌شده» هم سمت سرور رندر می‌شوند
+    window.setTimeout(() => window.location.reload(), 600)
+  } catch (e) {
+    toast.error(errorMessage(e))
+  } finally {
+    refreshing.value = false
+  }
+}
 
 const form = reactive({
   buyerName: '',
@@ -307,6 +342,21 @@ onMounted(() => {
           <dd>{{ faMoney(sale.actualProfit) }}</dd>
         </div>
       </dl>
+
+      <div v-if="costChange !== null"
+           class="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning"
+           role="status" data-cost-after-sale>
+        <span class="flex items-start gap-2">
+          <AppIcon name="warning" class="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{{ costChangeText }}</span>
+        </span>
+        <button type="button" :disabled="refreshing"
+                class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-3 text-sm text-on-surface hover:bg-surface-container"
+                @click="refreshCost">
+          <AppIcon name="undo" class="h-4 w-4" />
+          به‌روزرسانی بهای تمام‌شده
+        </button>
+      </div>
 
       <p v-if="sale.reference || sale.notes" class="mt-3 rounded-lg bg-surface-container px-3 py-2 text-xs text-on-surface-variant">
         <span v-if="sale.reference">فاکتور <span class="font-mono" dir="ltr">{{ sale.reference }}</span></span>

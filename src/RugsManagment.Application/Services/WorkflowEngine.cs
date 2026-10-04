@@ -1,4 +1,8 @@
+using RugsManagment.Application.Abstractions.Persistence;
 using RugsManagment.Application.Abstractions.Services;
+using RugsManagment.Application.Features.Rugs;
+using RugsManagment.Application.Ledger;
+using RugsManagment.Domain.Costing;
 using RugsManagment.Domain.Entities;
 using RugsManagment.Domain.Enums;
 
@@ -6,12 +10,30 @@ namespace RugsManagment.Application.Services;
 
 /// <summary>
 /// موتور گردش کار — قلب منطق «فرش از کدام مراحل رد می‌شود و چه زمانی مرحله بعد فعال می‌شود».
-/// این کلاس به دیتابیس وصل نیست؛ فقط روی موجودیت Rug در حافظه کار می‌کند.
-/// سرویس RugManagementService بعد از فراخوانی اینجا، تغییرات را SaveChanges می‌کند.
+/// این کلاس به دیتابیس نمی‌نویسد؛ فقط روی موجودیت Rug در حافظه کار می‌کند و سرویس‌ها بعد از آن ذخیره می‌کنند (پاس سازگاری
+/// بهای فرش را همان‌جا از نو حساب می‌کند).
+///
+/// <para><b>از فاز ۲:</b></para>
+/// <list type="bullet">
+/// <item>قیمت مرحله روی <b>عکس اندازه</b> (<c>Priced*</c>) حساب می‌شود که اولین قیمت‌گذاری (تکمیل یا «فقط ذخیره») می‌گیرد؛
+/// قیمت دوباره همان عکس را به کار می‌برد مگر «با اندازهٔ تازه» (<see cref="AdvanceStepRequest.RefreshPricedSize"/>). پس
+/// عوض شدن اندازهٔ نهایی بعد از شستشو قیمت شستشو را بی‌صدا عوض نمی‌کند (B.5). گرد کردن در MoneyScale و قاعدهٔ دسته (D.3).</item>
+/// <item>وضعیت فرش از <see cref="RugStatusResolver"/> می‌گذرد: فرش فروخته‌شده یا صادرشده با پیش بردن مرحله «آمادهٔ فروش» یا
+/// «در جریان» نمی‌شود.</item>
+/// <item><see cref="CalculateRugCosts"/> ردیف <c>RugCostTotal</c> را می‌خواند (جای ۱ از هفت جای «سرمایهٔ کل»، D.4).</item>
+/// <item>مسیر قالب، نوع مرحلهٔ کارگاه دیگر را رد و انجام‌دهندهٔ کارگاه دیگر را برمی‌دارد (E17: قالب‌های ذخیره‌شده پیش از رفع
+/// نشت میان کارگاه‌ها).</item>
+/// </list>
 /// </summary>
+/// <param name="costCalculation">انتخاب روش و نرخ مرحله (فرمول در RugCostMath).</param>
+/// <param name="stepTypes">نوع مرحله (فقط سیستمی یا همین کارگاه).</param>
+/// <param name="costTotals">خوانندهٔ جمع ذخیره‌شده و MoneyScale؛ بی آن (آزمون واحد) جمع درون‌حافظه و رقم اعشار ۰.</param>
+/// <param name="versions">نسخهٔ فرش برای DTO؛ بی آن ۰.</param>
 public sealed class WorkflowEngine(
     ICostCalculationService costCalculation,
-    IProcessStepTypeLookup stepTypes) : IWorkflowEngine
+    IProcessStepTypeLookup stepTypes,
+    IRugCostTotalReader? costTotals = null,
+    IConcurrencyGuard? versions = null) : IWorkflowEngine
 {
     /// <summary>
     /// ساخت مسیر فرش از روی یک قالب آماده.
@@ -24,10 +46,10 @@ public sealed class WorkflowEngine(
         CancellationToken cancellationToken = default)
     {
         var skipped = skippedOptionalStepIds?.ToHashSet() ?? [];
-        rug.WorkflowSteps.Clear();
-        rug.WorkflowTemplateId = template.Id;
-
         var ordered = template.Steps.OrderBy(s => s.OrderIndex).ToList();
+
+        // E17: پیش از دست زدن به مسیر فرش؛ قالبِ آلوده هیچ مرحله‌ای روی فرش نمی‌گذارد
+        var instances = new List<RugWorkflowStep>();
         var index = 0;
         foreach (var templateStep in ordered)
         {
@@ -35,13 +57,18 @@ public sealed class WorkflowEngine(
             if (templateStep.IsOptional && skipped.Contains(templateStep.Id))
                 continue;
 
-            rug.WorkflowSteps.Add(MapTemplateStep(rug.Id, templateStep, index++));
+            var stepType = await OwnedStepTypeAsync(rug, templateStep, cancellationToken);
+            instances.Add(MapTemplateStep(rug, templateStep, stepType, index++));
         }
 
-        rug.Status = RugStatus.InProgress;
+        rug.WorkflowSteps.Clear();
+        rug.WorkflowTemplateId = template.Id;
+        foreach (var instance in instances)
+            rug.WorkflowSteps.Add(instance);
+
+        RugStatusResolver.ApplyWorkflowStatus(rug, RugStatus.InProgress);
         rug.CurrentStepIndex = 0;
         ActivateCurrentStep(rug);
-        await Task.CompletedTask;
         return rug;
     }
 
@@ -53,6 +80,7 @@ public sealed class WorkflowEngine(
         IReadOnlyList<CustomWorkflowStepRequest> steps,
         CancellationToken cancellationToken = default)
     {
+        var scale = await MoneyScaleAsync(rug, cancellationToken);
         rug.WorkflowSteps.Clear();
         rug.WorkflowTemplateId = null;
 
@@ -72,11 +100,11 @@ public sealed class WorkflowEngine(
                 ServiceProviderId = step.ServiceProviderId,
                 Status = WorkflowStepStatus.Pending
             };
-            ApplyPricing(instance, rug, stepType, step.Pricing);
+            ApplyPricing(instance, rug, stepType, step.Pricing, scale);
             rug.WorkflowSteps.Add(instance);
         }
 
-        rug.Status = RugStatus.InProgress;
+        RugStatusResolver.ApplyWorkflowStatus(rug, RugStatus.InProgress);
         rug.CurrentStepIndex = 0;
         ActivateCurrentStep(rug);
         return rug;
@@ -86,7 +114,7 @@ public sealed class WorkflowEngine(
     /// پیش بردن مرحله: ثبت یادداشت، هزینه دستی، تکمیل یا فقط «در حال انجام».
     /// اگر MarkCompleted=true باشد، مرحله بعدی خودکار فعال می‌شود.
     /// </summary>
-    public Task<RugWorkflowStep> AdvanceStepAsync(
+    public async Task<RugWorkflowStep> AdvanceStepAsync(
         Rug rug,
         Guid stepId,
         AdvanceStepRequest request,
@@ -98,14 +126,7 @@ public sealed class WorkflowEngine(
         step.FieldValuesJson = request.FieldValuesJson ?? step.FieldValuesJson;
         step.Notes = request.Notes ?? step.Notes;
         ApplyStepPricing(step, request);
-
-        step.CalculatedCost = costCalculation.CalculateStepCost(
-            rug,
-            step.ProcessStepType!,
-            null,
-            null,
-            step.ManualCostOverride,
-            step);
+        await PriceAsync(rug, step, request.RefreshPricedSize, cancellationToken);
 
         if (request.MarkCompleted)
         {
@@ -119,11 +140,10 @@ public sealed class WorkflowEngine(
             step.StartedAt ??= DateTimeOffset.UtcNow;
         }
 
-
-        return Task.FromResult(step);
+        return step;
     }
 
-    public Task<RugWorkflowStep> UpdateStepPricingAsync(
+    public async Task<RugWorkflowStep> UpdateStepPricingAsync(
         Rug rug,
         Guid stepId,
         AdvanceStepRequest request,
@@ -138,16 +158,9 @@ public sealed class WorkflowEngine(
         if (request.Notes is not null)
             step.Notes = request.Notes;
         ApplyStepPricing(step, request);
+        await PriceAsync(rug, step, request.RefreshPricedSize, cancellationToken);
 
-        step.CalculatedCost = costCalculation.CalculateStepCost(
-            rug,
-            step.ProcessStepType!,
-            null,
-            null,
-            step.ManualCostOverride,
-            step);
-
-        return Task.FromResult(step);
+        return step;
     }
 
     /// <summary>
@@ -209,7 +222,7 @@ public sealed class WorkflowEngine(
             rug.CurrentStepIndex = lastCompleted.OrderIndex;
         }
 
-        rug.Status = RugStatus.InProgress;
+        RugStatusResolver.ApplyWorkflowStatus(rug, RugStatus.InProgress);
         return Task.FromResult(rug);
     }
 
@@ -246,7 +259,7 @@ public sealed class WorkflowEngine(
         }
 
         rug.CurrentStepIndex = target.OrderIndex;
-        rug.Status = RugStatus.InProgress;
+        RugStatusResolver.ApplyWorkflowStatus(rug, RugStatus.InProgress);
         return Task.FromResult(rug);
     }
 
@@ -255,6 +268,7 @@ public sealed class WorkflowEngine(
         IReadOnlyList<CustomWorkflowStepRequest> pendingSteps,
         CancellationToken cancellationToken = default)
     {
+        var scale = await MoneyScaleAsync(rug, cancellationToken);
         var locked = rug.WorkflowSteps
             .Where(s => s.Status is WorkflowStepStatus.Completed or WorkflowStepStatus.Skipped)
             .OrderBy(s => s.OrderIndex)
@@ -283,7 +297,7 @@ public sealed class WorkflowEngine(
                 ServiceProviderId = input.ServiceProviderId,
                 Status = WorkflowStepStatus.Pending
             };
-            ApplyPricing(instance, rug, stepType, input.Pricing);
+            ApplyPricing(instance, rug, stepType, input.Pricing, scale);
             rug.WorkflowSteps.Add(instance);
         }
 
@@ -295,60 +309,125 @@ public sealed class WorkflowEngine(
     }
 
     /// <summary>
-    /// جمع هزینه فرایند + خرید + حاشیه سود تخمینی برای نمایش در UI.
+    /// بهای فرش برای نمایش: از ردیف <c>RugCostTotal</c> (پاس سازگاری؛ بعد از ذخیره همان عدد تازه)، وگرنه همان قاعده‌ها روی
+    /// گراف درون‌حافظه. سود تخمینی = قیمت هدف − بهای تمام‌شده.
     /// </summary>
     public RugCostSummary CalculateRugCosts(Rug rug)
     {
-        var processCost = rug.WorkflowSteps
-            .Where(s => s.Status is WorkflowStepStatus.Completed or WorkflowStepStatus.InProgress)
-            .Sum(s => s.EffectiveCost);
+        ArgumentNullException.ThrowIfNull(rug);
 
-        var purchase = rug.PurchaseCost ?? 0;
-        var total = processCost + purchase;
-        decimal? margin = rug.TargetSalePrice.HasValue
-            ? rug.TargetSalePrice.Value - total
-            : null;
+        var stored = costTotals?.Find(rug.TenantId, rug.Id);
+        if (stored is not null)
+        {
+            return new RugCostSummary(
+                stored.StepCost, stored.PurchaseCost, stored.Total, rug.TargetSalePrice, Margin(rug, stored.Total),
+                stored.StepCost, stored.ExpenseCost, stored.CostPerM2, stored.CostPerPiece, stored.ExportRevenueShare,
+                Computed: true);
+        }
 
-        return new RugCostSummary(processCost, purchase, total, rug.TargetSalePrice, margin);
+        // ردیفی نیست (فرش تازه پیش از ذخیره، پیش از بازسازی استارت، یا آزمون بی دیتابیس): همان RugCostMath، بی سهم ثبت‌ها
+        var scale = costTotals?.MoneyScale(rug.TenantId) ?? 0;
+        var lines = rug.PurchaseLines.OrderBy(l => l.SortOrder).ToList();
+        var purchase = lines.Count == 0 ? 0m : PurchaseMath.Total(rug, lines, scale);
+        var breakdown = RugCostMath.Compose(
+            purchase, 0m, RugCostMath.StepCost(rug.WorkflowSteps), 0m, rug.TotalAreaM2, Math.Max(1, rug.Quantity), scale);
+
+        return new RugCostSummary(
+            breakdown.StepCost, breakdown.PurchaseCost, breakdown.Total, rug.TargetSalePrice, Margin(rug, breakdown.Total),
+            breakdown.StepCost, breakdown.ExpenseCost, breakdown.CostPerM2, breakdown.CostPerPiece, null,
+            Computed: false);
     }
 
-    /// <summary>تبدیل یک ردیف قالب به یک ردیف مرحله روی فرش</summary>
-    private static RugWorkflowStep MapTemplateStep(Guid rugId, WorkflowTemplateStep templateStep, int orderIndex)
+    public uint RowVersion(Rug rug) => versions?.VersionOf(rug) ?? 0;
+
+    /// <summary>
+    /// وضعیت واقعی فرش بر اساس مراحلش:
+    ///   بدون مرحله → پیش‌نویس، همهٔ مراحل تمام → آمادهٔ فروش، وگرنه در جریان.
+    /// «فروخته‌شده»، «صادر شده» و «بایگانی» اینجا برنمی‌گردند چون از گردش کار نمی‌آیند (تقدمشان در RugStatusResolver).
+    /// </summary>
+    public RugStatus ResolveStatusFromWorkflow(Rug rug) => RugStatusResolver.FromWorkflow(rug);
+
+    // ═════════════════════════════════════════════════════════════════════
+    // جزئیات
+    // ═════════════════════════════════════════════════════════════════════
+
+    private static decimal? Margin(Rug rug, decimal total)
+        => rug.TargetSalePrice.HasValue ? rug.TargetSalePrice.Value - total : null;
+
+    private async Task<int> MoneyScaleAsync(Rug rug, CancellationToken cancellationToken)
+        => costTotals is null ? 0 : await costTotals.MoneyScaleAsync(rug.TenantId, cancellationToken);
+
+    /// <summary>
+    /// قیمت‌گذاری مرحله: عکس اندازه و تعداد اگر هنوز نیست (یا «با اندازهٔ تازه») و بعد هزینهٔ محاسبه‌شده روی همان عکس.
+    /// </summary>
+    private async Task PriceAsync(Rug rug, RugWorkflowStep step, bool refreshSize, CancellationToken cancellationToken)
     {
+        if (!step.HasPricingSnapshot || refreshSize)
+            step.SnapshotPricingSize(rug.LengthMeters, rug.WidthMeters, Math.Max(1, rug.Quantity));
+
+        var scale = await MoneyScaleAsync(rug, cancellationToken);
+        step.CalculatedCost = costCalculation.CalculateStepCost(
+            rug,
+            step.ProcessStepType!,
+            null,
+            null,
+            step.ManualCostOverride,
+            step,
+            scale);
+    }
+
+    /// <summary>
+    /// نوع مرحلهٔ یک ردیف قالب، فقط اگر سیستمی یا مال همین کارگاه باشد (E17). قالب‌هایی که پیش از رفع نشت میان کارگاه‌ها
+    /// ذخیره شدند ممکن است هنوز شناسهٔ نوع مرحلهٔ کارگاه دیگر را داشته باشند؛ آن مرحله نام و نرخ و فرم کارگاه دیگر را به این
+    /// فرش می‌چسباند، پس رد می‌شود («یافت نشد»، مثل هر شناسهٔ کارگاه دیگر).
+    /// </summary>
+    private async Task<ProcessStepType> OwnedStepTypeAsync(
+        Rug rug, WorkflowTemplateStep templateStep, CancellationToken cancellationToken)
+    {
+        var stepType = templateStep.ProcessStepType
+                       ?? await stepTypes.GetRequiredAsync(templateStep.ProcessStepTypeId, cancellationToken);
+        if (stepType.TenantId is Guid owner && owner != rug.TenantId)
+            throw new KeyNotFoundException($"نوع مرحله {templateStep.ProcessStepTypeId} یافت نشد.");
+        return stepType;
+    }
+
+    /// <summary>
+    /// تبدیل یک ردیف قالب به یک ردیف مرحله روی فرش. انجام‌دهندهٔ پیش‌فرضی که مال کارگاه دیگر است برداشته می‌شود (E17)؛
+    /// کار این فرش نباید به حساب طرفِ کارگاه دیگر برود.
+    /// </summary>
+    private static RugWorkflowStep MapTemplateStep(
+        Rug rug, WorkflowTemplateStep templateStep, ProcessStepType stepType, int orderIndex)
+    {
+        var providerId = templateStep.DefaultServiceProvider is { } provider && provider.TenantId != rug.TenantId
+            ? null
+            : templateStep.DefaultServiceProviderId;
+
         return new RugWorkflowStep
         {
-            RugId = rugId,
-            ProcessStepTypeId = templateStep.ProcessStepTypeId,
-            ProcessStepType = templateStep.ProcessStepType,
+            RugId = rug.Id,
+            ProcessStepTypeId = stepType.Id,
+            ProcessStepType = stepType,
             OrderIndex = orderIndex,
             IsOptional = templateStep.IsOptional,
-            ServiceProviderId = templateStep.DefaultServiceProviderId,
+            ServiceProviderId = providerId,
             Status = WorkflowStepStatus.Pending
         };
     }
 
-    private void ApplyPricing(RugWorkflowStep instance, Rug rug, ProcessStepType stepType, StepPricingOverride? pricing)
+    /// <summary>
+    /// برآورد اولیهٔ هزینهٔ مرحلهٔ تازه روی اندازه و تعداد فعلی (بی عکس؛ عکس در اولین قیمت‌گذاری گرفته می‌شود). مرحلهٔ در
+    /// صف در بها شمرده نمی‌شود، پس این عدد فقط پیش‌نمایش است.
+    /// </summary>
+    private void ApplyPricing(RugWorkflowStep instance, Rug rug, ProcessStepType stepType, StepPricingOverride? pricing, int scale)
     {
         instance.CalculatedCost = costCalculation.CalculateStepCost(
             rug,
             stepType,
             pricing?.Model,
             pricing?.UnitRate,
-            null);
-    }
-
-    private void RecalculateStepCost(Rug rug, RugWorkflowStep step)
-    {
-        if (step.ProcessStepType is null)
-            return;
-
-        step.CalculatedCost = costCalculation.CalculateStepCost(
-            rug,
-            step.ProcessStepType,
             null,
             null,
-            step.ManualCostOverride,
-            step);
+            scale);
     }
 
     /// <summary>
@@ -390,23 +469,7 @@ public sealed class WorkflowEngine(
             step.ServiceProviderId = null;
     }
 
-    /// <summary>اولین مرحله Pending را InProgress می‌کند؛ اگر مرحله‌ای نماند → آماده فروش</summary>
-    /// <summary>
-    /// وضعیت واقعی فرش بر اساس مراحلش:
-    ///   بدون مرحله → پیش‌نویس، همهٔ مراحل تمام → آمادهٔ فروش، وگرنه در جریان.
-    /// «فروخته‌شده» و «بایگانی» اینجا برنمی‌گردند چون از گردش کار نمی‌آیند.
-    /// </summary>
-    public RugStatus ResolveStatusFromWorkflow(Rug rug)
-    {
-        if (rug.WorkflowSteps.Count == 0)
-            return RugStatus.Draft;
-
-        var allSettled = rug.WorkflowSteps.All(s =>
-            s.Status is WorkflowStepStatus.Completed or WorkflowStepStatus.Skipped or WorkflowStepStatus.Cancelled);
-
-        return allSettled ? RugStatus.ReadyForSale : RugStatus.InProgress;
-    }
-
+    /// <summary>اولین مرحله Pending را InProgress می‌کند؛ اگر مرحله‌ای نماند → آماده فروش (با تقدم فروش و صادرات).</summary>
     private static void ActivateCurrentStep(Rug rug)
     {
         var current = rug.WorkflowSteps
@@ -415,7 +478,7 @@ public sealed class WorkflowEngine(
 
         if (current is null)
         {
-            rug.Status = RugStatus.ReadyForSale;
+            RugStatusResolver.ApplyWorkflowStatus(rug, RugStatus.ReadyForSale);
             return;
         }
 
@@ -433,7 +496,7 @@ public sealed class WorkflowEngine(
 
         if (next is null)
         {
-            rug.Status = RugStatus.ReadyForSale;
+            RugStatusResolver.ApplyWorkflowStatus(rug, RugStatus.ReadyForSale);
             rug.CurrentStepIndex = rug.WorkflowSteps.Count;
             return;
         }
@@ -441,7 +504,7 @@ public sealed class WorkflowEngine(
         next.Status = WorkflowStepStatus.InProgress;
         next.StartedAt = DateTimeOffset.UtcNow;
         rug.CurrentStepIndex = next.OrderIndex;
-        rug.Status = RugStatus.InProgress;
+        RugStatusResolver.ApplyWorkflowStatus(rug, RugStatus.InProgress);
     }
 
     private static RugWorkflowStep GetActiveOrPendingStep(Rug rug, Guid stepId)

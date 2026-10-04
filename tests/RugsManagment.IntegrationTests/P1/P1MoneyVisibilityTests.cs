@@ -103,6 +103,7 @@ public sealed class P1MoneyVisibilityTests(RugsWebFactory factory) : IClassFixtu
     {
         var people = await P1Data.PeopleAsync(factory);
         var rug = await FirstRugWithPurchaseAsync(people.TenantId);
+        var purchase = await PurchaseLinesOfAsync(rug.Id);
 
         using var op = P1Client.As(factory, people.Operator);
         using var get = await op.GetAsync($"/api/rugs/{rug.Id}");
@@ -132,7 +133,7 @@ public sealed class P1MoneyVisibilityTests(RugsWebFactory factory) : IClassFixtu
 
         await using var db = factory.CreateDbContext();
         var stored = await db.Rugs.AsNoTracking().SingleAsync(x => x.Id == rug.Id);
-        Assert.Equal(rug.PurchaseCost, stored.PurchaseCost);
+        Assert.Equal(purchase, await PurchaseLinesOfAsync(rug.Id));
         Assert.Equal(rug.TargetSalePrice, stored.TargetSalePrice);
         Assert.Equal("ویرایش انباردار", stored.Notes);
     }
@@ -142,6 +143,7 @@ public sealed class P1MoneyVisibilityTests(RugsWebFactory factory) : IClassFixtu
     {
         var people = await P1Data.PeopleAsync(factory);
         var rug = await FirstRugWithPurchaseAsync(people.TenantId);
+        var purchase = await PurchaseLinesOfAsync(rug.Id);
         var stepId = await FirstStepIdAsync(rug.Id);
 
         using var op = P1Client.As(factory, people.Operator);
@@ -190,7 +192,7 @@ public sealed class P1MoneyVisibilityTests(RugsWebFactory factory) : IClassFixtu
         // هیچ‌کدام چیزی ننوشت
         await using var db = factory.CreateDbContext();
         var stored = await db.Rugs.AsNoTracking().SingleAsync(x => x.Id == rug.Id);
-        Assert.Equal(rug.PurchaseCost, stored.PurchaseCost);
+        Assert.Equal(purchase, await PurchaseLinesOfAsync(rug.Id));
         Assert.Equal(rug.TargetSalePrice, stored.TargetSalePrice);
     }
 
@@ -216,13 +218,26 @@ public sealed class P1MoneyVisibilityTests(RugsWebFactory factory) : IClassFixtu
         }
     }
 
+    /// <summary>فرش دمویی که قیمت خرید (از فاز ۲ سطر خرید) و قیمت هدف دارد.</summary>
     private async Task<Domain.Entities.Rug> FirstRugWithPurchaseAsync(Guid tenantId)
     {
         await using var db = factory.CreateDbContext();
         return await db.Rugs.AsNoTracking()
-            .Where(r => r.TenantId == tenantId && r.PurchaseCost != null && r.TargetSalePrice != null)
+            .Where(r => r.TenantId == tenantId && r.PurchaseLines.Any() && r.TargetSalePrice != null)
             .OrderBy(r => r.Sku)
             .FirstAsync();
+    }
+
+    /// <summary>سطرهای خرید یک فرش (مبنا، نرخ، مبلغ) به ترتیب؛ برای «هیچ مبلغی عوض نشد».</summary>
+    private async Task<IReadOnlyList<(CostBasis Basis, decimal Rate, decimal Amount)>> PurchaseLinesOfAsync(Guid rugId)
+    {
+        await using var db = factory.CreateDbContext();
+        var lines = await db.Set<Domain.Entities.RugPurchaseLine>().AsNoTracking()
+            .Where(l => l.RugId == rugId)
+            .OrderBy(l => l.SortOrder).ThenBy(l => l.Id)
+            .Select(l => new { l.Basis, l.Rate, l.Amount })
+            .ToListAsync();
+        return lines.Select(l => (l.Basis, l.Rate, l.Amount)).ToList();
     }
 
     private async Task<Guid> FirstStepIdAsync(Guid rugId)

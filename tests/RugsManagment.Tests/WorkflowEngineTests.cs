@@ -209,7 +209,7 @@ public class WorkflowEngineTests
         // قاعدهٔ سامانه: کارِ شروع‌شده تعهد ایجاد کرده، پس هزینه‌اش شمرده می‌شود.
         // دارکشی نرخ ثابت ۱۵۰٬۰۰۰ دارد و بعد از پیشبرد، «در حال انجام» است.
         var rug = await RugWithPath(_wash, _stretch);
-        rug.PurchaseCost = 1_000_000m;
+        rug.PurchaseLines.Add(PurchaseLine(1_000_000m));
 
         await _sut.AdvanceStepAsync(rug, Ordered(rug)[0].Id, Advance(manualCost: 250_000m));
 
@@ -247,7 +247,7 @@ public class WorkflowEngineTests
     public async Task CalculateRugCosts_EstimatedMargin_UsesTargetPrice()
     {
         var rug = await RugWithPath(_wash);
-        rug.PurchaseCost = 1_000_000m;
+        rug.PurchaseLines.Add(PurchaseLine(1_000_000m));
         rug.TargetSalePrice = 1_800_000m;
 
         await _sut.AdvanceStepAsync(rug, Ordered(rug)[0].Id, Advance(manualCost: 200_000m));
@@ -377,4 +377,8 @@ public class WorkflowEngineTests
 
     private static List<RugWorkflowStep> Ordered(Rug rug)
         => rug.WorkflowSteps.OrderBy(s => s.OrderIndex).ToList();
+
+    /// <summary>سطر خرید «کل»؛ آزمون واحد پاس سازگاری ندارد، پس جمع درون‌حافظهٔ موتور مبلغش را حساب می‌کند.</summary>
+    private static RugPurchaseLine PurchaseLine(decimal rate)
+        => new() { Basis = CostBasis.Total, Rate = rate, Label = "purchase" };
 }

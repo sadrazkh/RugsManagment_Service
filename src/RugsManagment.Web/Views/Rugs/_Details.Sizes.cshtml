@@ -1,0 +1,74 @@
+@using RugsManagment.Application.DTOs.Rugs
+@using RugsManagment.Web.RugDetails
+@model RugDto
+@*
+    شماره، تعداد، اندازهٔ اول و نهایی و متراژ (B.4، C.4). اندازهٔ نهایی و «همان اندازه» در جزیرهٔ rug-final-size است؛ در نمای
+    ساده اندازهٔ اول و نهایی فقط وقتی جدا نشان داده می‌شوند که با هم فرق دارند (A.3).
+*@
+@{
+    var hasFinal = Model.FinalLength is not null && Model.FinalWidth is not null;
+    var isLot = Model.Quantity >= 2;
+}
+<section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
+    <h3 class="mb-4 flex items-center gap-2 text-sm font-semibold text-primary">
+        <icon name="ruler" class="h-4 w-4" />
+        شماره و اندازه
+    </h3>
+    <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-4">
+        <div>
+            <dt class="text-on-surface-variant">شماره</dt>
+            <dd class="font-semibold">
+                @if (Model.SerialNo is not null)
+                {
+                    <bdi dir="ltr" data-numeric>@PersianFormat.ToPersianDigits(Model.SerialNo)</bdi>
+                }
+                else
+                {
+                    <span class="font-normal text-on-surface-variant">بی‌شماره</span>
+                }
+            </dd>
+        </div>
+        <div>
+            <dt class="text-on-surface-variant">تعداد</dt>
+            <dd data-numeric>@PersianFormat.Count(Model.Quantity) تخته</dd>
+        </div>
+        <div>
+            <dt class="text-on-surface-variant">اندازهٔ اول (طول × عرض)</dt>
+            <dd data-numeric><bdi dir="ltr">@RugDetailsFormat.Size(Model.IntakeLength, Model.IntakeWidth)</bdi> متر</dd>
+        </div>
+        <div>
+            <dt class="text-on-surface-variant">@(isLot ? "متراژ (تخته × تعداد)" : "متراژ")</dt>
+            <dd data-numeric>
+                <bdi dir="ltr">@RugDetailsFormat.Area(Model.AreaSquareMeters, Model.Quantity, Model.TotalAreaM2)</bdi>
+                <span class="text-xs text-on-surface-variant">متر</span>
+            </dd>
+        </div>
+        @if (Model.BatchId is not null)
+        {
+            <div class="col-span-2">
+                <dt class="text-on-surface-variant">ورودی</dt>
+                <dd>
+                    <a href="/Groups/Details/@Model.BatchId" class="hover:text-primary hover:underline">@(Model.BatchName ?? "—")</a>
+                    @if (Model.SellerName is not null)
+                    {
+                        <span class="text-on-surface-variant">· @Model.SellerName</span>
+                    }
+                </dd>
+            </div>
+        }
+    </dl>
+
+    @* اندازهٔ نهایی: نمایش و ثبت («همان اندازه»، پاک کردن) — هر کاربر انبار (Floor) *@
+    <div class="mt-4 border-t border-outline-variant pt-4">
+        <div data-island="rug-final-size" data-skeleton="4rem"
+             data-props='@Json.Serialize(new
+             {
+                 rugId = Model.Id,
+                 version = Model.Version,
+                 intake = new[] { Model.IntakeLength, Model.IntakeWidth },
+                 final = hasFinal ? new[] { Model.FinalLength!.Value, Model.FinalWidth!.Value } : null,
+                 locked = Model.Location is RugsManagment.Domain.Enums.RugLocation.Exported or RugsManagment.Domain.Enums.RugLocation.Trashed,
+                 quantity = Model.Quantity
+             })'></div>
+    </div>
+</section>

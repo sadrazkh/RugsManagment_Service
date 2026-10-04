@@ -22,6 +22,21 @@ internal sealed class FakeUnitOfWork : IUnitOfWork
     }
 
     public void Reset() => Resets++;
+
+    /// <summary>تراکنش‌های درون‌حافظه همان اجرای مستقیم‌اند؛ شمارش برای آزمون‌هایی که «یک تراکنش» را می‌سنجند.</summary>
+    public int Transactions { get; private set; }
+
+    public async Task ExecuteInTransactionAsync(Func<CancellationToken, Task> work, CancellationToken cancellationToken = default)
+    {
+        Transactions++;
+        await work(cancellationToken);
+    }
+
+    public async Task<T> ExecuteInTransactionAsync<T>(Func<CancellationToken, Task<T>> work, CancellationToken cancellationToken = default)
+    {
+        Transactions++;
+        return await work(cancellationToken);
+    }
 }
 
 internal sealed class FakeAuditLog : IAuditLog
@@ -123,6 +138,9 @@ internal sealed class FakeRugRepository : IRugRepository
     public Task<string> GenerateNextSkuAsync(Guid tenantId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<IReadOnlyList<DeletedRugDto>> ListDeletedAsync(Guid tenantId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<Rug?> GetDeletedAsync(Guid id, Guid tenantId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public Task<int?> GetMaxSerialAsync(Guid tenantId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public Task<RugBySerialDto?> FindBySerialAsync(Guid tenantId, Domain.Common.SerialNumber serial, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public Task<IReadOnlyList<string>> ListDistinctValuesAsync(Guid tenantId, RugValuesQuery query, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<Rug?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<IReadOnlyList<Rug>> ListAsync(Expression<Func<Rug, bool>>? predicate = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task AddAsync(Rug entity, CancellationToken cancellationToken = default) => throw new NotSupportedException();

@@ -1,4 +1,5 @@
 @using RugsManagment.Application.DTOs.Rugs
+@using RugsManagment.Web.RugDetails
 @model IReadOnlyList<DeletedRugDto>
 @{
     ViewData["Title"] = "سطل زباله";
@@ -15,7 +16,8 @@
             <div>
                 <h1 class="text-2xl font-bold">سطل زباله</h1>
                 <p class="text-sm text-on-surface-variant">
-                    فرش‌های حذف‌شده اینجا می‌مانند. مراحل، هزینه‌ها و عکس‌هایشان دست‌نخورده است.
+                    فرش‌های حذف‌شده اینجا می‌مانند. مراحل، هزینه‌ها و عکس‌هایشان دست‌نخورده است. شمارهٔ فرش حذف‌شده آزاد می‌شود؛
+                    اگر تا بازگردانی مال فرش دیگری شده باشد، بازگردانی با پیام رد می‌شود.
                 </p>
             </div>
         </div>
@@ -40,8 +42,8 @@
                 <caption class="sr-only">فرش‌های حذف‌شده، تازه‌ترین اول</caption>
                 <thead class="bg-surface-container text-on-surface-variant">
                     <tr>
-                        <th scope="col" class="p-3 text-right font-medium">کد / نام</th>
-                        <th scope="col" class="hidden p-3 text-right font-medium sm:table-cell">ابعاد</th>
+                        <th scope="col" class="p-3 text-right font-medium">شماره / نام</th>
+                        <th scope="col" class="hidden p-3 text-right font-medium sm:table-cell">اندازه</th>
                         <th scope="col" class="hidden p-3 text-right font-medium md:table-cell">هزینهٔ ثبت‌شده</th>
                         <th scope="col" class="p-3 text-right font-medium">حذف شده</th>
                         <th scope="col" class="p-3"><span class="sr-only">عملیات</span></th>
@@ -52,11 +54,28 @@
                     {
                         <tr class="border-t border-outline-variant transition-colors even:bg-surface-container-low/60 hover:bg-surface-container/70">
                             <td class="p-3">
-                                <div class="font-medium">@(string.IsNullOrWhiteSpace(rug.Title) ? "بدون نام" : rug.Title)</div>
+                                <div class="font-medium">
+                                    @if (rug.SerialNo is not null)
+                                    {
+                                        <bdi dir="ltr" data-numeric>@PersianFormat.ToPersianDigits(rug.SerialNo)</bdi>
+                                        @if (!string.IsNullOrWhiteSpace(rug.Title))
+                                        {
+                                            <span class="font-normal text-on-surface-variant">· @rug.Title</span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        @(string.IsNullOrWhiteSpace(rug.Title) ? "بدون نام" : rug.Title)
+                                    }
+                                    @if (rug.Quantity > 1)
+                                    {
+                                        <span class="rounded-full bg-secondary/15 px-2 py-0.5 text-xs font-normal" data-numeric>@PersianFormat.Count(rug.Quantity) تخته</span>
+                                    }
+                                </div>
                                 <div class="font-mono text-xs text-on-surface-variant" dir="ltr">@rug.Sku</div>
                             </td>
-                            <td class="hidden p-3 text-on-surface-variant sm:table-cell">
-                                @PersianFormat.Number(rug.WidthMeters)×@PersianFormat.Number(rug.LengthMeters)
+                            <td class="hidden p-3 text-on-surface-variant sm:table-cell" data-numeric>
+                                <bdi dir="ltr">@RugDetailsFormat.Size(rug.LengthMeters, rug.WidthMeters)</bdi>
                             </td>
                             <td class="hidden p-3 md:table-cell">@Tenant.Money(rug.TotalInvestment)</td>
                             <td class="p-3 text-on-surface-variant">

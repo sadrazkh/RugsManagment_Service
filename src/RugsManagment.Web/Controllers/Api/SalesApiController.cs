@@ -34,6 +34,14 @@ public class SalesApiController(IRugSaleService sales) : ApiControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// «به‌روزرسانی بهای تمام‌شده» (D.6): عکس بهای لحظهٔ فروش با بهای امروز فرش جایگزین می‌شود و سود دوباره حساب می‌شود.
+    /// ویرایش عادی فروش (<c>PUT</c>) عکس را عوض نمی‌کند؛ فقط همین کار صریح. فرش بی‌فروش ۴۰۰، فرش کارگاه دیگر ۴۰۴.
+    /// </summary>
+    [HttpPost("rug/{rugId:guid}/refresh-cost")]
+    public async Task<IActionResult> RefreshCost(Guid rugId, CancellationToken ct)
+        => Ok(await sales.RefreshCostAtSaleAsync(User.RequireTenantId(), rugId, ct));
+
     /// <summary>گزارش فروش و سود واقعی.</summary>
     [HttpGet("report")]
     public async Task<IActionResult> Report([FromQuery] SalesQuery query, CancellationToken ct)

@@ -1,16 +1,22 @@
 <script setup lang="ts">
 /**
- * اسکن برچسب فرش با دوربین موبایل.
+ * اسکن برچسب فرش با دوربین موبایل (جزیرهٔ لایهٔ صفحه، `qr-scanner`).
  *
- * QR روی برچسب آدرس کامل صفحهٔ فرش را دارد (از فاز ۳)، پس اسکن یعنی «برو به آن فرش».
+ * برچسب‌ها سه شکل دارند و هر سه پذیرفته می‌شوند: QR با آدرس کامل صفحهٔ فرش (برچسب‌های قدیمی)، QR یا بارکد
+ * code_128 با «شماره»ی بازرگان («برچسب شماره»، H.8)، و کد انبار (SKU). اسکن یعنی «برو به آن فرش».
  *
- * از BarcodeDetector مرورگر استفاده می‌کند — بدون کتابخانهٔ اضافه. این API روی
- * کروم/اج اندروید و دسکتاپ هست ولی روی سافاری و فایرفاکس نه؛ در آن حالت
- * ورودی دستی کد فرش جایگزین می‌شود تا قابلیت برای همه کار کند.
+ * تطبیق همیشه دقیق است (H.6، فاز ۲): اول شماره با `/api/rugs/by-serial/{serial}` — خودِ شماره، یا عدد تکی که داخل
+ * بازهٔ یک دسته است («3925» → دستهٔ «3911 - 3960»)؛ بعد SKU، فقط وقتی کد کامل یکی است. پیش از این «اولین نتیجهٔ
+ * جستجو» گرفته می‌شد و یک شمارهٔ ناقص فرش دیگری را باز می‌کرد.
+ *
+ * از BarcodeDetector مرورگر استفاده می‌کند — بدون کتابخانهٔ اضافه. این API روی کروم/اج اندروید و دسکتاپ هست ولی
+ * روی سافاری و فایرفاکس نه؛ در آن حالت ورودی دستی شماره یا کد جایگزین می‌شود تا قابلیت برای همه کار کند.
  */
 import { onUnmounted, ref } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
-import { api } from '@/lib/api'
+import { ApiError, api } from '@/lib/api'
+import { message } from '@/lib/messages'
+import type { RugBySerial } from '@/lib/types/rugs'
 import { toast } from '@/lib/ui'
 
 interface RugHit { id: string; sku: string; title?: string }
@@ -51,7 +57,7 @@ async function start() {
     }
 
     const Detector = (window as unknown as Record<string, new (o: unknown) => unknown>).BarcodeDetector
-    detector = new Detector({ formats: ['qr_code'] })
+    detector = new Detector({ formats: ['qr_code', 'code_128'] })
 
     scanning.value = true
     tick()
@@ -105,24 +111,37 @@ function handleScan(raw: string) {
 async function findBySku(code: string) {
   looking.value = true
   try {
-    const res = await api.get<{ items: RugHit[] }>(
-      `/api/rugs?search=${encodeURIComponent(code)}&pageSize=5`,
-    )
-
-    const exact = res.items.find((r) => r.sku.toLowerCase() === code.toLowerCase()) ?? res.items[0]
-    if (!exact) {
-      toast.error(`فرشی با کد «${code}» پیدا نشد.`)
+    const id = (await findBySerial(code)) ?? (await findExactSku(code))
+    if (!id) {
+      toast.error(message('E_RUG_SERIAL_NOT_FOUND', { serial: code }))
       looking.value = false
       // دوباره اسکن را روشن کن تا کاربر مجبور نشود از اول شروع کند
       void start()
       return
     }
 
-    window.location.href = `/Rugs/Details/${exact.id}`
+    window.location.href = `/Rugs/Details/${id}`
   } catch (e) {
     toast.error((e as Error).message)
     looking.value = false
   }
+}
+
+/** شمارهٔ بازرگان: دقیق یا داخل بازهٔ یک دسته؛ پیدا نشد → null (۴۰۴ خطا نیست). */
+async function findBySerial(code: string): Promise<string | null> {
+  try {
+    const hit = await api.get<RugBySerial>(`/api/rugs/by-serial/${encodeURIComponent(code)}`)
+    return hit.rug.id
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) return null
+    throw e
+  }
+}
+
+/** کد انبار، فقط وقتی کل کد یکی است (هرگز «اولین نتیجهٔ جستجو»). */
+async function findExactSku(code: string): Promise<string | null> {
+  const res = await api.get<{ items: RugHit[] }>(`/api/rugs?search=${encodeURIComponent(code)}&pageSize=10`)
+  return res.items.find((r) => r.sku.toLowerCase() === code.toLowerCase())?.id ?? null
 }
 
 function submitManual() {
@@ -209,12 +228,12 @@ defineExpose({ start })
 
             <!-- ورودی دستی: همیشه در دسترس، نه فقط هنگام خطا -->
             <label class="block">
-              <span class="mb-1 block text-sm">یا کد فرش را وارد کنید</span>
+              <span class="mb-1 block text-sm">یا شماره یا کد فرش را بنویسید</span>
               <div class="flex gap-2">
                 <input
                   v-model="manualCode"
                   dir="ltr"
-                  placeholder="RUG-202607-0001"
+                  placeholder="3778 / RUG-202607-0001"
                   class="min-h-11 flex-1 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 font-mono text-sm outline-none focus:border-primary"
                   @keydown.enter.prevent="submitManual"
                 />

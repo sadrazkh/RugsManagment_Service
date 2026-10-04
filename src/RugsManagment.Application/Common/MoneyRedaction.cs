@@ -73,8 +73,9 @@ public static class MoneyRedaction
     // ═════════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// فرش کامل: قیمت خرید، قیمت هدف، خلاصهٔ هزینه و مبلغ‌های هر مرحله null می‌شوند. ابعاد، وضعیت،
-    /// مراحل (نام، وضعیت، انجام‌دهنده، تاریخ) و فیلدهای سفارشی می‌مانند، چون کار انبار به آن‌ها نیاز دارد.
+    /// فرش کامل: قیمت خرید، سطرهای خرید (فاز ۲)، قیمت هدف، خلاصهٔ هزینه و مبلغ‌های هر مرحله null می‌شوند. ابعاد،
+    /// شماره، تعداد، وضعیت، مراحل (نام، وضعیت، انجام‌دهنده، تاریخ) و فیلدهای سفارشی می‌مانند، چون کار انبار به آن‌ها نیاز
+    /// دارد. دلار گمرکی (<see cref="RugDto.UsdPerM2"/>، <see cref="RugDto.LineUsd"/>) هزینهٔ داخلی نیست و می‌ماند (A.5).
     /// </summary>
     public static RugDto Redact(this IMoneyVisibility visibility, RugDto rug)
         => visibility.CanSeeMoney
@@ -84,8 +85,22 @@ public static class MoneyRedaction
                 PurchaseCost = null,
                 TargetSalePrice = null,
                 Costs = null,
+                PurchaseLines = null,
                 WorkflowSteps = rug.WorkflowSteps.Select(StripStepMoney).ToList()
             };
+
+    /// <summary>
+    /// نتیجهٔ برش دسته (D.9): هر دو فرش. مسیر برش Floor است، پس انباردار هم پاسخ می‌گیرد و سطرهای خرید و بهای هر دو نیمه
+    /// باید پنهان شوند.
+    /// </summary>
+    public static SplitRugResultDto Redact(this IMoneyVisibility visibility, SplitRugResultDto result)
+        => visibility.CanSeeMoney
+            ? result
+            : result with { Original = visibility.Redact(result.Original), Created = visibility.Redact(result.Created) };
+
+    /// <summary>پیدا کردن با شماره (اسکنر، <c>/api/rugs/by-serial</c>): ردیف فهرستِ داخلش مثل هر ردیف فهرست.</summary>
+    public static RugBySerialDto Redact(this IMoneyVisibility visibility, RugBySerialDto hit)
+        => visibility.CanSeeMoney ? hit : hit with { Rug = visibility.Redact(hit.Rug) };
 
     /// <summary>فهرست فرش‌های کامل (برچسب‌ها، نمونه‌های طراح، …).</summary>
     public static IReadOnlyList<RugDto> Redact(this IMoneyVisibility visibility, IReadOnlyList<RugDto> rugs)
@@ -95,15 +110,18 @@ public static class MoneyRedaction
     public static RugWorkflowStepDto Redact(this IMoneyVisibility visibility, RugWorkflowStepDto step)
         => visibility.CanSeeMoney ? step : StripStepMoney(step);
 
-    /// <summary>ردیف فهرست فرش‌ها: «سرمایهٔ کل» null.</summary>
+    /// <summary>
+    /// ردیف فهرست فرش‌ها: «سرمایهٔ کل» و بها هر متر (فاز ۲) null. «بها حساب شده» (<see cref="RugListItemDto.CostComputed"/>)
+    /// پول نیست و می‌ماند.
+    /// </summary>
     public static RugListItemDto Redact(this IMoneyVisibility visibility, RugListItemDto item)
-        => visibility.CanSeeMoney ? item : item with { TotalInvestment = null };
+        => visibility.CanSeeMoney ? item : StripListMoney(item);
 
     /// <summary>یک صفحه از فهرست فرش‌ها.</summary>
     public static PagedResult<RugListItemDto> Redact(this IMoneyVisibility visibility, PagedResult<RugListItemDto> page)
         => visibility.CanSeeMoney
             ? page
-            : page with { Items = page.Items.Select(i => i with { TotalInvestment = null }).ToList() };
+            : page with { Items = page.Items.Select(StripListMoney).ToList() };
 
     /// <summary>
     /// مرتب‌سازی بر اساس «هزینهٔ کل» برای کسی که هزینه نمی‌بیند به «تاریخ ثبت» برمی‌گردد؛ وگرنه
@@ -158,6 +176,9 @@ public static class MoneyRedaction
         => visibility.CanSeeMoney
             ? provider
             : provider with { Rates = provider.Rates.Select(r => r with { UnitRate = null }).ToList() };
+
+    private static RugListItemDto StripListMoney(RugListItemDto item)
+        => item with { TotalInvestment = null, CostPerM2 = null };
 
     private static RugWorkflowStepDto StripStepMoney(RugWorkflowStepDto step) => step with
     {

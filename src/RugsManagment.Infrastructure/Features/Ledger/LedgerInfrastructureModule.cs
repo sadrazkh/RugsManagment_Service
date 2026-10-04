@@ -1,14 +1,41 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using RugsManagment.Application.Abstractions;
+using RugsManagment.Application.Abstractions.Persistence;
+using RugsManagment.Application.Ledger;
+using RugsManagment.Infrastructure.Persistence;
+using RugsManagment.Infrastructure.Persistence.Ledger;
 
 namespace RugsManagment.Infrastructure.Features.Ledger;
 
 /// <summary>
-/// ثبت‌های زیرساختی حساب‌ها (repositoryهای گذر سازگاری، کار استارت بررسی حساب‌ها با ترتیب ۲۰۰) — فاز مدل فرش
-/// نسخهٔ ۲. فعلاً خالی است تا <c>DependencyInjection.cs</c> (که یخ زده) دوباره ویرایش نشود.
+/// ثبت‌های زیرساختی حساب‌ها (فاز ۲، spec D.4): جلسهٔ EFیِ پاس (تفاوت‌سنجی، تراکنش، قفل)، repository پاس با CostSql، خوانندهٔ
+/// جمع هزینه، نسخهٔ هم‌زمانی، پرسش «مبلغ ذخیره‌شده» جدول‌های فاز ۲ و بررسی حساب‌ها در استارت (ترتیب ۲۰۰).
+///
+/// فازهای بعد نوع ردیف‌های مشتق‌شدهٔ خودشان را با <c>services.Configure&lt;LedgerOptions&gt;</c> و پرسش «مبلغ ذخیره‌شده»ی
+/// خودشان را با <c>TryAddEnumerable</c> در ماژول خودشان اضافه می‌کنند؛ این فایل دوباره ویرایش نمی‌شود.
 /// </summary>
 public static class LedgerInfrastructureModule
 {
     public static IServiceCollection AddLedgerModule(this IServiceCollection services, IConfiguration configuration)
-        => services;
+    {
+        services.AddOptions<LedgerOptions>();
+
+        services.TryAddScoped<LedgerTracking>();
+        services.TryAddScoped<ChangeSetBuilder>();
+        services.TryAddScoped<LedgerSession>();
+        services.TryAddScoped<ILedgerSession>(sp => sp.GetRequiredService<LedgerSession>());
+        services.TryAddScoped<ILedgerLock>(sp => sp.GetRequiredService<LedgerSession>());
+
+        services.TryAddScoped<ILedgerRepository, LedgerRepository>();
+        services.TryAddScoped<IRugCostTotalReader, RugCostTotalReader>();
+        services.TryAddScoped<IConcurrencyGuard, ConcurrencyGuard>();
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<IStoredMoneyProbe, CoreStoredMoneyProbe>());
+
+        // بعد از seed کارگاه‌ها (۱۰۰)
+        services.AddScoped<IStartupTask, LedgerStartupCheck>();
+
+        return services;
+    }
 }

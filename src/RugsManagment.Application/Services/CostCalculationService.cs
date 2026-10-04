@@ -2,16 +2,27 @@ using System.Globalization;
 using System.Text.Json;
 using RugsManagment.Application.Abstractions.Services;
 using RugsManagment.Application.DTOs.Pricing;
+using RugsManagment.Application.Ledger;
+using RugsManagment.Domain.Common;
+using RugsManagment.Domain.Costing;
 using RugsManagment.Domain.Entities;
 using RugsManagment.Domain.Enums;
 
 namespace RugsManagment.Application.Services;
 
 /// <summary>
-/// موتور هزینه — تنها نقطهٔ محاسبهٔ فرمول‌ها (ثابت، متری، طولی، عرضی، ترکیبی، دستی + تخفیف/اضافه).
-/// هم مرحلهٔ واقعی و هم پیش‌نمایش UI از همین توابع استفاده می‌کنند تا محاسبه در فرانت تکرار نشود.
+/// قیمت مرحله: کدام روش و نرخ (مرحله ← جایگزین ← پیش‌فرض نوع مرحله)، روی کدام اندازه (عکس قیمت‌گذاری <c>Priced*</c>،
+/// وگرنه اندازهٔ مؤثر و تعداد فرش)، و در کدام MoneyScale. خودِ فرمول‌ها فقط در <see cref="RugCostMath"/> اند (همتای C#ِ
+/// CostSql؛ آزمون معماری «یک جای فرمول»)، پس مرحلهٔ واقعی، پیش‌نمایش و پاس سازگاری یک عدد می‌دهند.
+///
+/// <para><b>از فاز ۲ (spec D.3):</b> قیمت اول برای یک تخته با گرد کردن نصفه-دور-از-صفر در MoneyScale کارگاه و بعد × تعداد؛
+/// جای «Math.Round» بانکی دو رقمی و ضریب تقریبی فوت مربع پیشین. مبلغ دستی و تعدیل برای کل ردیف‌اند و هرگز × تعداد نمی‌شوند.</para>
 /// </summary>
-public sealed class CostCalculationService : ICostCalculationService
+/// <param name="currentUser">کاربر جاری، فقط برای MoneyScale پیش‌نمایش (بی آن ۰).</param>
+/// <param name="scales">خوانندهٔ MoneyScale کارگاه (بی آن ۰).</param>
+public sealed class CostCalculationService(
+    ICurrentUser? currentUser = null,
+    IRugCostTotalReader? scales = null) : ICostCalculationService
 {
     public decimal CalculateStepCost(
         Rug rug,
@@ -19,25 +30,47 @@ public sealed class CostCalculationService : ICostCalculationService
         StepPricingModel? overrideModel,
         decimal? overrideRate,
         decimal? manualOverride,
-        RugWorkflowStep? stepInstance = null)
+        RugWorkflowStep? stepInstance = null,
+        int moneyScale = 0)
     {
+        ArgumentNullException.ThrowIfNull(rug);
+        ArgumentNullException.ThrowIfNull(stepType);
+
         if (manualOverride.HasValue)
             return manualOverride.Value;
 
         var model = stepInstance?.AppliedPricingModel ?? overrideModel ?? stepType.DefaultPricingModel;
         var rate = stepInstance?.AppliedUnitRate ?? overrideRate ?? stepType.DefaultUnitRate;
-        return ComputeBase(rug.WidthMeters, rug.LengthMeters, model, rate, stepInstance?.PricingConfigJson);
+
+        // عکس اندازهٔ قیمت‌گذاری (B.5)؛ مرحلهٔ بی‌عکس (قدیمی یا پیش‌برآورد مسیر) روی اندازه و تعداد فعلی فرش
+        var (length, width, quantity) = stepInstance is { HasPricingSnapshot: true } priced
+            ? (priced.PricedLength!.Value, priced.PricedWidth!.Value, priced.PricedQuantity!.Value)
+            : (rug.LengthMeters, rug.WidthMeters, Math.Max(1, rug.Quantity));
+
+        return ComputeBase(width, length, model, rate, stepInstance?.PricingConfigJson, quantity, moneyScale);
     }
 
-    public decimal ComputeBase(decimal widthMeters, decimal lengthMeters, StepPricingModel model, decimal rate, string? combinedJson)
+    public decimal ComputeBase(
+        decimal widthMeters, decimal lengthMeters, StepPricingModel model, decimal rate, string? combinedJson,
+        int quantity = 1, int moneyScale = 0)
     {
+        IReadOnlyList<StepPricingItem>? items = null;
         if (model == StepPricingModel.Combined && !string.IsNullOrWhiteSpace(combinedJson))
-            return ComputeCombined(widthMeters, lengthMeters, combinedJson);
-        return ComputeSingle(widthMeters, lengthMeters, model, rate);
+        {
+            var config = SafeDeserialize(combinedJson);
+            // پیکربندی خراب نباید ثبت مرحله را بشکند؛ صفر (رفتار پیشین)
+            if (config?.Items is null)
+                return 0m;
+            items = config.Items.Select(i => new StepPricingItem(i.Model, i.Rate)).ToList();
+        }
+
+        return RugCostMath.StepLinePrice(model, rate, lengthMeters, widthMeters, Math.Max(1, quantity), moneyScale, items);
     }
 
     public PricingPreviewResult Preview(PricingPreviewRequest r)
     {
+        ArgumentNullException.ThrowIfNull(r);
+        var scale = CurrentScale();
         var components = new List<PricingComponent>();
         decimal baseCost;
         string formula;
@@ -53,8 +86,9 @@ public sealed class CostCalculationService : ICostCalculationService
             var config = SafeDeserialize(r.CombinedJson);
             foreach (var item in config?.Items ?? [])
             {
-                var amount = ComputeSingle(r.WidthMeters, r.LengthMeters, item.Model, item.Rate);
-                components.Add(new PricingComponent(ComponentLabel(r.WidthMeters, r.LengthMeters, item.Model, item.Rate), amount));
+                var itemModel = item.Model == StepPricingModel.Combined ? StepPricingModel.Fixed : item.Model;
+                var amount = RugCostMath.StepPiecePrice(itemModel, item.Rate, r.LengthMeters, r.WidthMeters, scale);
+                components.Add(new PricingComponent(ComponentLabel(r.WidthMeters, r.LengthMeters, itemModel, item.Rate, amount), amount));
             }
             baseCost = components.Sum(c => c.Amount);
             formula = "جمع اجزا";
@@ -62,61 +96,42 @@ public sealed class CostCalculationService : ICostCalculationService
         else
         {
             var rate = r.UnitRate ?? 0;
-            baseCost = ComputeSingle(r.WidthMeters, r.LengthMeters, r.Model, rate);
-            formula = ComponentLabel(r.WidthMeters, r.LengthMeters, r.Model, rate);
+            baseCost = RugCostMath.StepPiecePrice(r.Model, rate, r.LengthMeters, r.WidthMeters, scale);
+            formula = ComponentLabel(r.WidthMeters, r.LengthMeters, r.Model, rate, baseCost);
             components.Add(new PricingComponent(formula, baseCost));
         }
 
-        var total = Math.Max(0, baseCost + r.Adjustment);
+        // همان کف صفرِ هزینهٔ مؤثر مرحله (RugCostMath.StepEffectiveCost)
+        var total = RugCostMath.StepEffectiveCost(baseCost, null, r.Adjustment);
         return new PricingPreviewResult(baseCost, r.Adjustment, total, formula, components);
     }
 
-    // ── هستهٔ فرمول‌ها ──
+    // ── جزئیات ──
 
-    private static decimal ComputeSingle(decimal width, decimal length, StepPricingModel model, decimal rate)
-    {
-        var area = width * length;
-        return model switch
-        {
-            StepPricingModel.Fixed => rate,
-            StepPricingModel.PerSquareMeter => Math.Round(rate * area, 2),
-            StepPricingModel.PerLength => Math.Round(rate * length, 2),
-            StepPricingModel.PerWidth => Math.Round(rate * width, 2),
-            StepPricingModel.PerSquareFoot => Math.Round(rate * area * 10.7639m, 2),
-            _ => rate
-        };
-    }
-
-    private static decimal ComputeCombined(decimal width, decimal length, string combinedJson)
-    {
-        var config = SafeDeserialize(combinedJson);
-        if (config?.Items is null or { Count: 0 })
-            return 0;
-        return config.Items.Sum(item => ComputeSingle(width, length, item.Model, item.Rate));
-    }
+    private int CurrentScale()
+        => scales is not null && currentUser?.TenantId is Guid tenantId ? scales.MoneyScale(tenantId) : 0;
 
     private static CombinedPricingConfig? SafeDeserialize(string json)
     {
         try { return JsonSerializer.Deserialize<CombinedPricingConfig>(json, JsonOpts); }
-        catch { return null; }
+        catch (JsonException) { return null; }
     }
 
-    /// <summary>برچسب خوانا مثل «۸۵٬۰۰۰ × ۶ م² = ۵۱۰٬۰۰۰».</summary>
-    private static string ComponentLabel(decimal width, decimal length, StepPricingModel model, decimal rate)
+    /// <summary>برچسب خوانا مثل «۸۵٬۰۰۰ × ۶ م² = ۵۱۰٬۰۰۰» (عدد با فرهنگ ثابت؛ جزیره ارقام را فارسی می‌کند).</summary>
+    private static string ComponentLabel(decimal width, decimal length, StepPricingModel model, decimal rate, decimal result)
     {
-        var area = width * length;
-        var (unit, qty) = model switch
+        var area = AreaMath.PieceArea(length, width);
+        var (unit, quantity) = model switch
         {
             StepPricingModel.PerSquareMeter => ("م²", area),
-            StepPricingModel.PerLength => ("م طول", length),
-            StepPricingModel.PerWidth => ("م عرض", width),
-            StepPricingModel.PerSquareFoot => ("فوت²", Math.Round(area * 10.7639m, 2)),
+            StepPricingModel.PerLength => ("م طول", Num.Round(length, AreaMath.DimensionDecimals)),
+            StepPricingModel.PerWidth => ("م عرض", Num.Round(width, AreaMath.DimensionDecimals)),
+            StepPricingModel.PerSquareFoot => ("فوت²", Num.Round(AreaMath.ToSquareFeet(area), 2)),
             _ => (string.Empty, 0m)
         };
-        var result = ComputeSingle(width, length, model, rate);
-        return model == StepPricingModel.Fixed
+        return unit.Length == 0
             ? $"ثابت {N(rate)}"
-            : $"{N(rate)} × {N(qty)} {unit} = {N(result)}";
+            : $"{N(rate)} × {N(quantity)} {unit} = {N(result)}";
     }
 
     private static string N(decimal v) => v.ToString("#,0.##", CultureInfo.InvariantCulture);

@@ -19,8 +19,12 @@ public interface IRugBatchService
 public sealed class RugBatchService(
     IRugBatchRepository batches,
     IRugRepository rugs,
-    IUnitOfWork unitOfWork) : IRugBatchService
+    IUnitOfWork unitOfWork,
+    ITenantCounters counters) : IRugBatchService
 {
+    /// <summary>کلید شمارندهٔ شمارهٔ «ورودی» (M2 آن را به بزرگ‌ترین شمارهٔ موجود رساند؛ seed هم از همین می‌گیرد).</summary>
+    public const string BatchCounterKey = "batch";
+
     public async Task<IReadOnlyList<RugBatchDto>> ListAsync(Guid tenantId, CancellationToken ct = default)
     {
         var list = await batches.ListByTenantAsync(tenantId, ct);
@@ -29,9 +33,13 @@ public sealed class RugBatchService(
 
     public async Task<RugBatchDto> CreateAsync(Guid tenantId, CreateRugBatchRequest request, CancellationToken ct = default)
     {
+        // شماره از شمارندهٔ کارگاه، نه max+1: دو ساختِ هم‌زمان هرگز یک شماره نمی‌گیرند و ایندکس یکتای
+        // (کارگاه، شماره) دومین ورودیِ کارگاه را با 23505 رد نمی‌کند (B.5)
+        var number = await counters.NextBlockAsync(tenantId, BatchCounterKey, 1, ct);
         var batch = new RugBatch
         {
             TenantId = tenantId,
+            Number = checked((int)number),
             Name = request.Name.Trim(),
             Description = request.Description,
             ReceivedAt = request.ReceivedAt ?? DateTimeOffset.UtcNow

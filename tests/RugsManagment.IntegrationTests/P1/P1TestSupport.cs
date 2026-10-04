@@ -83,7 +83,9 @@ internal static class P1Data
         "adjustment", "pricingConfigJson", "defaultUnitRate", "totalProcessCost", "actualSaleAmount",
         "actualProfit", "pipelineValue", "profitEstimate", "readyForSaleValue", "actualSalesTotal",
         "actualProfitTotal", "openShipmentCostPerM2", "unallocatedEntries", "costs", "salePrice",
-        "netAmount", "receivedAmount", "discount", "unitRate", "costAtSale", "investmentTotal", "profitTotal"
+        "netAmount", "receivedAmount", "discount", "unitRate", "costAtSale", "investmentTotal", "profitTotal",
+        // فاز ۲: سطرهای خرید و بها هر تخته
+        "purchaseLines", "costPerPiece"
     };
 
     /// <summary>کارگاه دمو با مدیرش و یک بازرگان و یک انباردارِ واقعی (برای صفحهٔ پروفایل و توکن CSRF).</summary>

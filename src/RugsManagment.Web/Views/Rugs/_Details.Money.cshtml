@@ -1,0 +1,113 @@
+@using RugsManagment.Application.DTOs.Rugs
+@model RugDto
+@*
+    بخش‌های پولی صفحهٔ فرش — فقط Business (Details.cshtml این partial را برای دیگران رندر نمی‌کند و سرویس هم برایشان
+    مبلغ‌ها را null می‌فرستد):
+    • سطرهای خرید (جزیرهٔ purchase-lines-editor)؛ ذخیرهٔ آن نسخهٔ فرش را جلو می‌برد و همین بخش را تازه می‌کند.
+    • خلاصهٔ بها از RugCostTotal (D.1): خرید، کارهای کارگاه، هزینه‌ها، بهای تمام‌شده، هر متر و هر تخته.
+    • «این عدد از کجا آمد؟» (جزیرهٔ rug-cost-breakdown).
+    • فروش (جزیرهٔ rug-sale).
+*@
+@{
+    var costs = Model.Costs;
+    var isLot = Model.Quantity >= 2;
+}
+
+<div data-island="purchase-lines-editor" data-skeleton="12rem"
+     data-props='@Json.Serialize(new { rugId = Model.Id, version = Model.Version, readOnly = false, intakeAreaM2 = Model.IntakeAreaM2, quantity = Model.Quantity })'></div>
+
+@if (costs is not null)
+{
+    <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm" data-rug-costs="@Model.Id">
+        <h3 class="mb-4 text-sm font-semibold text-primary">بهای تمام‌شده</h3>
+
+        @if (!costs.Computed)
+        {
+            <p class="mb-3 flex items-start gap-2 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning" role="status">
+                <icon name="warning" class="mt-0.5 h-4 w-4 shrink-0" />
+                بهای این فرش هنوز حساب نشده؛ چند لحظهٔ دیگر صفحه را تازه کنید.
+            </p>
+        }
+
+        <dl class="space-y-2 text-sm" data-numeric>
+            <div class="flex justify-between gap-3">
+                <dt class="text-on-surface-variant">قیمت خرید</dt>
+                <dd>@Tenant.Money(costs.PurchaseCost)</dd>
+            </div>
+            <div class="flex justify-between gap-3">
+                <dt class="text-on-surface-variant">کارهای کارگاه</dt>
+                <dd>@Tenant.Money(costs.TotalProcessCost)</dd>
+            </div>
+            @if (costs.ExpenseCost != 0)
+            {
+                <div class="flex justify-between gap-3">
+                    <dt class="text-on-surface-variant">هزینه‌ها</dt>
+                    <dd>@Tenant.Money(costs.ExpenseCost)</dd>
+                </div>
+            }
+            <div class="flex justify-between gap-3 border-t border-outline-variant pt-2 font-semibold">
+                <dt>بهای تمام‌شده</dt>
+                <dd>@Tenant.Money(costs.TotalInvestment)</dd>
+            </div>
+            @if (costs.CostPerM2 is decimal perM2)
+            {
+                <div class="flex justify-between gap-3 text-on-surface-variant">
+                    <dt>هر متر</dt>
+                    <dd>@Tenant.Money(perM2)</dd>
+                </div>
+            }
+            @if (isLot)
+            {
+                <div class="flex justify-between gap-3 text-on-surface-variant">
+                    <dt>هر تخته</dt>
+                    <dd>@Tenant.Money(costs.CostPerPiece)</dd>
+                </div>
+            }
+            <div class="flex justify-between gap-3">
+                <dt class="text-on-surface-variant">قیمت فروش هدف</dt>
+                <dd>@Tenant.Money(costs.TargetSalePrice)</dd>
+            </div>
+
+            @if (costs.ActualProfit is decimal actualProfit)
+            {
+                @* فرش فروخته شده: سود واقعی جای تخمین را می‌گیرد و تخمین فقط برای مقایسه می‌ماند *@
+                <div class="flex justify-between gap-3 border-t border-outline-variant pt-2 font-bold @(actualProfit >= 0 ? "text-success" : "text-error")">
+                    <dt>سود واقعی</dt>
+                    <dd>@Tenant.Money(actualProfit)</dd>
+                </div>
+                @if (costs.CostAtSale is decimal atSale && atSale != costs.TotalInvestment)
+                {
+                    @* D.6: بها بعد از فروش عوض شده؛ سود با بهای لحظهٔ فروش حساب شده است *@
+                    var diff = costs.TotalInvestment - atSale;
+                    <div class="flex items-start gap-2 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning" role="status">
+                        <icon name="warning" class="mt-0.5 h-4 w-4 shrink-0" />
+                        <span>هزینه پس از فروش تغییر کرده: <bdi dir="ltr">@(diff > 0 ? "+" : "−")@PersianFormat.Money(Math.Abs(diff))</bdi> @Tenant.Currency</span>
+                    </div>
+                }
+                @if (costs.EstimatedMargin is decimal estimated && estimated != actualProfit)
+                {
+                    <div class="flex justify-between gap-3 text-xs text-on-surface-variant">
+                        <dt>سود تخمینی (پیش‌بینی)</dt>
+                        <dd>@Tenant.Money(estimated)</dd>
+                    </div>
+                }
+            }
+            else if (costs.EstimatedMargin is decimal margin)
+            {
+                <div class="flex justify-between gap-3 font-semibold @(margin >= 0 ? "text-success" : "text-error")">
+                    <dt>سود تخمینی</dt>
+                    <dd>@Tenant.Money(margin)</dd>
+                </div>
+            }
+        </dl>
+
+        @* «این عدد از کجا آمد؟» — سطر به سطر *@
+        <div class="mt-4 border-t border-outline-variant pt-3">
+            <div data-island="rug-cost-breakdown" data-skeleton="off" data-props='@Json.Serialize(new { rugId = Model.Id })'></div>
+        </div>
+    </section>
+
+    @* ثبت/ویرایش فروش و نمایش سود واقعی — فقط Business؛ برای انباردار اصلاً رندر نمی‌شود *@
+    <div data-island="rug-sale" data-skeleton="12rem"
+         data-props='@Json.Serialize(new { rugId = Model.Id, totalInvestment = costs.TotalInvestment })'></div>
+}

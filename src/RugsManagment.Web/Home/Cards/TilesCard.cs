@@ -180,8 +180,8 @@ public static class HomeRoutes
     public const string OutputTab = "output";
     public const string CostPanel = "cost-entry";
 
-    /// <summary><c>CostScope.Shipment</c> (B.14) — enum فاز هزینه هنوز در کد نیست.</summary>
-    public const int CostScopeShipment = 2;
+    /// <summary><see cref="Domain.Enums.CostScope.Shipment"/> (B.14) به‌صورت عدد، همان که پنل ثبت هزینه از آدرس می‌خواند.</summary>
+    public const int CostScopeShipment = (int)Domain.Enums.CostScope.Shipment;
 
     /// <summary>زبانهٔ یک محموله؛ <paramref name="id"/> می‌تواند «{id}» باشد تا site.js پس از ساختن پرش کند.</summary>
     public static string ShipmentTab(string id, string tab) => $"/Shipments/{id}?tab={tab}";

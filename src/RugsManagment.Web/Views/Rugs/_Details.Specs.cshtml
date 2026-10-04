@@ -1,0 +1,27 @@
+@using RugsManagment.Application.DTOs.Rugs
+@model RugDto
+@* مشخصات توصیفی فرش (واژه‌های جدول ورود، G.2) و یادداشت. *@
+<section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
+    <h3 class="mb-4 flex items-center gap-2 text-sm font-semibold text-primary">
+        <icon name="info" class="h-4 w-4" />
+        مشخصات
+    </h3>
+    <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
+        @if (!string.IsNullOrEmpty(Model.Title))
+        {
+            <div><dt class="text-on-surface-variant">عنوان</dt><dd>@Model.Title</dd></div>
+        }
+        <div><dt class="text-on-surface-variant">نقشه</dt><dd>@(Model.Pattern ?? "—")</dd></div>
+        <div><dt class="text-on-surface-variant">محل بافت</dt><dd>@(Model.Origin ?? "—")</dd></div>
+        <div><dt class="text-on-surface-variant">مواد مصرفی</dt><dd>@(Model.Material ?? "—")</dd></div>
+        <div>
+            <dt class="text-on-surface-variant">رجشمار</dt>
+            <dd data-numeric>@(Model.KnotDensity.HasValue ? PersianFormat.Count(Model.KnotDensity.Value) : "—")</dd>
+        </div>
+    </dl>
+
+    @if (!string.IsNullOrWhiteSpace(Model.Notes))
+    {
+        <div class="mt-4 rounded-lg bg-surface-container px-4 py-3 text-sm">@Model.Notes</div>
+    }
+</section>

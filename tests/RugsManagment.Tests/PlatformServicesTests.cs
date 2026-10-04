@@ -505,29 +505,45 @@ public partial class PlatformServicesTests
     }
 
     // ═════════════════════════════════════════════════════════════════════
-    // پول در سرویس فرش (A.5، E5)
+    // پول در سرویس فرش (A.5، E5) — از فاز ۲ قیمت خرید سطر خرید است، نه ستون منسوخ Rug.PurchaseCost
     // ═════════════════════════════════════════════════════════════════════
 
-    private static (RugManagementService Service, FakeRugRepository Rugs, Rug Rug) RugService(bool canSeeMoney)
+    private sealed record RugServiceParts(
+        RugManagementService Service, FakeRugRepository Rugs, Rug Rug, P2App.P2MemoryRepository<RugPurchaseLine> Lines)
+    {
+        /// <summary>همان سه‌تایی که آزمون‌های فاز ۱ می‌گرفتند.</summary>
+        public void Deconstruct(out RugManagementService service, out FakeRugRepository rugs, out Rug rug)
+            => (service, rugs, rug) = (Service, Rugs, Rug);
+    }
+
+    private static RugServiceParts RugService(bool canSeeMoney)
     {
         var rugs = new FakeRugRepository();
-        var rug = new Rug
-        {
-            TenantId = TenantId,
-            Sku = "RUG-202609-0001",
-            Title = "قدیمی",
-            WidthMeters = 2m,
-            LengthMeters = 3m,
-            PurchaseCost = 5_000_000m,
-            TargetSalePrice = 9_000_000m
-        };
+        var rug = new Rug { TenantId = TenantId, Sku = "RUG-202609-0001", Title = "قدیمی", TargetSalePrice = 9_000_000m };
+        rug.SetIntakeSize(3m, 2m);
         rugs.Rugs[rug.Id] = rug;
 
+        var money = new MoneyRedactionTests.Visibility(canSeeMoney);
+        var lines = new P2App.P2MemoryRepository<RugPurchaseLine>();
+        var engine = new WorkflowEngine(new CostCalculationService(), new EmptyStepTypeLookup());
+        var versions = new FixedRugVersions();
+        var writer = new Application.Features.Rugs.RugFieldWriter(
+            new P2App.P2MemoryRepository<CustomFieldDefinition>(), new P2App.P2MemoryRepository<CostCategory>(), lines, money);
+        var dtos = new Application.Features.Rugs.RugDtoBuilder(engine, money, versions, lines, []);
+        var preferences = new FakeTenantPreferencesRepository { Row = TenantPreferences.CreateDefault(TenantId) };
+
         var service = new RugManagementService(
-            rugs, null!, new WorkflowEngine(new CostCalculationService(), new EmptyStepTypeLookup()), null!, null!, null!,
-            null!, new FakeCurrentUser(), new FakeAuditLog(), new FakeUnitOfWork(),
-            new MoneyRedactionTests.Visibility(canSeeMoney));
-        return (service, rugs, rug);
+            rugs, null!, engine, null!, null!, null!, null!, new FakeCurrentUser(), new FakeAuditLog(), new FakeUnitOfWork(),
+            money, writer, dtos, null!, null!, null!, versions, null!, preferences);
+        return new RugServiceParts(service, rugs, rug, lines);
+    }
+
+    /// <summary>نسخهٔ ثابت فرش (xmin در این آزمون‌ها دیتابیسی ندارد).</summary>
+    private sealed class FixedRugVersions : IConcurrencyGuard
+    {
+        public uint VersionOf(object entity) => 1;
+
+        public void Expect(object entity, uint expectedVersion) { }
     }
 
     private static UpdateRugRequest Update(decimal? purchaseCost, decimal? targetSalePrice) => new(
@@ -536,21 +552,24 @@ public partial class PlatformServicesTests
     [Fact]
     public async Task OperatorEdit_WithNullMoney_KeepsTheStoredPrices_AndReturnsNoMoney()
     {
-        var (service, _, rug) = RugService(canSeeMoney: false);
+        var parts = RugService(canSeeMoney: false);
 
-        var dto = await service.UpdateAsync(TenantId, rug.Id, Update(null, null));
+        var dto = await parts.Service.UpdateAsync(TenantId, parts.Rug.Id, Update(null, null));
 
-        Assert.Equal("تازه", rug.Title);
-        Assert.Equal(5_000_000m, rug.PurchaseCost);
-        Assert.Equal(9_000_000m, rug.TargetSalePrice);
+        Assert.Equal("تازه", parts.Rug.Title);
+        Assert.Empty(parts.Lines.Added);
+        Assert.Equal(9_000_000m, parts.Rug.TargetSalePrice);
         Assert.Null(dto.PurchaseCost);
+        Assert.Null(dto.PurchaseLines);
+        Assert.Null(dto.TargetSalePrice);
         Assert.Null(dto.Costs);
     }
 
     [Fact]
     public async Task OperatorEdit_WithAPrice_Is403_AndChangesNothing()
     {
-        var (service, _, rug) = RugService(canSeeMoney: false);
+        var parts = RugService(canSeeMoney: false);
+        var (service, rug) = (parts.Service, parts.Rug);
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.UpdateAsync(TenantId, rug.Id, Update(1m, null)));
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
@@ -559,19 +578,24 @@ public partial class PlatformServicesTests
             service.AdvanceStepAsync(TenantId, rug.Id, Guid.NewGuid(), new AdvanceRugStepRequest(null, 10m, null, null, null, null, null)));
 
         Assert.Equal("قدیمی", rug.Title);
-        Assert.Equal(5_000_000m, rug.PurchaseCost);
+        Assert.Empty(parts.Lines.Added);
+        Assert.Equal(9_000_000m, rug.TargetSalePrice);
     }
 
     [Fact]
-    public async Task MerchantEdit_WritesAndSeesMoney()
+    public async Task MerchantEdit_WritesTheLegacyPriceAsAPurchaseLine_AndSeesMoney()
     {
-        var (service, _, rug) = RugService(canSeeMoney: true);
+        var parts = RugService(canSeeMoney: true);
 
-        var dto = await service.UpdateAsync(TenantId, rug.Id, Update(6_000_000m, null));
+        var dto = await parts.Service.UpdateAsync(TenantId, parts.Rug.Id, Update(6_000_000m, 10_000_000m));
 
-        Assert.Equal(6_000_000m, rug.PurchaseCost);
-        Assert.Equal(6_000_000m, dto.PurchaseCost);
-        Assert.Equal(6_000_000m, dto.Costs!.TotalInvestment);
+        // I.3: فرش بی‌سطر خرید → یک سطر «کل» «قیمت خرید»؛ مبلغش را پاس سازگاری (در دیتابیس) می‌نویسد
+        var line = Assert.Single(parts.Lines.Added);
+        Assert.Equal((CostBasis.Total, 6_000_000m, RugPurchaseLine.LegacyPurchaseLabel), (line.Basis, line.Rate, line.Label));
+        Assert.Equal(10_000_000m, parts.Rug.TargetSalePrice);
+        Assert.Equal(10_000_000m, dto.TargetSalePrice);
+        Assert.NotNull(dto.PurchaseLines);
+        Assert.NotNull(dto.Costs);
     }
 
     [Fact]

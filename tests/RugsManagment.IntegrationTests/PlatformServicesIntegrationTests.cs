@@ -12,6 +12,7 @@ using RugsManagment.Application.DTOs.Activity;
 using RugsManagment.Application.DTOs.Rugs;
 using RugsManagment.Application.DTOs.Tenants;
 using RugsManagment.Application.Features.Platform;
+using RugsManagment.Application.Ledger;
 using RugsManagment.Application.Services;
 using RugsManagment.Domain.Common;
 using RugsManagment.Domain.Entities;
@@ -151,14 +152,23 @@ public sealed class PlatformServicesIntegrationTests(MigratedP1CoreDatabase data
 
         await using (var db = database.CreateContext())
         {
-            db.Rugs.Add(new Rug
+            // از فاز ۲ قیمت خرید یک سطر خرید است (نه ستون منسوخ Rug.PurchaseCost)؛ فرش در سطل زباله هم پول دارد
+            var rug = new Rug
             {
                 TenantId = tenantId,
                 Sku = "RUG-IT-" + Guid.NewGuid().ToString("N")[..6],
-                WidthMeters = 1m,
-                LengthMeters = 1m,
-                PurchaseCost = 100m,
                 DeletedAt = DateTimeOffset.UtcNow
+            };
+            rug.SetIntakeSize(1m, 1m);
+            db.Rugs.Add(rug);
+            db.Set<RugPurchaseLine>().Add(new RugPurchaseLine
+            {
+                TenantId = tenantId,
+                RugId = rug.Id,
+                Label = RugPurchaseLine.LegacyPurchaseLabel,
+                Basis = CostBasis.Total,
+                Rate = 100m,
+                Amount = 100m
             });
             await db.SaveChangesAsync();
         }
@@ -342,19 +352,28 @@ public sealed class PlatformServicesIntegrationTests(MigratedP1CoreDatabase data
             var start = DateTimeOffset.UtcNow.AddHours(-2);
             for (var i = 0; i < 3; i++)
             {
-                db.Rugs.Add(new Rug
+                var rug = new Rug
                 {
                     TenantId = tenantId,
                     Sku = $"RUG-IT-S{i}",
                     WidthMeters = 1m,
                     LengthMeters = 1m,
-                    // ارزان‌ترین تازه‌ترین است، تا ترتیب «هزینه» و «تاریخ» با هم فرق کنند
-                    PurchaseCost = (i + 1) * 1000m,
                     CreatedAt = start.AddMinutes(-i)
+                };
+                db.Rugs.Add(rug);
+                // ارزان‌ترین تازه‌ترین است، تا ترتیب «هزینه» و «تاریخ» با هم فرق کنند (از فاز ۲ قیمت خرید سطر خرید است)
+                db.Set<RugPurchaseLine>().Add(new RugPurchaseLine
+                {
+                    TenantId = tenantId, RugId = rug.Id, Label = RugPurchaseLine.LegacyPurchaseLabel,
+                    Basis = CostBasis.Total, Rate = (i + 1) * 1000m
                 });
             }
             await db.SaveChangesAsync();
         }
+
+        // ذخیرهٔ مستقیم DbContext از پاس سازگاری نمی‌گذرد؛ ستون «سرمایهٔ کل» فهرست (RugCostTotal) را بازسازی می‌سازد
+        await using (var scope = Scope(tenantId, canSeeMoney: true))
+            await scope.ServiceProvider.GetRequiredService<ILedgerMaintenance>().RebuildAsync(tenantId);
 
         var query = new RugQuery { SortBy = RugSortBy.TotalCost, Descending = true };
 
@@ -379,11 +398,17 @@ public sealed class PlatformServicesIntegrationTests(MigratedP1CoreDatabase data
         var rug = new Rug
         {
             TenantId = tenantId, Sku = "RUG-IT-E5", Title = "old", WidthMeters = 2m, LengthMeters = 3m,
-            PurchaseCost = 5000m, TargetSalePrice = 9000m
+            TargetSalePrice = 9000m
         };
         await using (var db = database.CreateContext())
         {
             db.Rugs.Add(rug);
+            // از فاز ۲ قیمت خرید سطر خرید است (ستون قدیمی منسوخ است)
+            db.Set<RugPurchaseLine>().Add(new RugPurchaseLine
+            {
+                TenantId = tenantId, RugId = rug.Id, Label = RugPurchaseLine.LegacyPurchaseLabel,
+                Basis = CostBasis.Total, Rate = 5000m, Amount = 5000m
+            });
             await db.SaveChangesAsync();
         }
 
@@ -407,7 +432,8 @@ public sealed class PlatformServicesIntegrationTests(MigratedP1CoreDatabase data
 
         await using var check = database.CreateContext();
         var stored = await check.Rugs.AsNoTracking().SingleAsync(r => r.Id == rug.Id);
-        Assert.Equal(("new", 5000m, 9000m), (stored.Title, stored.PurchaseCost!.Value, stored.TargetSalePrice!.Value));
+        var line = await check.Set<RugPurchaseLine>().AsNoTracking().SingleAsync(l => l.RugId == rug.Id);
+        Assert.Equal(("new", 5000m, 9000m), (stored.Title, line.Rate, stored.TargetSalePrice!.Value));
     }
 
     // ── کمکی‌ها ──────────────────────────────────────────────────

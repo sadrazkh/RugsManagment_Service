@@ -1,35 +1,23 @@
-@using System.Text.Json
 @using RugsManagment.Application.DTOs.Rugs
 @using RugsManagment.Web.Auth
-@using RugsManagment.Web.Support
+@using RugsManagment.Web.RugDetails
 @model RugDto
 @inject IUserPreferencesAccessor Prefs
 @{
-    ViewData["Title"] = string.IsNullOrEmpty(Model.Title) ? Model.Sku : Model.Title;
+    // شمارهٔ بازرگان نام اصلی فرش است (A.2: «شماره»)؛ عنوان اگر هست کنارش، و کد انبار فقط کوچک
+    var display = Model.SerialNo ?? (string.IsNullOrEmpty(Model.Title) ? Model.Sku : Model.Title);
+    ViewData["Title"] = display;
 
     // نمای ساده: وضعیت کارگاهی جای خود را به «کجاست» می‌دهد، کارهای کارگاه جمع‌شده می‌آید و کلید فیلدهای
     // سفارشیِ بی‌برچسب نشان داده نمی‌شود. فقط پوسته است؛ دسترسی همان می‌ماند.
     var simple = Prefs.IsSimple;
     var st = DisplayHelpers.RugStatus(Model.Status, simple);
 
-    // مبلغ‌ها فقط برای Business. سرویس برای انباردار خلاصهٔ هزینه را null می‌فرستد؛ این‌جا خودِ بخش‌های پولی
-    // (خلاصهٔ مالی، جزیرهٔ فروش) هم برایش رندر نمی‌شوند.
+    // مبلغ‌ها فقط برای Business. سرویس برای انباردار خلاصهٔ هزینه و سطرهای خرید را null می‌فرستد؛ این‌جا خودِ بخش‌های
+    // پولی (خلاصهٔ مالی، سطرهای خرید، ریز هزینه، جزیرهٔ فروش) هم برایش رندر نمی‌شوند.
     var showMoney = Tenant.CanSeeMoney;
     var canTrash = Policies.IsBusiness(User);
-
-    var labels = ViewData["CustomFieldLabels"] as Dictionary<string, string> ?? new();
-
-    Dictionary<string, JsonElement> metadata = new();
-    if (!string.IsNullOrWhiteSpace(Model.MetadataJson))
-    {
-        try { metadata = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(Model.MetadataJson) ?? new(); }
-        catch { /* متادیتای خراب نباید صفحه را بشکند */ }
-    }
-
-    // کلید بی‌برچسب (فیلدی که حذف شده) در نمای ساده دیده نمی‌شود؛ بازرگان کلید انگلیسی نمی‌بیند
-    var customValues = metadata
-        .Where(kv => !simple || labels.ContainsKey(kv.Key))
-        .ToList();
+    var isLot = Model.Quantity >= 2;
 }
 
 <div class="space-y-5">
@@ -43,13 +31,35 @@
             </a>
             <div>
                 <div class="flex flex-wrap items-center gap-2">
-                    <h1 class="text-2xl font-bold">@ViewData["Title"]</h1>
+                    <h1 class="text-2xl font-bold">
+                        @if (Model.SerialNo is not null)
+                        {
+                            <bdi dir="ltr" data-numeric>@PersianFormat.ToPersianDigits(Model.SerialNo)</bdi>
+                        }
+                        else
+                        {
+                            @display
+                        }
+                    </h1>
+                    @if (isLot)
+                    {
+                        <span class="inline-flex items-center gap-1 rounded-full bg-secondary/15 px-2.5 py-1 text-xs font-semibold" data-numeric>
+                            دسته · @PersianFormat.Count(Model.Quantity) تخته
+                        </span>
+                    }
                     <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs @st.Css">
                         <icon name="@st.Icon" class="h-3.5 w-3.5" />
                         @st.Label
                     </span>
                 </div>
-                <div class="font-mono text-sm text-on-surface-variant" dir="ltr">@Model.Sku</div>
+                <div class="flex flex-wrap items-center gap-2 text-sm text-on-surface-variant">
+                    @if (Model.SerialNo is not null && !string.IsNullOrEmpty(Model.Title))
+                    {
+                        <span>@Model.Title</span>
+                    }
+                    <span class="font-mono text-xs" dir="ltr">@Model.Sku</span>
+                    @await Component.InvokeAsync("RugDetailPanels", new { rug = Model, slot = RugDetailSlot.Header })
+                </div>
             </div>
         </div>
 
@@ -59,6 +69,12 @@
                 <icon name="printer" class="h-5 w-5" />
                 چاپ برچسب
             </a>
+            @if (isLot)
+            {
+                @* برش دسته (D.9): دکمه و پنجرهٔ پیش‌نمایش در جزیره است *@
+                <div data-island="rug-split" data-skeleton="off"
+                     data-props='@Json.Serialize(new { rugId = Model.Id, version = Model.Version, quantity = Model.Quantity, serial = Model.SerialNo, sold = Model.Location == RugsManagment.Domain.Enums.RugLocation.Sold })'></div>
+            }
             <a asp-action="Edit" asp-route-id="@Model.Id"
                class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 font-semibold text-on-primary hover:bg-primary-hover">
                 <icon name="edit" class="h-5 w-5" />
@@ -93,120 +109,24 @@
     </div>
 
     <div class="grid gap-5 lg:grid-cols-3">
-        <!-- ستون راست: مشخصات -->
+        <!-- ستون راست: شماره، اندازه، مشخصات -->
         <div class="space-y-5 lg:col-span-2">
+            <partial name="_Details.Sizes" model="Model" />
+
             @* گالری عکس — آپلود، ترتیب و انتخاب عکس شاخص *@
             <div data-island="rug-gallery" data-skeleton="16rem" data-props='@Json.Serialize(new { rugId = Model.Id })'></div>
 
-            <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
-                <h3 class="mb-4 flex items-center gap-2 text-sm font-semibold text-primary">
-                    <icon name="info" class="h-4 w-4" />
-                    مشخصات
-                </h3>
-                <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
-                    <div><dt class="text-on-surface-variant">اصالت</dt><dd>@(Model.Origin ?? "—")</dd></div>
-                    <div><dt class="text-on-surface-variant">طرح</dt><dd>@(Model.Pattern ?? "—")</dd></div>
-                    <div><dt class="text-on-surface-variant">جنس</dt><dd>@(Model.Material ?? "—")</dd></div>
-                    <div>
-                        <dt class="text-on-surface-variant">رجشمار</dt>
-                        <dd data-numeric>@(Model.KnotDensity.HasValue ? PersianFormat.Count(Model.KnotDensity.Value) : "—")</dd>
-                    </div>
-                    <div>
-                        <dt class="text-on-surface-variant">ابعاد</dt>
-                        <dd data-numeric>@PersianFormat.Number(Model.WidthMeters) × @PersianFormat.Number(Model.LengthMeters) متر</dd>
-                    </div>
-                    <div>
-                        <dt class="text-on-surface-variant">مساحت</dt>
-                        <dd data-numeric>@PersianFormat.Number(Model.AreaSquareMeters) م²</dd>
-                    </div>
-                </dl>
+            <partial name="_Details.Specs" model="Model" />
+            <partial name="_Details.Custom" model="Model" />
 
-                @if (!string.IsNullOrWhiteSpace(Model.Notes))
-                {
-                    <div class="mt-4 rounded-lg bg-surface-container px-4 py-3 text-sm">@Model.Notes</div>
-                }
-            </section>
-
-            @if (customValues.Count > 0)
-            {
-                <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
-                    <h3 class="mb-4 flex items-center gap-2 text-sm font-semibold text-primary">
-                        <icon name="settings" class="h-4 w-4" />
-                        مشخصات بیشتر
-                    </h3>
-                    <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
-                        @foreach (var kv in customValues)
-                        {
-                            <div>
-                                @if (labels.TryGetValue(kv.Key, out var lbl))
-                                {
-                                    <dt class="text-on-surface-variant">@lbl</dt>
-                                }
-                                else
-                                {
-                                    @* فیلدی که دیگر تعریف نشده؛ فقط در نمای کامل، با کلیدش *@
-                                    <dt class="font-mono text-xs text-on-surface-variant" dir="ltr">@kv.Key</dt>
-                                }
-                                <dd>@kv.Value.ToString()</dd>
-                            </div>
-                        }
-                    </dl>
-                </section>
-            }
+            @await Component.InvokeAsync("RugDetailPanels", new { rug = Model, slot = RugDetailSlot.Main })
         </div>
 
         <!-- ستون چپ: مالی و کارهای کارگاه -->
         <div class="space-y-5">
-            @if (showMoney && Model.Costs is { } costs)
+            @if (showMoney)
             {
-                <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
-                    <h3 class="mb-4 text-sm font-semibold text-primary">خلاصهٔ مالی</h3>
-                    <dl class="space-y-2 text-sm" data-numeric>
-                        <div class="flex justify-between gap-3">
-                            <dt class="text-on-surface-variant">قیمت خرید</dt>
-                            <dd>@Tenant.Money(costs.PurchaseCost)</dd>
-                        </div>
-                        <div class="flex justify-between gap-3">
-                            <dt class="text-on-surface-variant">مجموع هزینهٔ مراحل</dt>
-                            <dd>@Tenant.Money(costs.TotalProcessCost)</dd>
-                        </div>
-                        <div class="flex justify-between gap-3 border-t border-outline-variant pt-2 font-semibold">
-                            <dt>سرمایه‌گذاری کل</dt>
-                            <dd>@Tenant.Money(costs.TotalInvestment)</dd>
-                        </div>
-                        <div class="flex justify-between gap-3">
-                            <dt class="text-on-surface-variant">قیمت فروش هدف</dt>
-                            <dd>@Tenant.Money(costs.TargetSalePrice)</dd>
-                        </div>
-
-                        @if (costs.ActualProfit is decimal actualProfit)
-                        {
-                            @* فرش فروخته شده: سود واقعی جای تخمین را می‌گیرد و تخمین فقط برای مقایسه می‌ماند *@
-                            <div class="flex justify-between gap-3 border-t border-outline-variant pt-2 font-bold @(actualProfit >= 0 ? "text-success" : "text-error")">
-                                <dt>سود واقعی</dt>
-                                <dd>@Tenant.Money(actualProfit)</dd>
-                            </div>
-                            @if (costs.EstimatedMargin is decimal estimated && estimated != actualProfit)
-                            {
-                                <div class="flex justify-between gap-3 text-xs text-on-surface-variant">
-                                    <dt>سود تخمینی (پیش‌بینی)</dt>
-                                    <dd>@Tenant.Money(estimated)</dd>
-                                </div>
-                            }
-                        }
-                        else if (costs.EstimatedMargin is decimal margin)
-                        {
-                            <div class="flex justify-between gap-3 font-semibold @(margin >= 0 ? "text-success" : "text-error")">
-                                <dt>سود تخمینی</dt>
-                                <dd>@Tenant.Money(margin)</dd>
-                            </div>
-                        }
-                    </dl>
-                </section>
-
-                @* ثبت/ویرایش فروش و نمایش سود واقعی — فقط Business؛ برای انباردار اصلاً رندر نمی‌شود *@
-                <div data-island="rug-sale" data-skeleton="12rem"
-                     data-props='@Json.Serialize(new { rugId = Model.Id, totalInvestment = costs.TotalInvestment })'></div>
+                <partial name="_Details.Money" model="Model" />
             }
 
             @*
@@ -232,6 +152,8 @@
             {
                 <div data-island="rug-workflow" data-skeleton="20rem" data-props='@Json.Serialize(new { rugId = Model.Id })'></div>
             }
+
+            @await Component.InvokeAsync("RugDetailPanels", new { rug = Model, slot = RugDetailSlot.Side })
         </div>
     </div>
 </div>

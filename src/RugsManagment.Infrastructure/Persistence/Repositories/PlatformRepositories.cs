@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using RugsManagment.Application.Abstractions.Persistence;
 using RugsManagment.Application.DTOs.Common;
 using RugsManagment.Application.Features.Platform;
+using RugsManagment.Application.Ledger;
 using RugsManagment.Domain.Entities;
 using RugsManagment.Domain.Enums;
 
@@ -10,7 +11,8 @@ namespace RugsManagment.Infrastructure.Persistence.Repositories;
 /// <summary>
 /// ردیف ترجیحات کارگاه. نسخه همان ستون سیستمی xmin است که EF به‌صورت shadow property می‌شناسد.
 /// </summary>
-public sealed class TenantPreferencesRepository(AppDbContext db) : ITenantPreferencesRepository
+public sealed class TenantPreferencesRepository(AppDbContext db, IEnumerable<IStoredMoneyProbe> moneyProbes)
+    : ITenantPreferencesRepository
 {
     private const string VersionProperty = "xmin";
 
@@ -54,27 +56,22 @@ public sealed class TenantPreferencesRepository(AppDbContext db) : ITenantPrefer
         => await Set.AddAsync(preferences, cancellationToken);
 
     /// <summary>
-    /// یک رفت‌وبرگشت با چند EXISTS (هر کدام با اولین ردیف می‌ایستد). فرش‌ها و مراحلِ سطل زباله هم شمرده
-    /// می‌شوند، چون با بازگردانی دوباره زنده‌اند؛ برای همین کل کوئری بی‌فیلتر است (IgnoreQueryFilters در EF
-    /// برای همهٔ کوئری اعمال می‌شود).
+    /// همان پرسش‌های <see cref="IStoredMoneyProbe"/> که <c>PreferencesLockGuard</c> پاس سازگاری می‌پرسد (D.5 #22).
+    ///
+    /// چرا واگذاری و نه کوئری جدا: صفحهٔ ترجیحات («قفل است») و پاس (۴۰۹) باید یک جواب بدهند. از فاز ۲ قیمت خرید سطر خرید
+    /// است و فازهای محموله و هزینه‌ها پرسش خودشان را به‌صورت probe تازه اضافه می‌کنند؛ کوئری جداگانه این‌جا یا ستون منسوخ
+    /// <c>Rug.PurchaseCost</c> را می‌پرسید یا جدول‌های بعدی را جا می‌انداخت. سطل زباله را خودِ probeها می‌شمرند.
     /// </summary>
     public async Task<bool> HasStoredMoneyAsync(Guid tenantId, CancellationToken cancellationToken = default)
-        => await db.Tenants
-            .IgnoreQueryFilters()
-            .AsNoTracking()
-            .Where(t => t.Id == tenantId)
-            .Select(_ =>
-                db.Rugs.Any(r => r.TenantId == tenantId
-                                 && (r.PurchaseCost != null || r.TargetSalePrice != null))
-                || db.RugWorkflowSteps.Any(s => s.Rug.TenantId == tenantId
-                                                && ((s.CalculatedCost != null && s.CalculatedCost != 0)
-                                                    || s.ManualCostOverride != null
-                                                    || (s.Adjustment != null && s.Adjustment != 0)))
-                || db.RugSales.Any(s => s.TenantId == tenantId)
-                || db.ProviderPayments.Any(p => p.TenantId == tenantId)
-                || db.ServiceProviderRates.Any(r => r.ServiceProvider.TenantId == tenantId)
-                || db.ProcessStepTypes.Any(t => t.TenantId == tenantId && t.DefaultUnitRate > 0))
-            .FirstOrDefaultAsync(cancellationToken);
+    {
+        foreach (var probe in moneyProbes)
+        {
+            if (await probe.AnyAsync(tenantId, cancellationToken))
+                return true;
+        }
+
+        return false;
+    }
 }
 
 /// <summary>تاریخچهٔ فعالیت با شمارش و صفحه‌بندی در SQL.</summary>
