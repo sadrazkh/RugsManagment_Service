@@ -2,6 +2,7 @@ using RugsManagment.Application.Abstractions.Persistence;
 using RugsManagment.Application.Abstractions.Services;
 using RugsManagment.Application.Common;
 using RugsManagment.Application.DTOs.Analytics;
+using RugsManagment.Domain.Common;
 using RugsManagment.Domain.Entities;
 using RugsManagment.Domain.Enums;
 
@@ -136,7 +137,7 @@ public sealed class AnalyticsService(IRugRepository rugs, IWorkflowEngine workfl
                     g.Key.Name,
                     completed.Count,
                     totalCost,
-                    completed.Count == 0 ? 0 : Math.Round(totalCost / completed.Count, 0),
+                    completed.Count == 0 ? 0 : Num.Round(totalCost / completed.Count, 0), // نصفه دور از صفر، مثل همهٔ مبلغ‌ها (G.4)
                     timed.Count == 0 ? null : Math.Round(timed.Average(), 1),
                     g.Count(s => s.Status == WorkflowStepStatus.InProgress));
             })

@@ -109,12 +109,18 @@ public sealed class AuditEntryRepository(AppDbContext db) : IAuditEntryRepositor
 
         var total = await query.CountAsync(cancellationToken);
         if (total == 0)
-            return new PagedResult<AuditEntry>([], 0, page, pageSize);
+            return new PagedResult<AuditEntry>([], 0, 1, pageSize);
+
+        // صفحهٔ بعد از آخر همان صفحهٔ آخر است. حساب در long: «?page=80000000» در int سرریز می‌شد، OFFSET منفی به
+        // پستگرس می‌رسید (2201X) و صفحه ۵۰۰ می‌داد. بعد از بریدن، OFFSET از total کمتر است و در int جا می‌شود.
+        var lastPage = (int)(((long)total + pageSize - 1) / pageSize);
+        page = Math.Min(page, lastPage);
+        var offset = (int)((long)(page - 1) * pageSize);
 
         var items = await query
             .OrderByDescending(e => e.CreatedAt)
             .ThenByDescending(e => e.Id)
-            .Skip((page - 1) * pageSize)
+            .Skip(offset)
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
@@ -150,9 +156,10 @@ public sealed class AuditEntryRepository(AppDbContext db) : IAuditEntryRepositor
 }
 
 /// <summary>
-/// «انبار» این فاز: فرش‌های فعال (نه در سطل زباله) که نه فروخته شده‌اند و نه صادر. متراژ با قاعدهٔ دسته در
-/// خود SQL: <c>round(round(L,2) × round(W,2), 2)</c> برای هر فرش — همان <c>AreaMath.PieceArea</c>؛ round
-/// پستگرس روی numeric نصفه را دور از صفر گرد می‌کند، مثل <c>Num.Round</c>.
+/// «انبار» پیش‌فرض (تا فاز محموله منبع خودش را جایگزین کند): فرش‌های فعال (نه در سطل زباله) که نه فروخته شده‌اند و نه
+/// صادر. تخته‌ها Σ تعداد است و متراژ Σ ستون تولیدشدهٔ <c>TotalAreaM2</c> (<c>round(L×W, 2) × Quantity</c>، قاعدهٔ دسته
+/// D.3)؛ پیش‌تر هر ردیف یک تخته و مساحت یک تخته شمرده می‌شد و دستهٔ ۵۰تایی ۰٫۴۰×۰٫۴۰ به‌جای «۵۰ تخته، ۸ متر» «۱ تخته، ۰٫۱۶
+/// متر» در کارت خانه می‌آمد.
 /// </summary>
 public sealed class RugHomeStockSource(AppDbContext db) : IHomeStockSource
 {
@@ -166,8 +173,8 @@ public sealed class RugHomeStockSource(AppDbContext db) : IHomeStockSource
             .GroupBy(_ => 1)
             .Select(g => new
             {
-                Pieces = g.Count(),
-                Area = g.Sum(r => Math.Round(Math.Round(r.LengthMeters, 2) * Math.Round(r.WidthMeters, 2), 2))
+                Pieces = g.Sum(r => r.Quantity),
+                Area = g.Sum(r => r.TotalAreaM2)
             })
             .ToListAsync(cancellationToken);
 

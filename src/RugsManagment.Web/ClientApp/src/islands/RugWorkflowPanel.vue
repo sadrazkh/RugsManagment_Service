@@ -13,7 +13,8 @@ import { stepStatus } from '@/lib/labels'
 import AppIcon from '@/components/AppIcon.vue'
 import CostRuleEditor from '@/components/CostRuleEditor.vue'
 import StepFieldsForm from '@/components/StepFieldsForm.vue'
-import type { Rug, RugWorkflowStep } from '@/lib/types'
+import type { RugWorkflowStep } from '@/lib/types'
+import type { Rug } from '@/lib/types/rugs'
 
 /**
  * مبلغ مرحله‌ها فقط برای Business (A.5). انباردار نه مبلغ هر مرحله را می‌بیند و نه ویرایشگر هزینه را؛
@@ -42,6 +43,10 @@ interface StepPricingFields {
   appliedUnitRate?: number | null
   pricingConfigJson?: string | null
   adjustment?: number | null
+  /** عکس اندازهٔ قیمت‌گذاری (طول و عرض یک تخته و تعداد)؛ null برای مرحلهٔ بی‌عکس — پیش‌نمایش هزینه روی همین است */
+  pricedLength?: number | null
+  pricedWidth?: number | null
+  pricedQuantity?: number | null
 }
 interface Template { id: string; name: string; isDefault: boolean }
 interface Row { uid: number; processStepTypeId: string; stepNameFa: string; isOptional: boolean }
@@ -61,6 +66,19 @@ const noPath = computed(() => orderedSteps.value.length === 0)
 
 const orderedSteps = computed(() => [...(rug.value?.workflowSteps ?? [])].sort((a, b) => a.orderIndex - b.orderIndex))
 const currentStep = computed(() => orderedSteps.value.find((s) => s.status === 1) ?? null)
+
+/**
+ * اندازه‌ای که پیش‌نمایش هزینه رویش حساب می‌شود: عکس قیمت‌گذاری مرحلهٔ جاری اگر دارد (ثبت مرحله همان را نگه می‌دارد، B.5)،
+ * وگرنه اندازهٔ مؤثر و تعداد فرش (همان که ثبت مرحله عکس می‌گیرد). بی تعداد، پیش‌نمایش دسته‌ای ۵۰تایی یک تخته را «هزینهٔ
+ * نهایی» نشان می‌داد.
+ */
+const pricingSize = computed(() => {
+  const step = currentStep.value as (RugWorkflowStep & StepPricingFields) | null
+  if (step && step.pricedLength != null && step.pricedWidth != null && step.pricedQuantity != null)
+    return { length: step.pricedLength, width: step.pricedWidth, quantity: step.pricedQuantity }
+  const r = rug.value
+  return { length: r?.lengthMeters ?? 0, width: r?.widthMeters ?? 0, quantity: Math.max(1, r?.quantity ?? 1) }
+})
 
 /**
  * قیمت‌گذاری فعلی مرحلهٔ جاری + پیش‌فرض نوع آن، برای پر کردن اولیهٔ ویرایشگر هزینه.
@@ -371,7 +389,7 @@ onMounted(load)
         <p class="mb-4 text-sm text-on-surface-variant">جزئیات این مرحله را وارد کنید سپس به مرحلهٔ بعد بروید.</p>
         <div v-if="error" class="mb-3 rounded-lg bg-error-container px-3 py-2 text-sm text-error">{{ error }}</div>
         <div class="space-y-3">
-          <CostRuleEditor v-if="canSeeMoney" ref="costEditor" :width="rug?.widthMeters ?? 0" :length="rug?.lengthMeters ?? 0" :current="currentPricing" />
+          <CostRuleEditor v-if="canSeeMoney" ref="costEditor" :width="pricingSize.width" :length="pricingSize.length" :quantity="pricingSize.quantity" :current="currentPricing" />
           <!-- فرم اختصاصی این نوع مرحله (اگر تعریف شده باشد) -->
           <StepFieldsForm ref="stepFields" :schema-json="currentSchema" :values-json="currentStep?.fieldValuesJson" />
           <div class="grid grid-cols-2 gap-3">

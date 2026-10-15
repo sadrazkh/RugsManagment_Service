@@ -78,6 +78,15 @@ internal sealed class FakeUserRepository : IUserRepository
     public void Update(User entity) { }
 
     public void Remove(User entity) => Users.Remove(entity);
+
+    /// <summary>هر کارگاهی که قفل تنظیم‌کننده‌هایش گرفته شد، به ترتیب.</summary>
+    public List<Guid> AdminLocks { get; } = [];
+
+    public Task LockTenantAdminsAsync(Guid tenantId, CancellationToken cancellationToken = default)
+    {
+        AdminLocks.Add(tenantId);
+        return Task.CompletedTask;
+    }
 }
 
 /// <summary>یک ردیف ترجیحات در حافظه با نسخه‌ای که هر ذخیره یکی بالا می‌برد (شبیه xmin).</summary>

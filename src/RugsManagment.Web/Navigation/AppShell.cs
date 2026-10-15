@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.Infrastructure;
 using RugsManagment.Application.Common;
 using RugsManagment.Application.Features.Platform;
 using RugsManagment.Application.Features.Platform.DTOs;
+using RugsManagment.Domain.Entities;
 using RugsManagment.Domain.Enums;
 using RugsManagment.Web.Auth;
 using RugsManagment.Web.Support;
@@ -32,7 +33,8 @@ public sealed record AppContextPayload(
     AppTermsPayload Terms,
     string Today,
     string TodayJalali,
-    IReadOnlyList<AppCommandPayload> Commands);
+    IReadOnlyList<AppCommandPayload> Commands,
+    decimal MaxPlausibleSideM = TenantPreferences.DefaultMaxPlausibleSideM);
 
 /// <summary>سیاست‌های بیننده (فقط برای پنهان کردن کنترل‌ها؛ دسترسی واقعی همیشه روی سرور سنجیده می‌شود).</summary>
 public sealed record AppPoliciesPayload(bool Floor, bool Business, bool Configure);
@@ -187,7 +189,8 @@ public static class AppShell
             TodayJalali: JalaliLatin(today),
             Commands: nav?.Commands
                 .Select(c => new AppCommandPayload(c.Label, NavBuilder.Resolve(http, c.Href), c.Icon))
-                .ToList() ?? []);
+                .ToList() ?? [],
+            MaxPlausibleSideM: tenantPreferences?.MaxPlausibleSideM ?? TenantPreferences.DefaultMaxPlausibleSideM);
     }
 
     private static string? RoleName(ClaimsPrincipal user)

@@ -37,6 +37,8 @@ export const messages: Record<string, string> = {
   E_PURCHASE_PERCENT: 'درصد باید از ۰ تا ۱۰۰ باشد.',
   E_PURCHASE_RATE_DECIMALS: 'نرخ حداکثر چهار رقم بعد از ممیز دارد.',
   E_PURCHASE_TOO_MANY: 'یک فرش حداکثر {n} سطر خرید دارد.',
+  E_PURCHASE_AMOUNT_TOO_LARGE: 'مبلغ این سطر از حد بیشتر می‌شود؛ نرخ، اندازه یا تعداد را دوباره ببینید.',
+  E_AMOUNT_OVERFLOW: 'مبلغی که حساب می‌شود از حد بیشتر است؛ نرخ، اندازه یا تعداد را دوباره ببینید.',
 
   // ── برش دسته ──
   E_SPLIT_NOT_LOT: 'فقط دسته‌ای با دست‌کم ۲ تخته را می‌شود جدا کرد.',
@@ -60,6 +62,9 @@ export const messages: Record<string, string> = {
 
   /** پاسخ ۴۰۹ همپوشانی شماره با `nextFree` (G.4) */
   Q_SERIAL_NEXT_FREE: 'شمارهٔ {serial} آزاد است؛ همان را بگذارم؟',
+  /** حالت «خودکار» (G.4): شماره را خودِ برنامه هنگام ثبت می‌گذارد؛ خانه فقط نشان می‌دهد */
+  I_SERIAL_AUTO: 'خودکار: {serial}',
+  I_SERIAL_AUTO_HINT: 'شماره را برنامه هنگام ثبت می‌گذارد؛ این‌جا نوشتنی نیست.',
   /** پیش‌نمایش برش (D.9): «۵۰ تخته ← ۳۰ + ۲۰ · شماره‌ها ۳۹۱۱ تا ۳۹۴۰ و ۳۹۴۱ تا ۳۹۶۰» */
   I_SPLIT_PREVIEW: '{total} تخته ← {kept} + {taken} · شماره‌ها {keptSerial} و {takenSerial}',
   I_SPLIT_PREVIEW_NO_SERIAL: '{total} تخته ← {kept} + {taken}',

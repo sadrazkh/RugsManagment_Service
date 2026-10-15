@@ -98,14 +98,26 @@ public sealed class RugFieldWriter(
     /// <summary>بزرگ‌ترین نرخ/مبلغ (ستون numeric(18,4): ۱۴ رقم صحیح).</summary>
     public const decimal MaxRate = 99_999_999_999_999m;
 
+    /// <summary>
+    /// بزرگ‌ترین مبلغی که یک سطر خرید با اندازه و تعدادش می‌سازد. ستون مبلغ numeric(18,2) است (کمتر از ۱۰^۱۶)؛ با همان
+    /// سقف نرخ، سی سطر و سطر درصدیِ روی آن‌ها هم در ستون جمع (RugCostTotals) جا می‌شوند.
+    /// </summary>
+    public const decimal MaxAmount = MaxRate;
+
     private static readonly Dictionary<string, string> Labels =
         RugFieldContributor.StaticFields.Concat(RugMoneyFieldContributor.Fields)
             .ToDictionary(f => f.Key, f => f.Label, StringComparer.Ordinal);
 
+    /// <summary>
+    /// کلید خانه همان‌طور که نوشتن آن را می‌خواند (فاصلهٔ دو سر حذف). سنجش پول و نوشتن هر دو فقط از همین می‌خوانند؛
+    /// وگرنه « rug.targetSalePrice» از سنجش ۴۰۳ رد می‌شد (کلید خام پولی نیست) و بعد از Trim قیمت را می‌نوشت.
+    /// </summary>
+    public static string NormalizeKey(string rawKey) => rawKey.Trim();
+
     public void EnsureMayWrite(IReadOnlyDictionary<string, JsonElement?>? values)
     {
         if (values is null || money.CanSeeMoney) return;
-        if (values.Keys.Any(RugFieldKeys.IsMoney))
+        if (values.Keys.Any(key => RugFieldKeys.IsMoney(NormalizeKey(key))))
             throw new UnauthorizedAccessException(Messages.MoneyWriteForbidden.Text);
     }
 
@@ -122,7 +134,11 @@ public sealed class RugFieldWriter(
 
         foreach (var (rawKey, value) in values)
         {
-            var key = rawKey.Trim();
+            var key = NormalizeKey(rawKey);
+            // دفاع دوم: هر کلیدی که بعد از یکسان‌سازی پولی است، از غیر Business همین‌جا ۴۰۳ است
+            if (!money.CanSeeMoney && RugFieldKeys.IsMoney(key))
+                throw new UnauthorizedAccessException(Messages.MoneyWriteForbidden.Text);
+
             switch (key)
             {
                 case RugFieldKeys.Serial: ReadSerial(value, plan, errors); break;
@@ -170,9 +186,24 @@ public sealed class RugFieldWriter(
         var customPlan = plan.Custom.Count > 0
             ? await PlanCustomFieldsAsync(rug, plan.Custom, context, errors, cancellationToken)
             : null;
+
+        // مبلغ سطرهای خرید روی اندازهٔ اول و تعدادِ بعد از همین نوشتن حساب می‌شود؛ اگر یکی از این دو عوض شود، سطرهای
+        // موجود هم باید هنوز در ستون مبلغ جا شوند (وگرنه پاس سازگاری با سرریز عددی ۵۰۰ می‌داد)
+        var intakeArea = intake is { } plannedIntake ? AreaMath.PieceArea(plannedIntake.Length, plannedIntake.Width) : rug.IntakeAreaM2;
+        var quantityChanged = quantity != rug.Quantity;
+        var sizeOrQuantityChanged = !context.IsNew
+            && (quantityChanged
+                || (intake is { } changedIntake && (changedIntake.Length != rug.IntakeLength || changedIntake.Width != rug.IntakeWidth)));
+        var lines = !context.IsNew && (plan.Purchase.Count > 0 || sizeOrQuantityChanged)
+            ? await purchaseLines.ListAsync(l => l.RugId == rug.Id && l.TenantId == context.TenantId, cancellationToken)
+            : [];
+
         var purchasePlan = plan.Purchase.Count > 0
-            ? await PlanPurchaseAsync(rug, plan.Purchase, context, errors, cancellationToken)
+            ? await PlanPurchaseAsync(plan.Purchase, lines, context, intakeArea, quantity, errors, cancellationToken)
             : null;
+        if (sizeOrQuantityChanged && lines.Count > 0)
+            CheckKeptLineAmounts(lines, purchasePlan, intakeArea, quantity,
+                quantityChanged ? RugFieldKeys.Quantity : RugFieldKeys.IntakeLength, errors);
 
         errors.ThrowIfAny();
 
@@ -182,7 +213,6 @@ public sealed class RugFieldWriter(
         if (plan.SerialGiven || plan.Quantity is not null)
         {
             var serialChanged = plan.SerialGiven && !Equals(serial?.Display, rug.SerialNo);
-            var quantityChanged = quantity != rug.Quantity;
             if (serialChanged || quantityChanged)
             {
                 rug.SetSerialAndQuantity(needsAutoSerial ? rug.Serial : serial, quantity);
@@ -645,15 +675,12 @@ public sealed class RugFieldWriter(
     }
 
     private async Task<PurchasePlan> PlanPurchaseAsync(
-        Rug rug, IReadOnlyDictionary<string, JsonElement?> values, RugWriteContext context, FieldErrors errors,
-        CancellationToken cancellationToken)
+        IReadOnlyDictionary<string, JsonElement?> values, IReadOnlyList<RugPurchaseLine> lines, RugWriteContext context,
+        decimal intakeArea, int quantity, FieldErrors errors, CancellationToken cancellationToken)
     {
         var tenantId = context.TenantId;
         var purchaseCategories = await categories.ListAsync(
             c => c.TenantId == tenantId && c.Group == CostGroup.Purchase, cancellationToken);
-        var lines = context.IsNew
-            ? []
-            : await purchaseLines.ListAsync(l => l.RugId == rug.Id && l.TenantId == tenantId, cancellationToken);
 
         var ops = new List<PurchaseOp>();
         foreach (var (key, value) in values)
@@ -689,7 +716,7 @@ public sealed class RugFieldWriter(
                 continue;
             }
 
-            var problem = CheckRate(rate, basis);
+            var problem = CheckRate(rate, basis) ?? CheckAmount(basis, rate, intakeArea, quantity);
             if (problem is not null)
             {
                 errors.Add(key, problem);
@@ -768,6 +795,52 @@ public sealed class RugFieldWriter(
             CostBasis.PerM2 or CostBasis.PerPiece when rate < 0 => Messages.NegativeNotAllowed.Text,
             _ => null
         };
+    }
+
+    /// <summary>
+    /// مبلغی که سطر با اندازه و تعداد فرش می‌سازد (هر متر: نرخ × مساحت تخته در اندازهٔ اول × تعداد؛ هر تخته: نرخ ×
+    /// تعداد؛ کل: خودِ نرخ) نباید از <see cref="MaxAmount"/> بگذرد. چرا جدا از <see cref="CheckRate"/>: نرخ ۱۰^۱۴ درست است،
+    /// ولی روی ۳۰×۳۰ متر یا ده هزار تخته مبلغی می‌سازد که در ستون numeric(18,2) جا نمی‌شود و پاس سازگاری با خطای سرریز
+    /// پستگرس ۵۰۰ می‌داد، بی هیچ خطای خانه. سطر درصدی سنجیده نمی‌شود (حداکثر ۱۰۰٪ جمع سطرهای دیگر است).
+    /// </summary>
+    public static string? CheckAmount(CostBasis basis, decimal rate, decimal intakePieceArea, int quantity)
+    {
+        var pieces = Math.Max(1, quantity);
+        try
+        {
+            var magnitude = basis switch
+            {
+                CostBasis.PerM2 => Math.Abs(rate) * Math.Max(0m, intakePieceArea) * pieces,
+                CostBasis.PerPiece => Math.Abs(rate) * pieces,
+                CostBasis.Total => Math.Abs(rate),
+                _ => 0m
+            };
+            return magnitude > MaxAmount ? Messages.PurchaseAmountTooLarge.Text : null;
+        }
+        catch (OverflowException)
+        {
+            return Messages.PurchaseAmountTooLarge.Text;
+        }
+    }
+
+    /// <summary>
+    /// اندازهٔ اول یا تعداد عوض شد: سطرهای موجودی که همین درخواست دستشان نمی‌زند هم با اندازه و تعداد تازه باید در ستون
+    /// مبلغ جا شوند. خطا روی خانه‌ای که عوض شد (تعداد یا طول).
+    /// </summary>
+    private static void CheckKeptLineAmounts(
+        IReadOnlyList<RugPurchaseLine> lines, PurchasePlan? plan, decimal intakeArea, int quantity, string errorKey,
+        FieldErrors errors)
+    {
+        var touched = plan?.Ops.Where(o => o.Existing is not null).Select(o => o.Existing!.Id).ToHashSet() ?? [];
+        foreach (var line in lines)
+        {
+            if (touched.Contains(line.Id) || line.Basis == CostBasis.Percent) continue;
+            if (CheckAmount(line.Basis, line.Rate, intakeArea, quantity) is { } problem)
+            {
+                errors.Add(errorKey, problem);
+                return;
+            }
+        }
     }
 
     private async Task<bool> ApplyPurchaseAsync(

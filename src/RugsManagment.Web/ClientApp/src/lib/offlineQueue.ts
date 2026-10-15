@@ -5,9 +5,17 @@
  * بدون صف، «تکمیل مرحله» در لحظهٔ قطعی گم می‌شود و کاربر نمی‌داند ثبت شده یا نه.
  *
  * راهبرد:
- *   • فقط خطای شبکه صف می‌شود. پاسخ ۴xx یعنی سرور تصمیم گرفته — تکرارش بی‌فایده است.
+ *   • فقط خطای شبکه صف می‌شود.
  *   • عملیات به ترتیب و یکی‌یکی بازپخش می‌شود تا ترتیب مراحل به‌هم نریزد.
- *   • «این مرحله قبلاً بسته شده» یعنی درخواست قبلی رسیده بوده؛ از صف حذف می‌شود نه اینکه خطا بماند.
+ *   • هر پاسخ سرور یکی از چهار حالت است (`classifyReplay`):
+ *     - ۲xx: رسید، از صف برداشته می‌شود.
+ *     - ۴۰۱ / ۴۰۳ / ۴۰۰ بی‌پیام (رد توکن ضد CSRF): مشکل از نشست است نه از کار — نشست تمام شده یا در تب دیگری کس
+ *       دیگری وارد شده. بازپخش می‌ایستد و همهٔ صف می‌ماند تا بعد از ورود دوباره فرستاده شود («دوباره وارد شوید»).
+ *       پیش‌تر این‌ها «سرور تصمیم گرفته» حساب می‌شدند و کارِ گوشی‌ای که بیش از عمر کوکی آفلاین مانده بود پاک می‌شد.
+ *     - ۴۰۸ / ۴۲۹ / ۵xx: سرور الان نمی‌تواند؛ مثل قطعی شبکه می‌ایستیم و بعداً دوباره.
+ *     - بقیهٔ ۴xx (اعتبارسنجی با پیام، ۴۰۴، ۴۰۹ «این مرحله قبلاً بسته شده»): هرگز موفق نمی‌شود؛ با پیام دیدنی از صف
+ *       حذف می‌شود.
+ *   • پیش از بازپخش، `/api/me` باید همان کاربرِ صاحب صف را نشان دهد؛ وگرنه کار نفر قبل به نام نفر بعد نمی‌رود.
  *
  * جداسازی به ازای کارگاه و کاربر: کلید ذخیره `rugs-offline-queue:{tenantId}:{userId}` از app-context است.
  * قبلاً یک کلید مشترک بود و اگر روی یک گوشی کاربر دیگری وارد می‌شد، کارهای معلقِ نفر قبل به نام او
@@ -155,56 +163,127 @@ function releaseLock() {
 
 export interface FlushResult {
   sent: number
-  /** عملیاتی که سرور رد کرد و از صف حذف شدند */
+  /** عملیاتی که سرور رد کرد (هرگز موفق نمی‌شد) و از صف حذف شدند */
   rejected: { label: string; message: string }[]
-  /** هنوز در صف مانده (شبکه قطع است) */
+  /** هنوز در صف مانده (شبکه قطع است، سرور در دسترس نیست، یا باید دوباره وارد شد) */
   remaining: number
+  /**
+   * بازپخش ایستاد چون نشست این کاربر معتبر نیست (۴۰۱/۴۰۳/رد توکن، یا کاربر دیگری در همین مرورگر وارد شده). صف
+   * دست‌نخورده مانده؛ رابط کاربری «دوباره وارد شوید» را نشان می‌دهد.
+   */
+  signInRequired: boolean
+}
+
+/** نتیجهٔ یک پاسخ هنگام بازپخش. */
+export type ReplayOutcome = 'sent' | 'drop' | 'stop-sign-in' | 'stop-retry'
+
+/**
+ * پاسخ سرور به یک کار بازپخش‌شده چه معنایی دارد. `body` بدنهٔ JSON خوانده‌شده است (یا null).
+ *
+ * ۴۰۰ با `message` همان خطای اعتبارسنجی برنامه است (ApiExceptionFilter و InvalidModelStateResponseFactory همیشه
+ * پیام فارسی می‌گذارند)؛ ۴۰۰ بی‌پیام فقط از رد توکن ضد CSRF می‌آید، که یعنی کوکی و توکن این تب به هم نمی‌خورند.
+ */
+export function classifyReplay(status: number, body: unknown): ReplayOutcome {
+  if (status >= 200 && status < 300) return 'sent'
+  if (status === 401 || status === 403) return 'stop-sign-in'
+  if (status === 400 && !hasMessage(body)) return 'stop-sign-in'
+  if (status === 408 || status === 429 || status >= 500) return 'stop-retry'
+  return 'drop'
+}
+
+function hasMessage(body: unknown): body is { message: string } {
+  return typeof body === 'object' && body !== null && typeof (body as { message?: unknown }).message === 'string'
+    && (body as { message: string }).message.length > 0
+}
+
+async function readBody(res: Response): Promise<unknown> {
+  try {
+    const text = await res.text()
+    return text ? (JSON.parse(text) as unknown) : null
+  } catch {
+    return null
+  }
 }
 
 /**
- * بازپخش صف. اگر شبکه قطع باشد یا اولین درخواست به خطای شبکه بخورد،
- * بقیه دست‌نخورده می‌مانند تا ترتیب حفظ شود.
+ * آیا کوکیِ همین مرورگر هنوز مال صاحب صف است؟ «sign-in» اگر نشست تمام شده یا کس دیگری وارد شده، «retry» اگر
+ * سرور جواب نداد. صف بی‌کاربر (فقط در حافظه) چیزی برای سنجیدن ندارد.
+ */
+async function verifyOwner(): Promise<'ok' | 'sign-in' | 'retry'> {
+  const { tenantId, userId } = appContext()
+  if (!tenantId || !userId) return 'ok'
+  try {
+    const res = await fetch('/api/me', { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
+    if (res.status === 401 || res.status === 403) return 'sign-in'
+    if (!res.ok) return 'retry'
+    const me = (await readBody(res)) as { userId?: unknown; tenantId?: unknown } | null
+    const same = (a: unknown, b: string) => typeof a === 'string' && a.toLowerCase() === b.toLowerCase()
+    return me && same(me.userId, userId) && same(me.tenantId, tenantId) ? 'ok' : 'sign-in'
+  } catch {
+    return 'retry'
+  }
+}
+
+/**
+ * بازپخش صف. اگر شبکه قطع باشد، سرور در دسترس نباشد یا نشست معتبر نباشد، از همان کار می‌ایستد و بقیه
+ * دست‌نخورده می‌مانند تا ترتیب حفظ شود.
  */
 export async function flush(): Promise<FlushResult> {
-  const result: FlushResult = { sent: 0, rejected: [], remaining: queue.value.length }
+  const result: FlushResult = { sent: 0, rejected: [], remaining: queue.value.length, signInRequired: false }
 
   if (flushing.value || queue.value.length === 0 || !navigator.onLine) return result
   if (!acquireLock()) return result
 
   flushing.value = true
   try {
+    const owner = await verifyOwner()
+    if (owner !== 'ok') {
+      result.signInRequired = owner === 'sign-in'
+      return result
+    }
+
     // کپی می‌گیریم چون در حین ارسال از صف حذف می‌کنیم
     for (const action of [...queue.value]) {
+      let res: Response
       try {
-        const res = await fetch(action.url, {
+        res = await fetch(action.url, {
           method: action.method,
           headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken() },
           credentials: 'same-origin',
           body: action.body === undefined ? undefined : JSON.stringify(action.body),
         })
-
-        if (res.ok) {
-          result.sent++
-          remove(action.id)
-          continue
-        }
-
-        // سرور تصمیم گرفته — تکرار فایده ندارد
-        let message = 'سرور این عملیات را نپذیرفت.'
-        try {
-          message = (await res.json())?.message ?? message
-        } catch {
-          /* پاسخ بدون بدنه */
-        }
-
-        result.rejected.push({ label: action.label, message })
-        remove(action.id)
       } catch {
         // خطای شبکه: همین‌جا می‌ایستیم تا ترتیب به‌هم نریزد
         action.attempts++
         persist()
         break
       }
+
+      const body = res.ok ? null : await readBody(res)
+      const outcome = classifyReplay(res.status, body)
+
+      if (outcome === 'sent') {
+        result.sent++
+        remove(action.id)
+        continue
+      }
+
+      if (outcome === 'stop-sign-in') {
+        // کار به سرور نرسیده؛ نگه می‌داریم تا بعد از ورود دوباره
+        result.signInRequired = true
+        break
+      }
+
+      if (outcome === 'stop-retry') {
+        action.attempts++
+        persist()
+        break
+      }
+
+      // سرور تصمیم گرفته و تکرار فایده ندارد؛ با پیامش از صف حذف می‌شود
+      const message = hasMessage(body) ? body.message : 'سرور این عملیات را نپذیرفت.'
+      result.rejected.push({ label: action.label, message })
+      remove(action.id)
     }
   } finally {
     flushing.value = false
@@ -222,7 +301,7 @@ export function watchConnectivity(onFlushed: (r: FlushResult) => void) {
     if (!navigator.onLine) return
 
     const result = await flush()
-    if (result.sent > 0 || result.rejected.length > 0) onFlushed(result)
+    if (result.sent > 0 || result.rejected.length > 0 || result.signInRequired) onFlushed(result)
   }
 
   window.addEventListener('online', () => void sync())

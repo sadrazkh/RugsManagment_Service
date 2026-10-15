@@ -178,6 +178,9 @@ public sealed class UserLostUpdateTests(TwoTenantFixture fixture) : IClassFixtur
 
         public void Remove(User entity) => inner.Remove(entity);
 
+        public Task LockTenantAdminsAsync(Guid tenantId, CancellationToken cancellationToken = default)
+            => inner.LockTenantAdminsAsync(tenantId, cancellationToken);
+
         private async Task FireOnceAsync()
         {
             if (_fired) return;

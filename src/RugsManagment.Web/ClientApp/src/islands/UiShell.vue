@@ -11,6 +11,7 @@ import AppIcon from '../components/AppIcon.vue'
 import CommandPalette from '../components/CommandPalette.vue'
 import OfflineIndicator from '../components/OfflineIndicator.vue'
 import { faNumber } from '../lib/format'
+import { message } from '../lib/messages'
 import { watchConnectivity } from '../lib/offlineQueue'
 import {
   closeHelp,
@@ -43,6 +44,8 @@ onMounted(() => {
     for (const rejected of result.rejected) {
       toast.error(`${rejected.label}: ${rejected.message}`)
     }
+    // نشست تمام شده یا کس دیگری وارد شده: صف دست‌نخورده مانده، فقط باید دوباره وارد شد
+    if (result.signInRequired) toast.warning(message('E_OFFLINE_SIGN_IN', { n: result.remaining }))
   })
 })
 

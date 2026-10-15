@@ -138,8 +138,10 @@ public sealed class RugManagementService(
     public async Task<RugDto> CreateAsync(Guid tenantId, CreateRugRequest request, CancellationToken ct = default)
     {
         var v2 = request.Values is not null;
+        // عضوهای پولی قدیمی در هر دو شکل درخواست سنجیده می‌شوند (A.5، E5): در شکل فاز ۲ نادیده گرفته می‌شوند، ولی مبلغ
+        // پرشده از غیر Business باز هم ۴۰۳ است، نه پذیرشِ بی‌صدا
+        money.EnsureMayWriteMoney(request.PurchaseCost, request.TargetSalePrice);
         if (v2) writer.EnsureMayWrite(request.Values);
-        else money.EnsureMayWriteMoney(request.PurchaseCost, request.TargetSalePrice);
 
         await EnsureProvidersOwnedAsync(tenantId, request.CustomSteps?.Select(s => s.ServiceProviderId), ct);
         var template = request.CustomSteps is not { Count: > 0 } && request.WorkflowTemplateId is { } templateId
@@ -229,17 +231,15 @@ public sealed class RugManagementService(
     public async Task<RugDto> UpdateAsync(Guid tenantId, Guid rugId, UpdateRugRequest request, CancellationToken ct = default)
     {
         var v2 = request.Values is not null;
+
+        // قیمت‌ها در شکل قدیمی با «?? مقدار فعلی» نوشته می‌شوند، پس null (که فرم انباردار می‌فرستد) مقدار ذخیره‌شده را
+        // نگه می‌دارد؛ فقط مبلغِ پرشده از غیر Business رد می‌شود (E5) — در شکل فاز ۲ هم، که این عضوها نادیده‌اند (A.5).
+        money.EnsureMayWriteMoney(request.PurchaseCost, request.TargetSalePrice);
         if (v2)
         {
             writer.EnsureMayWrite(request.Values);
             if (request.Version is null)
                 throw new AppValidationException(Messages.RugVersionRequired.Text);
-        }
-        else
-        {
-            // قیمت‌ها پایین‌تر با «?? مقدار فعلی» نوشته می‌شوند، پس null (که فرم انباردار می‌فرستد) مقدار
-            // ذخیره‌شده را نگه می‌دارد؛ فقط مبلغِ پرشده از غیر Business رد می‌شود (E5).
-            money.EnsureMayWriteMoney(request.PurchaseCost, request.TargetSalePrice);
         }
 
         var rug = await rugs.GetWithWorkflowAsync(rugId, tenantId, ct)
@@ -371,8 +371,16 @@ public sealed class RugManagementService(
     // شماره و پیشنهاد مقدار
     // ═════════════════════════════════════════════════════════════════════
 
+    /// <summary>
+    /// شمارهٔ بعدی همراه حالت شمارهٔ کارگاه: فرم در حالت «خودکار» خانهٔ شماره را نوشتنی نشان نمی‌دهد (سرور متن کاربر را
+    /// برای فرش تازه نادیده می‌گیرد، G.4)، و در «پیشنهاد بعدی» پیشنهاد را با Enter/Tab می‌پذیرد.
+    /// </summary>
     public async Task<NextSerialDto> NextSerialAsync(Guid tenantId, CancellationToken ct = default)
-        => new(await serials.SuggestAsync(tenantId, ct));
+    {
+        var next = await serials.SuggestAsync(tenantId, ct);
+        var prefs = await LoadPreferencesAsync(tenantId, ct);
+        return new NextSerialDto(next, prefs.SerialMode);
+    }
 
     /// <summary>
     /// تطبیق همیشه دقیق است (هرگز «شامل»): شمارهٔ خودِ فرش، یا عدد تکی داخل بازهٔ یک دسته. متنی که شماره نیست هم

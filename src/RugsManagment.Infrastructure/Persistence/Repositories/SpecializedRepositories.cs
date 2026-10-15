@@ -19,6 +19,21 @@ public class UserRepository(AppDbContext db) : Repository<User>(db), IUserReposi
 
     public async Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
         => await Db.Users.Include(u => u.Tenant).FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
+
+    /// <summary>
+    /// قفل مشورتیِ تراکنش با کلید جدا از قفل حساب‌ها (<c>rugs:admins:{tenantId}</c>)، تا ویرایش کاربران پشت پاس
+    /// سازگاری و فرش‌ها صف نکشد. با <c>SqlQuery</c> خوانده می‌شود چون فقط قفل می‌گیرد و چیزی نمی‌نویسد.
+    /// </summary>
+    public async Task LockTenantAdminsAsync(Guid tenantId, CancellationToken cancellationToken = default)
+    {
+        if (Db.Database.CurrentTransaction is null)
+            throw new InvalidOperationException("قفل تنظیم‌کننده‌های کارگاه فقط درون تراکنش گرفته می‌شود.");
+
+        var key = "rugs:admins:" + tenantId.ToString("D");
+        await Db.Database
+            .SqlQuery<int>($"SELECT 1 AS \"Value\" FROM pg_advisory_xact_lock(hashtext({key}))")
+            .ToListAsync(cancellationToken);
+    }
 }
 
 public class WorkflowTemplateRepository(AppDbContext db) : Repository<WorkflowTemplate>(db), IWorkflowTemplateRepository

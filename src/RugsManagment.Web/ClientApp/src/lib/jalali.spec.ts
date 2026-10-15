@@ -192,3 +192,18 @@ describe('نمایش', () => {
     expect(faJalali(null)).toBe('—')
   })
 })
+
+describe('سال بیرون از بازه (یافتهٔ بازبینی فاز ۱)', () => {
+  it.each(['0024-05-01', '0001-01-01', '9999-12-31', '1500-06-01', '2300-01-01'])('«%s» → null و «—»، نه خطا', (iso) => {
+    expect(() => isoToJalali(iso)).not.toThrow()
+    expect(isoToJalali(iso)).toBeNull()
+    expect(faJalali(iso)).toBe('—')
+    expect(faJalaliLong(iso)).toBe('—')
+    expect(jalaliDotted(iso)).toBe('')
+  })
+
+  it('مرزهای بازه همچنان تبدیل می‌شوند', () => {
+    expect(isoToJalali('1821-03-21')).toEqual({ jy: 1200, jm: 1, jd: 1 })
+    expect(faJalali('2026-09-06')).toBe('۱۴۰۵/۰۶/۱۵')
+  })
+})

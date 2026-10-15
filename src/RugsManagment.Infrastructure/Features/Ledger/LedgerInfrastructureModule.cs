@@ -6,6 +6,7 @@ using RugsManagment.Application.Abstractions.Persistence;
 using RugsManagment.Application.Ledger;
 using RugsManagment.Infrastructure.Persistence;
 using RugsManagment.Infrastructure.Persistence.Ledger;
+using RugsManagment.Infrastructure.Persistence.Repositories;
 
 namespace RugsManagment.Infrastructure.Features.Ledger;
 
@@ -32,6 +33,9 @@ public static class LedgerInfrastructureModule
         services.TryAddScoped<IRugCostTotalReader, RugCostTotalReader>();
         services.TryAddScoped<IConcurrencyGuard, ConcurrencyGuard>();
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IStoredMoneyProbe, CoreStoredMoneyProbe>());
+
+        // پرسش‌هایی که فرش‌های سطل زباله را هم می‌بینند (حذف نوع مرحلهٔ در حال استفاده، وصل سطرهای قدیمی M2)
+        services.TryAddScoped<ITrashAwareQueries, TrashAwareQueries>();
 
         // بعد از seed کارگاه‌ها (۱۰۰)
         services.AddScoped<IStartupTask, LedgerStartupCheck>();

@@ -174,8 +174,9 @@ else
             <header class="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-outline-variant bg-surface-container-lowest/90 px-4 py-3 backdrop-blur md:px-6"
                     data-no-print>
                 <div class="flex min-w-0 items-center gap-2">
+                    @* shrink-0: تنها راه باز کردن منو روی گوشی است؛ با نوشتهٔ «آ++» بدون آن تا ۳۹ پیکسل باریک می‌شد (H.7: ≥ ۴۴) *@
                     <button type="button" id="nav-open"
-                            class="grid h-11 w-11 place-items-center rounded-lg hover:bg-surface-container md:hidden"
+                            class="grid h-11 w-11 shrink-0 place-items-center rounded-lg hover:bg-surface-container md:hidden"
                             aria-controls="app-sidebar" aria-expanded="false">
                         <icon name="menu" label="باز کردن منو" />
                     </button>
@@ -213,7 +214,7 @@ else
                     <div class="relative" data-user-menu>
                         <button type="button" id="user-menu-button"
                                 aria-expanded="false" aria-controls="user-menu"
-                                class="inline-flex min-h-11 items-center gap-2 rounded-lg px-1.5 text-sm text-on-surface-variant hover:bg-surface-container">
+                                class="inline-flex min-h-11 min-w-11 shrink-0 items-center gap-2 rounded-lg px-1.5 text-sm text-on-surface-variant hover:bg-surface-container">
                             <span class="grid h-8 w-8 place-items-center rounded-full bg-secondary-container text-on-secondary-container">
                                 <icon name="user" class="h-4 w-4" />
                             </span>

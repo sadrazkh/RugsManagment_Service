@@ -8,7 +8,11 @@ namespace RugsManagment.Application.DTOs.Rugs;
 /// بعد از «3985 - 4003» می‌شود 4004 (آخرِ بازه + ۱، نه اولِ بازه + تعداد).
 /// </summary>
 /// <param name="Next">شمارهٔ بعدی؛ در حالت «دستی» (<see cref="SerialMode.Manual"/>) همیشه null، چون پیشنهادی نشان داده نمی‌شود.</param>
-public record NextSerialDto(int? Next);
+/// <param name="Mode">
+/// حالت شمارهٔ کارگاه. فرم با آن می‌داند در «خودکار» خانهٔ شماره را فقط نمایش دهد (سرور متن کاربر را برای فرش تازه
+/// نادیده می‌گیرد) و در «پیشنهاد بعدی» پیشنهاد را با Enter/Tab بپذیرد (G.4).
+/// </param>
+public record NextSerialDto(int? Next, SerialMode? Mode = null);
 
 /// <summary>
 /// نوع تطبیق شماره در <c>GET /api/rugs/by-serial/{serial}</c> (C.3). رشته است نه enum، چون در JSON همین دو کلمه

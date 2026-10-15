@@ -125,7 +125,14 @@ public record RugWorkflowStepDto(
     /// مبلغ دستیِ ذخیره‌شده (اگر هست). بر هر روش و نرخی مقدم است؛ ویرایشگر هزینه با آن حالت «دستی» را
     /// از پیش پر می‌کند تا پیش‌نمایش همان هزینه‌ای را نشان دهد که واقعاً ذخیره شده.
     /// </summary>
-    decimal? ManualCostOverride = null);
+    decimal? ManualCostOverride = null,
+    /// <summary>
+    /// عکس اندازهٔ قیمت‌گذاری مرحله (B.5): طول و عرض یک تخته و تعدادی که هزینهٔ مرحله رویشان حساب شده و می‌شود؛ null برای
+    /// مرحلهٔ بی‌عکس. ویرایشگر هزینه پیش‌نمایش را روی همین می‌خواهد، نه اندازهٔ امروزِ فرش (اندازه نیست، پول نیست).
+    /// </summary>
+    decimal? PricedLength = null,
+    decimal? PricedWidth = null,
+    int? PricedQuantity = null);
 
 /// <summary>
 /// خلاصهٔ بهای تمام‌شدهٔ فرش (فقط Business). از فاز ۲ از ردیف مشتق‌شدهٔ <c>RugCostTotal</c> خوانده می‌شود، پس فهرست،

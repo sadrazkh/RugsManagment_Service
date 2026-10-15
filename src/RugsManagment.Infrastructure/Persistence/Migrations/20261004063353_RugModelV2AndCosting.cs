@@ -599,12 +599,12 @@ namespace RugsManagment.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // ویرایش دستی: پیش از حذف سطرهای خرید، قیمت خرید قدیمی از جمع آن‌ها برمی‌گردد (ویرایش‌های بعد از M2 گم نشود).
-            // فرشی که سطری ندارد ستون قدیمی‌اش را همان‌طور نگه می‌دارد.
+            // ویرایش دستی: پیش از حذف سطرهای خرید، قیمت خرید قدیمی از جمع آن‌ها برمی‌گردد (ویرایش‌های بعد از M2 گم نشود)،
+            // برای همهٔ فرش‌ها. فرش بی‌سطر NULL می‌گیرد: Up هر قیمت غیر NULL را سطر کرد و بعد از M2 هیچ کدی ستون را نمی‌نویسد،
+            // پس فرش بی‌سطر یا پیش از M2 هم NULL بود یا کاربر سطرهایش را پاک کرده — نگه داشتن ستون قیمت پاک‌شده را برمی‌گرداند.
             migrationBuilder.Sql("""
-                UPDATE "Rugs" r SET "PurchaseCost" = l.total
-                FROM (SELECT "RugId", sum("Amount") AS total FROM "RugPurchaseLines" GROUP BY "RugId") l
-                WHERE l."RugId" = r."Id";
+                UPDATE "Rugs" r SET "PurchaseCost" =
+                    (SELECT sum(l."Amount") FROM "RugPurchaseLines" l WHERE l."RugId" = r."Id");
                 """);
 
             migrationBuilder.DropTable(

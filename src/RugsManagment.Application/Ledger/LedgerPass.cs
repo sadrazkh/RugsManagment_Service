@@ -1,3 +1,5 @@
+using RugsManagment.Application.Common;
+
 namespace RugsManagment.Application.Ledger;
 
 /// <summary>
@@ -83,6 +85,10 @@ public sealed class LedgerPass(
             await transaction.RollbackAsync(CancellationToken.None);
             session.Reset();
             costTotals.Clear();
+
+            // مبلغی که مرحله‌ها نوشتند در ستون جا نشد (سرریز عددی): خطای کاربر است، نه ۵۰۰ (پشتیبان سنجش نویسنده‌ها)
+            if (session.IsNumericOverflow(ex))
+                throw new AppValidationException(Messages.AmountOverflow.Text);
 
             // «شمارهٔ آزاد بعدی» وقتی همپوشانی از ایندکس یکتا (در flush) آمد هنوز حساب نشده؛ بعد از برگرداندن، اتصال
             // دوباره قابل استفاده است. در تراکنش بیرونیِ شکسته این پرس‌وجو ممکن نیست و بی آن برمی‌گردد.

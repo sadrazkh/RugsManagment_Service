@@ -72,7 +72,7 @@ public sealed class RugPurchaseService(
                 c => c.TenantId == tenantId && c.Group == CostGroup.Purchase, cancellationToken))
             .ToDictionary(c => c.Id);
 
-        var planned = Validate(request.Lines ?? [], existing, purchaseCategories);
+        var planned = Validate(request.Lines ?? [], existing, purchaseCategories, rug.IntakeAreaM2, rug.Quantity);
         var now = DateTimeOffset.UtcNow;
 
         // حذف: هر سطر قبلی که در درخواست نیست
@@ -182,13 +182,15 @@ public sealed class RugPurchaseService(
 
     /// <summary>
     /// هر سطر: برچسب لازم (حداکثر ۱۲۰ حرف)، مبنای شناخته، نرخ معتبر (درصد ۰ تا ۱۰۰، نرخ متری/دانه‌ای نامنفی، حداکثر ۴ رقم
-    /// اعشار)، نوع از گروه «خرید» همین کارگاه (نوع غیرفعال فقط برای سطری که از قبل همان نوع را داشت)، شناسهٔ سطرِ همین فرش و
+    /// اعشار، و مبلغی که با اندازهٔ اول و تعداد فرش در ستون مبلغ جا شود)، نوع از گروه «خرید» همین کارگاه (نوع غیرفعال فقط برای سطری که از قبل همان نوع را داشت)، شناسهٔ سطرِ همین فرش و
     /// بی تکرار. خطاها همه با هم، با کلید <c>lines[i].field</c>.
     /// </summary>
     private static List<PlannedLine> Validate(
         IReadOnlyList<PurchaseLineDto> lines,
         IReadOnlyDictionary<Guid, RugPurchaseLine> existing,
-        IReadOnlyDictionary<Guid, CostCategory> purchaseCategories)
+        IReadOnlyDictionary<Guid, CostCategory> purchaseCategories,
+        decimal intakeArea,
+        int quantity)
     {
         var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
         void Add(int index, string field, string message) => errors.TryAdd($"lines[{index}].{field}", [message]);
@@ -218,7 +220,8 @@ public sealed class RugPurchaseService(
 
             if (!Enum.IsDefined(line.Basis))
                 Add(i, "basis", Messages.InvalidValue.Format(("label", "مبنا")));
-            else if (RugFieldWriter.CheckRate(line.Rate, line.Basis) is { } problem)
+            else if ((RugFieldWriter.CheckRate(line.Rate, line.Basis)
+                      ?? RugFieldWriter.CheckAmount(line.Basis, line.Rate, intakeArea, quantity)) is { } problem)
                 Add(i, "rate", problem);
 
             if (line.CategoryId is { } categoryId)

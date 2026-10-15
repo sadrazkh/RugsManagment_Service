@@ -49,7 +49,9 @@
                 <dt class="text-on-surface-variant">ورودی</dt>
                 <dd>
                     <a href="/Groups/Details/@Model.BatchId" class="hover:text-primary hover:underline">@(Model.BatchName ?? "—")</a>
-                    @if (Model.SellerName is not null)
+                    @* نام ورودیِ روزدار خودش فروشنده را دارد («ورودی ۳ · حاج محمود · ۱۴۰۵/۰۷/۲۳»)؛ فروشنده دو بار نیاید *@
+                    @if (!string.IsNullOrWhiteSpace(Model.SellerName)
+                         && (Model.BatchName is null || !Model.BatchName.Contains(Model.SellerName.Trim(), StringComparison.Ordinal)))
                     {
                         <span class="text-on-surface-variant">· @Model.SellerName</span>
                     }

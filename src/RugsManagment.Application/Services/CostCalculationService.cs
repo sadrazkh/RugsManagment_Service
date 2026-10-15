@@ -67,10 +67,16 @@ public sealed class CostCalculationService(
         return RugCostMath.StepLinePrice(model, rate, lengthMeters, widthMeters, Math.Max(1, quantity), moneyScale, items);
     }
 
+    /// <summary>
+    /// پیش‌نمایش همان عددی که ثبت مرحله می‌سازد: قیمت یک تخته (هر جزء جدا گرد) × تعداد، و بعد تعدیل و کف صفر روی کل ردیف
+    /// (<see cref="RugCostMath.StepLinePrice"/> و <see cref="RugCostMath.StepEffectiveCost"/>، همان که
+    /// <see cref="CalculateStepCost"/> و پاس سازگاری به کار می‌برند). مبلغ دستی برای کل ردیف است و × تعداد نمی‌شود.
+    /// </summary>
     public PricingPreviewResult Preview(PricingPreviewRequest r)
     {
         ArgumentNullException.ThrowIfNull(r);
         var scale = CurrentScale();
+        var quantity = Math.Max(1, r.Quantity);
         var components = new List<PricingComponent>();
         decimal baseCost;
         string formula;
@@ -87,8 +93,10 @@ public sealed class CostCalculationService(
             foreach (var item in config?.Items ?? [])
             {
                 var itemModel = item.Model == StepPricingModel.Combined ? StepPricingModel.Fixed : item.Model;
-                var amount = RugCostMath.StepPiecePrice(itemModel, item.Rate, r.LengthMeters, r.WidthMeters, scale);
-                components.Add(new PricingComponent(ComponentLabel(r.WidthMeters, r.LengthMeters, itemModel, item.Rate, amount), amount));
+                var piece = RugCostMath.StepPiecePrice(itemModel, item.Rate, r.LengthMeters, r.WidthMeters, scale);
+                var line = AreaMath.LineMoney(piece, quantity);
+                components.Add(new PricingComponent(
+                    ComponentLabel(r.WidthMeters, r.LengthMeters, itemModel, item.Rate, piece, quantity, line), line));
             }
             baseCost = components.Sum(c => c.Amount);
             formula = "جمع اجزا";
@@ -96,12 +104,13 @@ public sealed class CostCalculationService(
         else
         {
             var rate = r.UnitRate ?? 0;
-            baseCost = RugCostMath.StepPiecePrice(r.Model, rate, r.LengthMeters, r.WidthMeters, scale);
-            formula = ComponentLabel(r.WidthMeters, r.LengthMeters, r.Model, rate, baseCost);
+            var piece = RugCostMath.StepPiecePrice(r.Model, rate, r.LengthMeters, r.WidthMeters, scale);
+            baseCost = RugCostMath.StepLinePrice(r.Model, rate, r.LengthMeters, r.WidthMeters, quantity, scale);
+            formula = ComponentLabel(r.WidthMeters, r.LengthMeters, r.Model, rate, piece, quantity, baseCost);
             components.Add(new PricingComponent(formula, baseCost));
         }
 
-        // همان کف صفرِ هزینهٔ مؤثر مرحله (RugCostMath.StepEffectiveCost)
+        // همان کف صفرِ هزینهٔ مؤثر مرحله (RugCostMath.StepEffectiveCost)، روی کل ردیف نه یک تخته
         var total = RugCostMath.StepEffectiveCost(baseCost, null, r.Adjustment);
         return new PricingPreviewResult(baseCost, r.Adjustment, total, formula, components);
     }
@@ -117,11 +126,15 @@ public sealed class CostCalculationService(
         catch (JsonException) { return null; }
     }
 
-    /// <summary>برچسب خوانا مثل «۸۵٬۰۰۰ × ۶ م² = ۵۱۰٬۰۰۰» (عدد با فرهنگ ثابت؛ جزیره ارقام را فارسی می‌کند).</summary>
-    private static string ComponentLabel(decimal width, decimal length, StepPricingModel model, decimal rate, decimal result)
+    /// <summary>
+    /// برچسب خوانا مثل «۸۵٬۰۰۰ × ۶ م² = ۵۱۰٬۰۰۰»؛ برای دسته قیمت یک تخته و بعد × تعداد: «۸۵٬۰۰۰ × ۰٫۱۶ م² = ۱۳٬۶۰۰ × ۵۰ تخته =
+    /// ۶۸۰٬۰۰۰»، تا روشن باشد عدد نهایی از کجا آمده (عدد با فرهنگ ثابت؛ جزیره ارقام را فارسی می‌کند).
+    /// </summary>
+    private static string ComponentLabel(
+        decimal width, decimal length, StepPricingModel model, decimal rate, decimal piece, int pieces, decimal line)
     {
         var area = AreaMath.PieceArea(length, width);
-        var (unit, quantity) = model switch
+        var (unit, measure) = model switch
         {
             StepPricingModel.PerSquareMeter => ("م²", area),
             StepPricingModel.PerLength => ("م طول", Num.Round(length, AreaMath.DimensionDecimals)),
@@ -129,9 +142,8 @@ public sealed class CostCalculationService(
             StepPricingModel.PerSquareFoot => ("فوت²", Num.Round(AreaMath.ToSquareFeet(area), 2)),
             _ => (string.Empty, 0m)
         };
-        return unit.Length == 0
-            ? $"ثابت {N(rate)}"
-            : $"{N(rate)} × {N(quantity)} {unit} = {N(result)}";
+        var piecePart = unit.Length == 0 ? $"ثابت {N(rate)}" : $"{N(rate)} × {N(measure)} {unit} = {N(piece)}";
+        return pieces > 1 ? $"{piecePart} × {pieces} تخته = {N(line)}" : piecePart;
     }
 
     private static string N(decimal v) => v.ToString("#,0.##", CultureInfo.InvariantCulture);

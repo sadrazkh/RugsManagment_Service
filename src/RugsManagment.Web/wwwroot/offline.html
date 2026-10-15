@@ -5,11 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>آفلاین</title>
   <!--
-    فونت خودمیزبان: Service Worker پوشهٔ /fonts/ را cache-first نگه می‌دارد، پس همین صفحهٔ آفلاین هم
-    (بعد از اولین بازدید سایت) فارسی را با Vazirmatn نشان می‌دهد؛ اگر هنوز کش نشده بود، Tahoma.
+    فونت خودمیزبان، مستقیم از فایل woff2 که Service Worker هنگام نصب پیش‌کش می‌کند (PRECACHE در sw.js).
+    پیش‌تر این صفحه /fonts/vazirmatn.css را بی‌نسخه می‌خواست، در حالی که layout همان فایل را با «?v=…» می‌گیرد و
+    کش با نشانی کامل (با پرس‌وجو) کلید می‌خورد؛ پس آفلاین پیدا نمی‌شد و صفحه به Tahoma می‌افتاد. @font-face همین‌جا
+    و woff2 پیش‌کش‌شده یعنی آفلاین بودن از اولین نصب، بی‌وابستگی به این‌که کدام صفحه قبلاً باز شده.
   -->
-  <link rel="stylesheet" href="/fonts/vazirmatn.css" />
   <style>
+    @font-face {
+      font-family: 'Vazirmatn';
+      src: url('/fonts/Vazirmatn-Variable.woff2') format('woff2-variations'),
+           url('/fonts/Vazirmatn-Variable.woff2') format('woff2');
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: swap;
+    }
     body { font-family: 'Vazirmatn', Tahoma, sans-serif; display: grid; place-items: center; min-height: 100vh; margin: 0; background: #fbf9f5; color: #1b1c1a; line-height: 1.8; }
     .box { text-align: center; padding: 2rem; max-width: 28rem; }
     .m { width: 64px; height: 64px; display: grid; place-items: center; border-radius: 16px; background: #6b0008; color: #fff; font-size: 32px; font-weight: 700; margin: 0 auto 1rem; }

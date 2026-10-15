@@ -21,7 +21,8 @@
  *   "terms": { "bale": "نگله", "bales": "نگله‌ها", "baleOf": "نگلهٔ", "baleFooter": "نگله شماره" },
  *   "today": "2026-09-06",                  // تاریخ میلادی امروز به وقت ایران، ISO
  *   "todayJalali": "1405/06/15",            // برای نمایش (ارقام لاتین؛ نمایش فارسی‌شان می‌کند)
- *   "commands": [ { "label": "ثبت فرش تازه", "href": "/Intake", "icon": "plus" } ]
+ *   "commands": [ { "label": "ثبت فرش تازه", "href": "/Intake", "icon": "plus" } ],
+ *   "maxPlausibleSideM": 12                 // ضلع بزرگ‌تر از این «متر یا سانت؟» می‌پرسد (TenantPreferences)
  * }
  * ```
  *
@@ -91,11 +92,21 @@ export interface AppContext {
   today: string
   todayJalali: string
   commands: AppCommand[]
+  /**
+   * «بزرگ‌ترین ضلع معمول» کارگاه (TenantPreferences.MaxPlausibleSideM، ۱ تا ۳۰ متر): ضلع عدد صحیح بزرگ‌تر از این
+   * تا ۳۰ «متر یا سانت؟» پرسیده می‌شود. خانه‌های اندازه و جدول همین را می‌خوانند، نه عدد ثابت ۱۲.
+   */
+  maxPlausibleSideM: number
 }
 
 export const APP_CONTEXT_ELEMENT_ID = 'app-context'
 
 const NEGLEH_TERMS: AppTerms = { bale: 'نگله', bales: 'نگله‌ها', baleOf: 'نگلهٔ', baleFooter: 'نگله شماره' }
+
+/** پیش‌فرض و بازهٔ «بزرگ‌ترین ضلع معمول» (همان TenantPreferences.DefaultMaxPlausibleSideM و بازهٔ سرور). */
+export const DEFAULT_MAX_PLAUSIBLE_SIDE_M = 12
+const MIN_MAX_PLAUSIBLE_SIDE_M = 1
+const MAX_MAX_PLAUSIBLE_SIDE_M = 30
 
 /** امروز به وقت ایران، ISO — فقط وقتی layout تاریخ نداده باشد. */
 function iranToday(): string {
@@ -125,6 +136,7 @@ function defaults(): AppContext {
     today,
     todayJalali: '',
     commands: [],
+    maxPlausibleSideM: DEFAULT_MAX_PLAUSIBLE_SIDE_M,
   }
 }
 
@@ -150,6 +162,11 @@ function bool(value: unknown, fallback: boolean): boolean {
 
 function int(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isInteger(value) ? value : fallback
+}
+
+/** عدد متناهی در بازه؛ وگرنه پیش‌فرض (سرور «12.00» را عدد JSON می‌نویسد). */
+function numberIn(value: unknown, min: number, max: number, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max ? value : fallback
 }
 
 function oneOf<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
@@ -200,6 +217,12 @@ function parse(raw: unknown): AppContext {
       .filter(isObject)
       .filter((c) => typeof c.label === 'string' && typeof c.href === 'string')
       .map((c) => ({ label: c.label as string, href: c.href as string, icon: str(c.icon, 'arrow-left') })),
+    maxPlausibleSideM: numberIn(
+      raw.maxPlausibleSideM,
+      MIN_MAX_PLAUSIBLE_SIDE_M,
+      MAX_MAX_PLAUSIBLE_SIDE_M,
+      base.maxPlausibleSideM,
+    ),
   }
 }
 

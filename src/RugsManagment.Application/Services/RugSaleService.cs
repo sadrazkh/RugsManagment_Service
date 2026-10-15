@@ -4,6 +4,7 @@ using RugsManagment.Application.Abstractions.Services;
 using RugsManagment.Application.Common;
 using RugsManagment.Application.DTOs.Sales;
 using RugsManagment.Application.Features.Rugs;
+using RugsManagment.Application.Ledger;
 using RugsManagment.Domain.Entities;
 using RugsManagment.Domain.Enums;
 
@@ -35,7 +36,9 @@ public sealed class RugSaleService(
     IRugRepository rugs,
     IWorkflowEngine workflowEngine,
     IAuditLog audit,
-    IUnitOfWork unitOfWork) : IRugSaleService
+    IUnitOfWork unitOfWork,
+    ILedgerLock ledgerLock,
+    IRugCostTotalReader costTotals) : IRugSaleService
 {
     public async Task<RugSaleDto?> GetForRugAsync(Guid tenantId, Guid rugId, CancellationToken ct = default)
     {
@@ -75,9 +78,9 @@ public sealed class RugSaleService(
         sale.Notes = Clean(request.Notes);
         sale.UpdatedAt = DateTimeOffset.UtcNow;
 
-        // فقط رکورد موجود Update می‌شود؛ رکورد تازه قبلاً Added شده و
-        // علامت‌گذاری دوبارهٔ آن به‌عنوان Modified باعث UPDATE روی ردیف ناموجود می‌شد.
-        if (!isNew) sales.Update(sale);
+        // فروش موجود از rug.Sale ردیابی‌شده می‌آید، پس فقط ستون‌هایی که همین‌جا عوض شدند نوشته می‌شوند. Update() نمی‌زنیم:
+        // همهٔ ستون‌ها را «عوض‌شده» می‌کرد و ویرایشی که پیش از یک «به‌روزرسانی بهای تمام‌شده» بارگذاری شده بود عکس بها
+        // (CostAtSale/CostAtSaleAt) را با مقدار کهنه رونویسی می‌کرد — بی هیچ ۴۰۹ (فروش xmin ندارد). رکورد تازه هم Added است.
 
         // ثبت فروش یعنی فرش از چرخهٔ تولید خارج شده (تقدم «فروخته‌شده» در RugStatusResolver). عکس بهای لحظهٔ فروش
         // (CostAtSale) را برای فروش تازه پاس سازگاری در همین ذخیره می‌گیرد؛ ویرایش فروش آن را دست نمی‌زند (D.6).
@@ -119,6 +122,11 @@ public sealed class RugSaleService(
         await unitOfWork.SaveChangesAsync(ct);
     }
 
+    /// <summary>
+    /// بهای امروز زیر قفل حساب‌های کارگاه خوانده می‌شود (همان الگوی شمارهٔ خودکار، E2): جمعی که هنگام بارگذاری فرش در حافظه
+    /// آمد ممکن است کهنه باشد (مرحله‌ای که هم‌زمان تمام و commit شد)، و تا قفل در دست است هیچ ذخیرهٔ دیگری جمع این کارگاه
+    /// را عوض نمی‌کند؛ پس عکس دقیقاً بهای همین لحظه است. فروش از rug.Sale ردیابی‌شده می‌آید؛ Update لازم نیست.
+    /// </summary>
     public async Task<RugSaleDto> RefreshCostAtSaleAsync(Guid tenantId, Guid rugId, CancellationToken ct = default)
     {
         var rug = await rugs.GetWithWorkflowAsync(rugId, tenantId, ct)
@@ -126,17 +134,23 @@ public sealed class RugSaleService(
         var sale = rug.Sale
             ?? throw new InvalidOperationException("برای این فرش فروشی ثبت نشده است.");
 
-        // بهای امروز همان ردیف RugCostTotal است که پاس سازگاری نوشته (این درخواست هیچ هزینه‌ای را عوض نمی‌کند، پس عدد
-        // ذخیره‌شده همان عدد تازه است). فروش از rug.Sale ردیابی‌شده می‌آید؛ Update لازم نیست.
-        var now = DateTimeOffset.UtcNow;
-        sale.CostAtSale = workflowEngine.CalculateRugCosts(rug).TotalInvestment;
-        sale.CostAtSaleAt = now;
-        sale.UpdatedAt = now;
+        await unitOfWork.ExecuteInTransactionAsync(async token =>
+        {
+            await ledgerLock.AcquireAsync(tenantId, token);
+            costTotals.Invalidate([rug.Id]);
+            await costTotals.PreloadAsync([rug.Id], token);
 
-        audit.Record(AuditAction.SaleRecorded, nameof(Rug), rug.Id,
-            $"بهای تمام‌شدهٔ فروش به «{sale.BuyerName}» با بهای امروز به‌روز شد.", rug.Sku);
+            var now = DateTimeOffset.UtcNow;
+            sale.CostAtSale = workflowEngine.CalculateRugCosts(rug).TotalInvestment;
+            sale.CostAtSaleAt = now;
+            sale.UpdatedAt = now;
 
-        await unitOfWork.SaveChangesAsync(ct);
+            audit.Record(AuditAction.SaleRecorded, nameof(Rug), rug.Id,
+                $"بهای تمام‌شدهٔ فروش به «{sale.BuyerName}» با بهای امروز به‌روز شد.", rug.Sku);
+
+            await unitOfWork.SaveChangesAsync(token);
+        }, ct);
+
         return ToDto(rug, sale);
     }
 

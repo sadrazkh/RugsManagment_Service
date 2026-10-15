@@ -46,7 +46,14 @@ interface StepPricing {
   defaultUnitRate?: number | null
 }
 
-const props = defineProps<{ width: number; length: number; current?: StepPricing | null }>()
+/**
+ * width/length اندازهٔ یک تخته و quantity تعداد تخته‌هایی است که مرحله رویشان قیمت می‌خورد (عکس قیمت‌گذاری مرحله، وگرنه
+ * فرش). سرور قیمت یک تخته × تعداد را حساب می‌کند و تخفیف و کف صفر را روی کل ردیف می‌گذارد، مثل ثبت مرحله.
+ */
+const props = withDefaults(
+  defineProps<{ width: number; length: number; quantity?: number; current?: StepPricing | null }>(),
+  { quantity: 1 },
+)
 
 interface CombinedRow { uid: number; model: number; rate?: number }
 interface PreviewResult { base: number; adjustment: number; total: number; formula: string; components: { label: string; amount: number }[] }
@@ -218,7 +225,7 @@ async function refresh() {
   previewing.value = true
   try {
     preview.value = await api.post<PreviewResult>('/api/pricing/preview', {
-      widthMeters: props.width, lengthMeters: props.length,
+      widthMeters: props.width, lengthMeters: props.length, quantity: Math.max(1, Math.trunc(props.quantity)),
       model: currentModel(),
       unitRate: state.manual ? null : state.unitRate ?? 0,
       combinedJson: combinedJson(),

@@ -58,12 +58,17 @@ public static class MoneyRedaction
     /// قاعدهٔ نوشتن پولی برای تکمیل یا قیمت‌گذاری یک مرحله: روش، نرخ، پیکربندی ترکیبی، مبلغ دستی، تعدیل
     /// و «پاک کردن مبلغ دستی». تکمیلِ بدون هیچ‌کدام از این‌ها برای انباردار آزاد است و سرور نرخ توافقیِ
     /// انجام‌دهنده یا نرخ پیش‌فرض مرحله را می‌گذارد. «پاک کردن مبلغ دستی = false» یعنی «دست نزن» و پول نیست.
+    ///
+    /// پیکربندی ترکیبی فقط وقتی null است «نفرستاده» حساب می‌شود: موتور گردش کار هر مقدار غیر null، حتی رشتهٔ
+    /// خالی یا فاصله، را «پیکربندی ذخیره‌شده را پاک کن» می‌خواند و بهای مرحله را از نو حساب می‌کند. اگر این‌جا
+    /// رشتهٔ خالی «نفرستاده» شمرده می‌شد، انباردار با <c>{"pricingConfigJson":""}</c> قیمت ترکیبیِ مرحله را پاک
+    /// می‌کرد و سرمایهٔ فرش و حساب طرف خدمات عوض می‌شد. پس قاعدهٔ نگهبان دقیقاً همان قاعدهٔ موتور است.
     /// </summary>
     public static void EnsureMayWriteStepPricing(this IMoneyVisibility visibility, AdvanceRugStepRequest request)
         => visibility.EnsureMayWriteMoney(
             request.PricingModel,
             request.UnitRate,
-            string.IsNullOrWhiteSpace(request.PricingConfigJson) ? null : request.PricingConfigJson,
+            request.PricingConfigJson,
             request.ManualCostOverride,
             request.Adjustment,
             request.ClearManualOverride == true ? true : null);

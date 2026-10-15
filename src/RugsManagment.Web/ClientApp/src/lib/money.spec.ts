@@ -195,3 +195,61 @@ describe('سازگاری قدیمی', () => {
     expect(parseNumber('abc')).toBeUndefined()
   })
 })
+
+describe('جداکنندهٔ هزارگان فقط سر جای درست (یافتهٔ بازبینی فاز ۱)', () => {
+  const grouping = { status: 'error', code: 'E_NUMBER_GROUPING' }
+
+  it.each([
+    ['1,234,567', 'number', '1234567'],
+    ['۱٬۲۳۴٬۵۶۷', 'number', '1234567'],
+    ['1,250,000', 'money', '1250000'],
+    ['۱٬۲۵۰٬۰۰۰م', 'money', '1250000000000'],
+    ['-1,000', 'money', '-1000'],
+  ] as const)('«%s» (%s) → %s', (text, kind, expected) => {
+    expect(value(parseDecimal(text, kind, { ...money0, allowNegative: true }))).toBe(expected)
+  })
+
+  it('با دو رقم اعشار، بخش اعشاری بعد از گروه‌ها پذیرفته است', () => {
+    expect(value(parseDecimal('1,250.75', 'money', { scale: 2, currencyLabel: 'تومان' }))).toBe('1250.75')
+  })
+
+  it.each([
+    // «٬» (هزارگان) به‌جای «٫» (ممیز): کلیدهای کنار هم روی کیبورد فارسی — ده یا صد برابر نمی‌شود
+    ['۲٬۵م', 'money'],
+    ['1,5م', 'money'],
+    ['45,55', 'number'],
+    ['۴۵٬۵۵', 'number'],
+    ['1,23', 'number'],
+    ['7,29', 'number'],
+    ['1,2,3', 'number'],
+    ['1234,567', 'number'],
+    [',500', 'money'],
+    ['1,000,00', 'money'],
+  ] as const)('«%s» (%s) رد می‌شود، بی‌صدا بزرگ نمی‌شود', (text, kind) => {
+    expect(parseDecimal(text, kind, money0)).toEqual(grouping)
+  })
+
+  it('اندازه همچنان «,» را ممیز می‌خواند (اکسل)', () => {
+    expect(value(parseDecimal('2,08', 'dim'))).toBe('2.08')
+  })
+})
+
+describe('بزرگ‌ترین ضلع معمول از app-context (یافتهٔ بازبینی فاز ۱)', () => {
+  it('بی گزینهٔ صریح، مقدار کارگاه به کار می‌رود نه ۱۲ ثابت', async () => {
+    const { resetAppContext } = await import('./context')
+    try {
+      resetAppContext({ maxPlausibleSideM: 8 })
+      expect(parseDecimal('10', 'dim').status).toBe('ask')
+      resetAppContext({ maxPlausibleSideM: 30 })
+      expect(value(parseDecimal('25', 'dim'))).toBe('25')
+      // گزینهٔ صریح هنوز مقدم است
+      expect(parseDecimal('25', 'dim', { maxPlausibleSideM: 12 }).status).toBe('ask')
+      // مقدار بیرون از بازهٔ سرور نادیده گرفته می‌شود (پیش‌فرض ۱۲)
+      resetAppContext({ maxPlausibleSideM: 400 })
+      expect(parseDecimal('13', 'dim').status).toBe('ask')
+      expect(value(parseDecimal('12', 'dim'))).toBe('12')
+    } finally {
+      resetAppContext({})
+    }
+  })
+})

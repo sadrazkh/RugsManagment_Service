@@ -8,7 +8,10 @@
  * عوض شده‌اند فرستاده می‌شوند.
  *
  * - شماره و تعداد: «3778» یا دستهٔ «3911 - 3960» با تعداد؛ بازه هرگز کوتاه‌تر از تعداد نیست. هنگام ثبت شمارهٔ بعدی
- *   (G.4) کم‌رنگ پیشنهاد می‌شود و با یک دکمه نوشته می‌شود؛ برای دسته پیشنهاد «۳۹۱۱ - ۳۹۶۰» می‌آید.
+ *   (G.4) کم‌رنگ پیشنهاد می‌شود و با Enter، Tab یا یک دکمه نوشته می‌شود؛ برای دسته پیشنهاد «۳۹۱۱ - ۳۹۶۰» می‌آید. در
+ *   حالت «خودکار» خانهٔ شماره فقط «خودکار: ۴۰۰۴» را نشان می‌دهد، چون شماره را سرور هنگام ثبت می‌گذارد. صفحه‌کلید خانهٔ
+ *   شماره متنی است (بازه خط تیره و شمارهٔ متنی حرف دارد).
+ * - Enter در خانه‌های ویرایشگر سطرهای خرید (داخل همین فرم) فرم فرش را نمی‌فرستد؛ آن ویرایشگر ذخیرهٔ خودش را دارد.
  * - اندازهٔ اول (و در ویرایش اندازهٔ نهایی با «همان اندازهٔ اول»)، متراژ دقیق «۰٫۱۶ × ۵۰ = ۸٫۰۰».
  * - مبلغ‌ها فقط برای Business: هنگام ثبت خانه‌های خرید جدول ورود («قیمت خرید» با «هر متر | هر تخته | کل» و «دلالی»)،
  *   هنگام ویرایش ویرایشگر کامل سطرهای خرید؛ و «قیمت فروش هدف». انباردار هیچ کلید پولی نمی‌فرستد.
@@ -39,6 +42,8 @@ import {
 } from '@/lib/types/rugs'
 import { announceRugChanged } from './rugs/rugEvents'
 import { purchaseAmounts } from './rugs/purchasePreview'
+import { acceptedSerialSuggestion, adoptSavedVersion, blocksImplicitSubmit, isAutoSerial } from './rugs/rugFormRules'
+import type { SerialMode } from '@/lib/types/platform'
 
 const props = defineProps<{ rugId?: string }>()
 const isEdit = computed(() => !!props.rugId)
@@ -72,6 +77,8 @@ const templates = ref<WorkflowTemplate[]>([])
 const customFields = ref<CustomFieldDefinition[]>([])
 const suggestions = reactive<Record<string, string[]>>({ 'rug.origin': [], 'rug.pattern': [], 'rug.material': [], 'rug.title': [] })
 const nextSerial = ref<number | null>(null)
+/** حالت شمارهٔ کارگاه از `next-serial` (فقط هنگام ثبت). */
+const serialMode = ref<SerialMode | null>(null)
 
 /** خانه‌های خرید ثبت فرش (نوع‌های «خرید» با ShowInIntake)، مثل ستون‌های جدول ورود (G.2). */
 interface PurchaseCell {
@@ -111,6 +118,9 @@ const serialSuggestion = computed(() => {
   if (isEdit.value || nextSerial.value === null) return null
   return quantity.value > 1 ? `${nextSerial.value} - ${nextSerial.value + quantity.value - 1}` : String(nextSerial.value)
 })
+
+/** «خودکار»: خانهٔ شماره فقط نمایش است و سرور شماره را می‌گذارد. */
+const autoSerial = computed(() => isAutoSerial(serialMode.value, isEdit.value))
 
 /** شمارهٔ تکی که با تعداد بیش از یک نوشته شده: «3911» با ۵۰ → پیشنهاد «3911 - 3960». */
 const serialAsLot = computed(() => {
@@ -187,7 +197,12 @@ onMounted(async () => {
       api.get<CustomFieldDefinition[]>('/api/lookups/custom-fields').then((cf) => (customFields.value = cf)),
     ]
     if (!isEdit.value) {
-      requests.push(api.get<NextSerial>('/api/rugs/next-serial').then((n) => (nextSerial.value = n.next)))
+      requests.push(
+        api.get<NextSerial>('/api/rugs/next-serial').then((n) => {
+          nextSerial.value = n.next
+          serialMode.value = n.mode ?? null
+        }),
+      )
       if (canSeeMoney) {
         requests.push(
           api.get<PurchaseCategoryOption[]>('/api/rugs/purchase-categories').then((options) => {
@@ -344,8 +359,22 @@ function reloadPage() {
   window.location.reload()
 }
 
-function onPurchaseSaved(result: PurchaseLinesResult) {
-  version.value = result.version
+/** ذخیرهٔ ویرایشگر خرید: نسخهٔ تازه فقط اگر روی همان نسخهٔ فرم ذخیره شده بود (وگرنه ذخیرهٔ فرم ۴۰۹ می‌گیرد). */
+function onPurchaseSaved(result: PurchaseLinesResult, baseVersion: number) {
+  version.value = adoptSavedVersion(version.value, baseVersion, result.version)
+}
+
+/** Enter در خانه‌های ویرایشگر خرید فرم فرش را به‌طور ضمنی نمی‌فرستد. */
+function onPurchaseEditorKeydown(event: KeyboardEvent) {
+  if (blocksImplicitSubmit(event)) event.preventDefault()
+}
+
+/** «پیشنهاد بعدی» (G.4): Enter یا Tab در خانهٔ خالی پیشنهاد را می‌پذیرد؛ Enter فقط می‌پذیرد و فرم را نمی‌فرستد. */
+function onSerialKeydown(event: KeyboardEvent) {
+  const accepted = acceptedSerialSuggestion(event.key, event.shiftKey, form.serial, serialSuggestion.value, serialMode.value)
+  if (accepted === null) return
+  useSuggestion(accepted)
+  if (event.key === 'Enter') event.preventDefault()
 }
 
 function useSuggestion(serial: string | null) {
@@ -373,6 +402,11 @@ async function submit() {
     let rug: Rug
     if (isEdit.value) {
       rug = await api.put<Rug>(`/api/rugs/${props.rugId}`, { values, version: version.value })
+      // اگر ترک صفحه با «Leave site?» (ویرایشگر خرید کار ذخیره‌نشده دارد) لغو شد، فرم باید با نسخهٔ تازه دوباره کار کند
+      version.value = rug.version
+      initial = buildValues()
+      initialMetadata = { ...metadata }
+      saving.value = false
       announceRugChanged({ rugId: rug.id, version: rug.version, source: SOURCE })
     } else {
       rug = await api.post<Rug>('/api/rugs', {
@@ -421,20 +455,39 @@ async function submit() {
     <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
       <h2 class="mb-4 text-sm font-semibold text-primary">شماره و تعداد</h2>
       <div class="grid gap-4 sm:grid-cols-3">
-        <Field label="شماره" :error="fieldErrors['rug.serial']" hint="مثل ۳۷۷۸، یا برای دسته ۳۹۱۱ - ۳۹۶۰" v-slot="f" class="sm:col-span-2">
+        <Field
+          label="شماره"
+          :error="fieldErrors['rug.serial']"
+          :hint="autoSerial ? message('I_SERIAL_AUTO_HINT') : 'مثل ۳۷۷۸، یا برای دسته ۳۹۱۱ - ۳۹۶۰'"
+          v-slot="f"
+          class="sm:col-span-2"
+        >
+          <output
+            v-if="autoSerial"
+            :id="f.id"
+            class="input flex items-center justify-end bg-surface-container text-on-surface-variant"
+            :aria-describedby="f.describedBy"
+            data-numeric
+          >
+            <bdi>{{ message('I_SERIAL_AUTO', { serial: serialSuggestion ? toPersianDigits(serialSuggestion) : '—' }) }}</bdi>
+          </output>
           <input
+            v-else
             :id="f.id"
             v-model="form.serial"
             dir="ltr"
-            inputmode="numeric"
+            inputmode="text"
             autocomplete="off"
-            :placeholder="serialSuggestion ?? ''"
+            autocapitalize="off"
+            spellcheck="false"
+            :placeholder="serialSuggestion ? toPersianDigits(serialSuggestion) : ''"
             class="input text-end"
             :aria-describedby="f.describedBy"
             :aria-invalid="f.invalid"
             @input="delete fieldErrors['rug.serial']"
+            @keydown="onSerialKeydown"
           />
-          <div class="mt-1 flex flex-wrap gap-2">
+          <div v-if="!autoSerial" class="mt-1 flex flex-wrap gap-2">
             <Button v-if="serialSuggestion && !form.serial.trim()" variant="ghost" @click="useSuggestion(serialSuggestion)">
               بنویس: <bdi dir="ltr">{{ toPersianDigits(serialSuggestion) }}</bdi>
             </Button>
@@ -575,14 +628,15 @@ async function submit() {
       <p class="mt-3 text-xs text-on-surface-variant">سطرهای دیگر خرید را بعد از ثبت در صفحهٔ فرش اضافه کنید.</p>
     </section>
 
-    <PurchaseLinesEditor
-      v-if="canSeeMoney && isEdit && rugId"
-      :rug-id="rugId"
-      :version="version"
-      :intake-area-m2="piece ? toNumber(piece) : null"
-      :quantity="quantity"
-      @saved="onPurchaseSaved"
-    />
+    <div v-if="canSeeMoney && isEdit && rugId" @keydown="onPurchaseEditorKeydown">
+      <PurchaseLinesEditor
+        :rug-id="rugId"
+        :version="version"
+        :intake-area-m2="piece ? toNumber(piece) : null"
+        :quantity="quantity"
+        @saved="onPurchaseSaved"
+      />
+    </div>
 
     <section v-if="canSeeMoney" class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
       <div class="grid gap-4 sm:grid-cols-3">

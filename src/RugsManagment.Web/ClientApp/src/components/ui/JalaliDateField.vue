@@ -6,7 +6,9 @@
  *   تاریخ ناممکن «۱۴۰۵/۰۶/۳۲ وجود ندارد» و سال میلادی «سال را شمسی بنویسید» می‌گیرد.
  * - دکمه‌های «امروز» و «دیروز» (امروز به وقت ایران، از app-context).
  * - تقویم ماهانه با نام ماه‌های فارسی، کاملاً با صفحه‌کلید: در راست‌به‌چپ ← روز بعد و → روز قبل،
- *   ↑/↓ هفتهٔ قبل/بعد، PageUp/PageDown ماه قبل/بعد، Home/End اول/آخر هفته، Enter انتخاب، Esc بستن.
+ *   ↑/↓ هفتهٔ قبل/بعد، PageUp/PageDown ماه قبل/بعد، Home/End اول/آخر هفته، Enter انتخاب. Esc از هر جای تقویم
+ *   (روزها، «ماه قبل/بعد»، «امروز/بستن») فقط تقویم را می‌بندد، نه دیالوگ یا کشویی که خانه در آن است؛ و Tab که
+ *   فوکوس را از تقویم بیرون ببرد تقویم را می‌بندد (H.4، H.7).
  * - مقدار `v-model` تاریخ میلادی ISO («2026-09-06») است، همان که `DateOnly` سرور می‌خواهد.
  */
 import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
@@ -17,6 +19,8 @@ import {
   JALALI_MONTHS,
   JALALI_WEEKDAYS,
   JALALI_WEEKDAYS_SHORT,
+  MAX_JALALI_YEAR,
+  MIN_JALALI_YEAR,
   addIsoDays,
   addJalaliDays,
   addJalaliMonths,
@@ -221,7 +225,13 @@ function closeCalendar(returnFocus = true) {
   if (returnFocus) toggle.value?.focus()
 }
 
+/** تقویم بیرون از سال‌های پشتیبانی‌شده نمی‌رود (همان بازهٔ isoToJalali)؛ وگرنه روز انتخاب‌شده نمایش‌ناپذیر بود. */
+function inYearRange(j: { jy: number }): boolean {
+  return j.jy >= MIN_JALALI_YEAR && j.jy <= MAX_JALALI_YEAR
+}
+
 function moveActive(next: JalaliDate) {
+  if (!inYearRange(next)) return
   active.value = next
   view.value = { jy: next.jy, jm: next.jm }
   void focusActive()
@@ -235,6 +245,7 @@ function pick(day: JalaliDate) {
 
 function shiftMonth(delta: number) {
   const next = addJalaliMonths({ ...view.value, jd: 1 }, delta)
+  if (!inYearRange(next)) return
   view.value = { jy: next.jy, jm: next.jm }
   active.value = addJalaliMonths(active.value, delta)
 }
@@ -267,16 +278,37 @@ function onGridKeydown(event: KeyboardEvent) {
     case 'End':
       next = addJalaliDays(a, 6 - jalaliWeekday(a))
       break
-    case 'Escape':
-      event.preventDefault()
-      event.stopPropagation()
-      closeCalendar()
-      return
     default:
+      // Esc را ظرف تقویم می‌گیرد (onPopoverKeydown)
       return
   }
   event.preventDefault()
   moveActive(next)
+}
+
+/**
+ * Esc از هر جای تقویم: فقط تقویم بسته می‌شود و فوکوس به دکمهٔ «تقویم» برمی‌گردد. stopPropagation لازم است، وگرنه
+ * همان Esc به تلهٔ فوکوس Modal/Drawer می‌رسید و کل دیالوگ (با فرمش) بسته می‌شد.
+ */
+function onPopoverKeydown(event: KeyboardEvent) {
+  if (event.key !== 'Escape') return
+  event.preventDefault()
+  event.stopPropagation()
+  closeCalendar()
+}
+
+/**
+ * فوکوس از تقویم بیرون رفت (Tab بعد از «بستن»، Shift+Tab پیش از «ماه قبل»): تقویم بسته می‌شود. رفتن به دکمهٔ
+ * «تقویم» استثناست (کلیک روی همان دکمه خودش می‌بندد). relatedTarget خالی یعنی کلیک روی جای غیرقابل‌فوکوس؛ آن را
+ * pointerdown بیرون از خانه می‌بندد، نه این.
+ */
+function onPopoverFocusOut(event: FocusEvent) {
+  const next = event.relatedTarget
+  if (!(next instanceof Node)) return
+  const popover = event.currentTarget
+  if (popover instanceof Node && popover.contains(next)) return
+  if (toggle.value?.contains(next)) return
+  closeCalendar(false)
 }
 
 function onDocumentPointerDown(event: PointerEvent) {
@@ -386,6 +418,8 @@ defineExpose({ validate, focus: () => input.value?.focus() })
       :aria-labelledby="monthLabelId"
       class="absolute top-full z-40 mt-1 w-[21rem] max-w-[calc(100vw-2rem)] rounded-xl border border-outline-variant bg-surface-container-lowest p-3 text-on-surface shadow-lg"
       data-no-print
+      @keydown="onPopoverKeydown"
+      @focusout="onPopoverFocusOut"
     >
       <div class="mb-2 flex items-center justify-between gap-2">
         <button

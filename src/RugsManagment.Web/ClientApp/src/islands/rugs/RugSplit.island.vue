@@ -8,8 +8,14 @@
  * شماره‌ها خودکارند فقط وقتی بازهٔ دسته دقیقاً به اندازهٔ تعداد است (فرش تازه شماره‌های آخر را می‌گیرد)؛ دستهٔ بی‌شماره
  * بی‌شماره می‌ماند؛ در بقیهٔ حالت‌ها (بازهٔ بلندتر از تعداد، شمارهٔ متنی) هر دو بخش را خودِ کاربر می‌نویسد و سرور
  * همپوشانی را می‌سنجد. دستهٔ فروش‌دار جدا نمی‌شود (اول برش، بعد فروش).
+ *
+ * نسخهٔ فرش با ذخیرهٔ جزیره‌های دیگر همین صفحه (اندازهٔ نهایی، سطرهای خرید) جلو می‌رود؛ این جزیره با `rugs:rug-changed`
+ * همراه می‌شود تا برش بعد از آن ذخیره‌ها ۴۰۹ دروغین نگیرد، و بعد از برش خودش هم خبر می‌دهد.
+ *
+ * خانه‌های شماره صفحه‌کلید متنی دارند (`inputmode="text"`، مثل خانهٔ شماره در جدول G.1): بازه «۳۹۱۱ - ۳۹۳۰» و
+ * «۳۹۱۱ تا ۳۹۳۰» خط تیره یا حرف لازم دارد که صفحه‌کلید عددی آیفون ندارد.
  */
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { ApiError, api, errorMessage } from '@/lib/api'
 import { toPersianDigits } from '@/lib/format'
 import { message } from '@/lib/messages'
@@ -19,6 +25,7 @@ import Field from '@/components/ui/Field.vue'
 import Modal from '@/components/ui/Modal.vue'
 import NumberField from '@/components/ui/NumberField.vue'
 import type { SplitRugResult } from '@/lib/types/rugs'
+import { announceRugChanged, onRugChanged } from './rugEvents'
 
 const props = withDefaults(
   defineProps<{
@@ -33,6 +40,9 @@ const props = withDefaults(
   { serial: null, sold: false },
 )
 
+const SOURCE = 'rug-split'
+
+const version = ref(props.version)
 const open = ref(false)
 const taken = ref<number | null>(null)
 const keptSerialText = ref('')
@@ -104,12 +114,14 @@ async function confirmSplit() {
   }
   saving.value = true
   try {
-    await api.post<SplitRugResult>(`/api/rugs/${props.rugId}/split`, {
+    const result = await api.post<SplitRugResult>(`/api/rugs/${props.rugId}/split`, {
       quantity: taken.value,
       serialFrom: automatic.value ? null : keptSerialText.value.trim() || null,
       serialTo: automatic.value ? null : takenSerialText.value.trim() || null,
-      version: props.version,
+      version: version.value,
     })
+    version.value = result.original.version
+    announceRugChanged({ rugId: props.rugId, version: result.original.version, source: SOURCE })
     toastAfterReload(message('I_SPLIT_DONE', { taken: taken.value ?? 0 }))
     requestReload()
   } catch (e) {
@@ -127,6 +139,14 @@ async function confirmSplit() {
     saving.value = false
   }
 }
+
+let stop: (() => void) | null = null
+onMounted(() => {
+  stop = onRugChanged(props.rugId, SOURCE, (detail) => {
+    version.value = detail.version
+  })
+})
+onUnmounted(() => stop?.())
 </script>
 
 <template>
@@ -160,8 +180,10 @@ async function confirmSplit() {
               :id="f.id"
               v-model="keptSerialText"
               dir="ltr"
-              inputmode="numeric"
+              inputmode="text"
               autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
               placeholder="3911 - 3940"
               class="min-h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-end outline-none focus:border-primary"
               :aria-describedby="f.describedBy"
@@ -173,8 +195,10 @@ async function confirmSplit() {
               :id="f.id"
               v-model="takenSerialText"
               dir="ltr"
-              inputmode="numeric"
+              inputmode="text"
               autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
               placeholder="3941 - 3960"
               class="min-h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-end outline-none focus:border-primary"
               :aria-describedby="f.describedBy"

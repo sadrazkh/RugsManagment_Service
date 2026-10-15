@@ -10,9 +10,11 @@
 // نسخهٔ کش. هر بار محتوای PRECACHE (یا خودِ فایل‌های داخل آن) عوض شود این عدد باید بالا برود؛
 // وگرنه نصب‌های قبلی همان نسخهٔ قدیمی را از کش برمی‌دارند و هرگز به‌روز نمی‌شوند
 // (رویداد activate فقط کش‌هایی را پاک می‌کند که نامشان با این مقدار فرق دارد).
-const CACHE = 'rugs-static-v4';
+const CACHE = 'rugs-static-v5';
 
-// اسپرایت آیکون هم پیش‌کش می‌شود: بدون آن، صفحهٔ آفلاین و نشانگر صف بی‌آیکون می‌مانند
+// اسپرایت آیکون هم پیش‌کش می‌شود: بدون آن، صفحهٔ آفلاین و نشانگر صف بی‌آیکون می‌مانند.
+// هر چه offline.html می‌خواهد (فونت Vazirmatn) هم این‌جاست: آن صفحه وقتی نشان داده می‌شود که شبکه نیست، پس
+// هر نشانی‌ای که در آن است باید از همین فهرست بیاید (آزمون P1FixSourceTests.OfflinePage_EveryLocalUrl_IsPrecached همین را می‌سنجد).
 const PRECACHE = [
   '/icon.svg',
   '/icons.svg',
@@ -20,6 +22,7 @@ const PRECACHE = [
   '/icons/icon-512.png',
   '/manifest.webmanifest',
   '/offline.html',
+  '/fonts/Vazirmatn-Variable.woff2',
 ];
 
 self.addEventListener('install', (event) => {

@@ -8,6 +8,10 @@
  * نگه می‌دارد. بی `allowCreate` نوشتهٔ ناجور هنگام خروج به مقدار قبلی برمی‌گردد.
  *
  * مقایسه «ی/ي» و «ک/ك» و ارقام فارسی/لاتین را یکی می‌گیرد تا «کاشان» و «كاشان» هر دو پیدا شوند.
+ *
+ * - گزینه‌هایی که بعد از سوار شدن می‌رسند (`api.get` در onMounted) برچسب مقدار فعلی را جای شناسهٔ خام می‌نشانند.
+ * - فوکوس بی‌تایپ هیچ گزینه‌ای را برجسته نمی‌کند (مگر مقدار فعلی)؛ پس Enter در خانهٔ خالیِ دست‌نخورده فرم را
+ *   می‌فرستد و خانهٔ اختیاری بی‌صدا با گزینهٔ اول پر نمی‌شود. ↓/↑ یا تایپ برجسته‌سازی را شروع می‌کند.
  */
 import { computed, nextTick, ref, useId, watch } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
@@ -70,9 +74,13 @@ const normalized = computed(() =>
   props.options.map((o) => (typeof o === 'string' ? { value: o, label: o } : o)),
 )
 
-function labelOf(value: string | null): string {
+function labelIn(list: readonly { value: string; label: string }[], value: string | null): string {
   if (value === null) return ''
-  return normalized.value.find((o) => o.value === value)?.label ?? value
+  return list.find((o) => o.value === value)?.label ?? value
+}
+
+function labelOf(value: string | null): string {
+  return labelIn(normalized.value, value)
 }
 
 const text = ref(labelOf(props.modelValue))
@@ -85,6 +93,12 @@ watch(
     if (!open.value) text.value = labelOf(v)
   },
 )
+
+// گزینه‌ها دیر رسیدند یا عوض شدند: اگر خانه همان نمایش قبلیِ مقدار را دارد (کاربر چیزی ننوشته)، برچسب تازه
+watch(normalized, (now, before) => {
+  if (open.value) return
+  if (text.value === labelIn(before ?? [], props.modelValue)) text.value = labelIn(now, props.modelValue)
+})
 
 /** یکسان‌سازی برای مقایسه. */
 function fold(value: string): string {
@@ -120,11 +134,15 @@ const items = computed<Item[]>(() => {
 
 const activeId = computed(() => (open.value && active.value >= 0 ? `${uid}-opt-${active.value}` : undefined))
 
-function openList() {
+/**
+ * باز کردن فهرست. فقط مقدار فعلی برجسته می‌شود؛ بی آن هیچ (Enter فرم را می‌فرستد). `highlightFirst` برای ↓ که
+ * کاربر صریحاً به فهرست رفته است.
+ */
+function openList(highlightFirst = false) {
   if (props.disabled) return
   open.value = true
   const current = items.value.findIndex((i) => !i.create && i.value === props.modelValue)
-  active.value = current >= 0 ? current : items.value.length > 0 ? 0 : -1
+  active.value = current >= 0 ? current : highlightFirst && items.value.length > 0 ? 0 : -1
 }
 
 function closeList() {
@@ -146,17 +164,19 @@ function choose(item: Item) {
 
 function onInput() {
   open.value = true
-  active.value = items.value.length > 0 ? 0 : -1
+  // نوشته همه پاک شد: چیزی برجسته نمی‌شود، تا Enter فرم را بفرستد نه این‌که گزینهٔ اول را بی‌صدا بگذارد
+  active.value = text.value.trim() && items.value.length > 0 ? 0 : -1
 }
 
 async function move(delta: number) {
   if (!open.value) {
-    openList()
+    openList(true)
     return
   }
   const count = items.value.length
   if (count === 0) return
-  active.value = (active.value + delta + count) % count
+  // بی برجسته: ↓ اولی، ↑ آخری
+  active.value = active.value < 0 ? (delta > 0 ? 0 : count - 1) : (active.value + delta + count) % count
   await nextTick()
   list.value?.querySelector<HTMLElement>(`#${CSS.escape(`${uid}-opt-${active.value}`)}`)?.scrollIntoView({ block: 'nearest' })
 }
@@ -232,8 +252,8 @@ function onBlur(event: FocusEvent) {
         :disabled="disabled"
         class="min-h-11 w-full rounded-lg border bg-surface-container-lowest ps-3 pe-11 text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary"
         :class="invalid ? 'border-error' : 'border-outline-variant'"
-        @focus="openList"
-        @click="openList"
+        @focus="openList()"
+        @click="openList()"
         @input="onInput"
         @keydown="onKeydown"
         @blur="onBlur"

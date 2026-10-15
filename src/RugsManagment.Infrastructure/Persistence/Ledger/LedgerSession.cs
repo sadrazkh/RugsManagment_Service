@@ -197,15 +197,35 @@ public sealed class LedgerSession(
         }
     }
 
-    /// <summary>شمارهٔ فرشی از همین ذخیره که تازه است یا شماره‌اش عوض شده (برای پیام ایندکس یکتا).</summary>
+    /// <summary>
+    /// شمارهٔ فرشی از همین ذخیره که ایندکس یکتا را شکسته (برای پیام): اول فرش تازه یا فرشی که شماره‌اش عوض شده، بعد فرشی
+    /// که از سطل زباله برگشته (شماره‌اش همان است ولی حالا دوباره در ایندکس است؛ M.2 #4)، و آخر هر فرش دیگرِ این ذخیره که
+    /// شماره دارد. بی این ترتیب، بازگردانیِ فرشی که شماره‌اش را فرش تازه‌ای گرفته پیام «شمارهٔ «» مال فرش دیگری است» می‌داد.
+    /// </summary>
     private string? ChangedSerial()
-        => db.ChangeTracker.Entries<Rug>()
-            .Where(e => e.Entity.SerialNo is not null
-                        && (e.State == EntityState.Added
-                            || (e.State == EntityState.Modified
-                                && !Equals(e.Property(r => r.SerialNo).OriginalValue, e.Entity.SerialNo))))
-            .Select(e => e.Entity.SerialNo)
-            .FirstOrDefault();
+    {
+        var candidates = db.ChangeTracker.Entries<Rug>()
+            .Where(e => e.Entity.SerialNo is not null && e.State is EntityState.Added or EntityState.Modified)
+            .ToList();
+
+        return candidates.FirstOrDefault(e => e.State == EntityState.Added
+                                              || !Equals(e.Property(r => r.SerialNo).OriginalValue, e.Entity.SerialNo))?.Entity.SerialNo
+               ?? candidates.FirstOrDefault(e => e.Entity.DeletedAt is null
+                                                 && e.Property(r => r.DeletedAt).OriginalValue is not null)?.Entity.SerialNo
+               ?? candidates.FirstOrDefault()?.Entity.SerialNo;
+    }
+
+    /// <inheritdoc />
+    public bool IsNumericOverflow(Exception exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is PostgresException { SqlState: PostgresErrorCodes.NumericValueOutOfRange })
+                return true;
+        }
+
+        return false;
+    }
 
     private void ForgetLocks()
     {

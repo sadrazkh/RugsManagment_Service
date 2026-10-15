@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
+using RugsManagment.Application.Common;
 using RugsManagment.Application.DTOs.Tenants;
 using RugsManagment.Application.Services;
 using RugsManagment.Domain.Enums;
@@ -41,6 +42,15 @@ public class AdminController(
         catch (InvalidOperationException ex)
         {
             model.Error = ex.Message;
+            return View(model);
+        }
+        catch (AppValidationException ex)
+        {
+            // رمز کوتاه (PasswordPolicy) زیر همان خانه، با فرم پرشده؛ نه toast و بازگشت که نوشته‌ها را پاک می‌کرد
+            if (ex.Errors.ContainsKey("adminPassword"))
+                ModelState.AddModelError(nameof(model.AdminPassword), ex.Message);
+            else
+                model.Error = ex.Message;
             return View(model);
         }
 

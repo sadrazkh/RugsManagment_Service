@@ -157,6 +157,8 @@ public sealed class RugModelV2MigrationTests
                 INSERT INTO "RugPurchaseLines" ("Id", "TenantId", "RugId", "Label", "Basis", "Rate", "Amount", "SortOrder", "CreatedAt")
                 VALUES ({Guid.NewGuid()}, {TenantA}, {RugOdd}, 'broker', 3, 2, 20, 1, now())
                 """);
+            // و تنها سطر خرید فرشی دیگر پاک شد (خرید حالا صفر): Down نباید قیمت پیش از M2 را برگرداند (بازبینی فاز ۲)
+            await db.Database.ExecuteSqlAsync($"""DELETE FROM "RugPurchaseLines" WHERE "RugId" = {RugScale2}""");
 
             await migrator.MigrateAsync(M1);
             Assert.False(await TableExistsAsync(db, "RugPurchaseLines"));
@@ -172,6 +174,7 @@ public sealed class RugModelV2MigrationTests
             Assert.Equal((2.675m, 1.005m, 1020m), Shape(after, RugOdd));          // اصل ابعاد؛ قیمت = جمع دو سطر
             Assert.Equal((3.30m, 2.50m, 0m), Shape(after, RugZero));              // اندازهٔ بعد از M2 می‌ماند
             Assert.Null(after.Single(r => r.Id == RugTrashed).PurchaseCost);
+            Assert.Null(after.Single(r => r.Id == RugScale2).PurchaseCost);       // سطرهایش پاک شد → NULL، نه ۱۲۳۴٫۵۶ پیش از M2
 
             await migrator.MigrateAsync();
             Assert.Empty(await db.Database.GetPendingMigrationsAsync());

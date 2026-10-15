@@ -13,12 +13,23 @@
  *   تومان را سرور برای هر تخته انجام می‌دهد. سطر حروف هر دو را نشان می‌دهد.
  *
  * مقدار `v-model` عدد جاوااسکریپت است (برای JSON)، ولی خواندن و گرد کردن دقیق (`lib/num.ts`) انجام می‌شود.
+ *
+ * فقط نوشتهٔ کاربر خوانده می‌شود: فوکوس و خروج بی‌تایپ مقدار ذخیره‌شده را دوباره نمی‌خواند. وگرنه ضلع ۱۵ متریِ
+ * یک فرش قدیمی با یک Tab «۱۵ متر؟ یا ۱۵ سانت؟» می‌شد و پاک می‌شد، و جواب «۲۵ متر» با خروج بعدی دوباره پرسیده و پاک
+ * می‌شد (G.4: «متر یا سانت؟» یک بار پرسیده و جوابش برای همان عدد به خاطر سپرده می‌شود).
  */
 import { computed, ref, useId, watch } from 'vue'
 import { appContext, isSimpleUi } from '@/lib/context'
 import { faDecimal, toPersianDigits } from '@/lib/format'
 import { message } from '@/lib/messages'
-import { looksLikeDimensionPair, parseDecimal, parseDimensionPair, type DecimalKind, type ParsedDecimal } from '@/lib/money'
+import {
+  looksLikeDimensionPair,
+  normalizeNumericText,
+  parseDecimal,
+  parseDimensionPair,
+  type DecimalKind,
+  type ParsedDecimal,
+} from '@/lib/money'
 import { cmp, dec, mul, toNumber, toPlainString, tryDec } from '@/lib/num'
 import { moneyWords } from '@/lib/numWords'
 import { CurrencyUnit } from '@/lib/types/platform'
@@ -42,7 +53,10 @@ const props = withDefaults(
     currency?: CurrencyUnit
     min?: number
     max?: number
-    /** اندازه: ضلع بزرگ‌تر از این پرسش «متر یا سانت؟» می‌آورد (TenantPreferences.MaxPlausibleSideM) */
+    /**
+     * اندازه: ضلع بزرگ‌تر از این پرسش «متر یا سانت؟» می‌آورد. پیش‌فرض: «بزرگ‌ترین ضلع معمول» کارگاه از app-context
+     * (TenantPreferences.MaxPlausibleSideM)، نه عدد ثابت.
+     */
     maxPlausibleSideM?: number
     id?: string
     describedBy?: string
@@ -66,7 +80,7 @@ const props = withDefaults(
     currency: undefined,
     min: undefined,
     max: undefined,
-    maxPlausibleSideM: 12,
+    maxPlausibleSideM: undefined,
     id: undefined,
     describedBy: undefined,
     invalid: false,
@@ -143,7 +157,7 @@ const parseOptions = computed(() => ({
   scale: effectiveScale.value,
   allowNegative: props.allowNegative,
   currencyLabel: unitLabel.value || ctx.currency.label,
-  maxPlausibleSideM: props.maxPlausibleSideM,
+  maxPlausibleSideM: props.maxPlausibleSideM ?? ctx.maxPlausibleSideM,
 }))
 
 // ── وضعیت ────────────────────────────────────────────────────────────
@@ -161,6 +175,16 @@ const pending = ref<{ message: string; choices: Choice[] } | null>(null)
 const liveValue = ref<string | null>(null)
 /** آخرین مقداری که خودمان فرستادیم؛ تغییر بیرونی را از پژواک خودمان جدا می‌کند */
 let lastEmitted: number | null | undefined = props.modelValue ?? null
+/** کاربر از آخرین ثبت چیزی تایپ کرده؟ فقط آن‌وقت خروج یا Enter متن را دوباره می‌خواند. */
+let dirty = false
+/**
+ * جواب‌های «متر یا سانت؟» همین خانه: متن تایپ‌شده (نرمال) → مقدار انتخاب‌شده. همان عدد دوباره پرسیده نمی‌شود.
+ */
+const unitAnswers = new Map<string, string>()
+
+function answerKey(raw: string): string {
+  return normalizeNumericText(raw)
+}
 
 /**
  * متن قابل ویرایش یک مقدار: ارقام فارسی، بی‌جداکنندهٔ هزارگان، با همان ممیز «.» نمایش (مثل `faNumber` و
@@ -192,12 +216,21 @@ watch(
     if (value === lastEmitted || (value == null && lastEmitted == null)) return
     // مقدار از بیرون عوض شد (والد پر کرد یا پاک کرد): وضعیت محلی را کنار بگذار
     lastEmitted = value ?? null
+    dirty = false
     pending.value = null
     errorText.value = null
     liveValue.value = null
     text.value = editable(value)
   },
 )
+
+/**
+ * آیا خروج/Enter باید متن را بخواند: کاربر چیزی تایپ کرده، یا متن با آخرین مقدار ثبت‌شده نمی‌خواند (پرسش، خطا یا
+ * متنی که هنوز ثبت نشده). متنِ دست‌نخورده‌ای که همان مقدار است دوباره خوانده نمی‌شود.
+ */
+function needsCommit(): boolean {
+  return dirty || pending.value !== null || errorText.value !== null || text.value !== editable(lastEmitted)
+}
 
 function rangeError(value: string): string | null {
   if (props.min !== undefined && cmp(value, props.min) < 0) {
@@ -225,6 +258,7 @@ function apply(value: string) {
   pending.value = null
   errorText.value = null
   liveValue.value = null
+  dirty = false
   text.value = editable(value)
   const n = toNumber(dec(value))
   emitValue(n)
@@ -232,6 +266,7 @@ function apply(value: string) {
 }
 
 function reject(code: string) {
+  dirty = false
   pending.value = null
   errorText.value = message(code, { currency: unitLabel.value || ctx.currency.label })
   emitValue(null)
@@ -266,8 +301,15 @@ function commit(): boolean {
   }
 
   const r = parse(raw)
+  // همین عدد قبلاً «متر یا سانت؟» جواب گرفته: همان جواب، بی پرسش دوباره
+  const remembered = r.status === 'ask' && r.code === 'Q_DIM_UNIT' ? unitAnswers.get(answerKey(raw)) : undefined
+  if (remembered !== undefined) {
+    apply(remembered)
+    return errorText.value !== null
+  }
   switch (r.status) {
     case 'empty':
+      dirty = false
       pending.value = null
       errorText.value = null
       text.value = ''
@@ -278,6 +320,7 @@ function commit(): boolean {
       apply(r.value)
       return errorText.value !== null
     case 'error':
+      dirty = false
       pending.value = null
       errorText.value = message(r.code, r.tokens)
       emitValue(null)
@@ -285,11 +328,17 @@ function commit(): boolean {
       return true
     case 'ask': {
       const fallback = props.kind === 'dim' ? 'E_DIMENSION' : 'E_MONEY_DECIMALS'
+      const key = answerKey(raw)
+      dirty = false
       pending.value = {
         message: message(r.code, r.tokens),
         choices: r.choices.map((c) => ({
           label: c.label,
-          apply: () => (c.value !== null ? apply(c.value) : reject(fallback)),
+          apply: () => {
+            if (c.value === null) return reject(fallback)
+            if (r.code === 'Q_DIM_UNIT') unitAnswers.set(key, c.value)
+            apply(c.value)
+          },
         })),
       }
       emitValue(null)
@@ -320,6 +369,7 @@ function onFocus() {
 
 function onInput(event: Event) {
   text.value = (event.target as HTMLInputElement).value
+  dirty = true
   pending.value = null
   errorText.value = null
 
@@ -343,7 +393,7 @@ function onInput(event: Event) {
 
 function onBlur() {
   focused.value = false
-  commit()
+  if (needsCommit()) commit()
 }
 
 function onKeydown(event: KeyboardEvent) {
@@ -353,8 +403,8 @@ function onKeydown(event: KeyboardEvent) {
       choose(0)
       return
     }
-    // اگر پرسش یا خطایی ماند، فرم ارسال نشود
-    if (commit()) event.preventDefault()
+    // اگر پرسش یا خطایی ماند، فرم ارسال نشود؛ متن دست‌نخورده دوباره خوانده نمی‌شود
+    if (needsCommit() && commit()) event.preventDefault()
   } else if (event.key === 'Escape' && pending.value) {
     event.preventDefault()
     event.stopPropagation()
@@ -396,7 +446,7 @@ const ariaDescribedBy = computed(
 /** پیام مانع ثبت (خطا یا پرسش بی‌جواب) یا null؛ والد پیش از ارسال صدا می‌زند. */
 function validate(): string | null {
   // خروج از خانه خودش ثبت کرده؛ فقط متنِ در حال تایپ را ثبت کن
-  if (focused.value) commit()
+  if (focused.value && needsCommit()) commit()
   if (pending.value) return pending.value.message
   if (errorText.value) return errorText.value
   if (props.required && (props.modelValue === null || props.modelValue === undefined)) {

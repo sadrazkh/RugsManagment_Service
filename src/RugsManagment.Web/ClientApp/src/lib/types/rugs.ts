@@ -20,7 +20,7 @@ import type {
   RugCostSummary as LegacyRugCostSummary,
   RugListItem as LegacyRugListItem,
 } from './legacy'
-import type { AllocationMethod, RugStatus } from './platform'
+import type { AllocationMethod, RugStatus, SerialMode } from './platform'
 
 export type { PagedResult }
 
@@ -364,6 +364,11 @@ export interface RugCostBreakdown {
 /** `GET /api/rugs/next-serial`؛ در حالت «دستی» `next` = null. */
 export interface NextSerial {
   next: number | null
+  /**
+   * حالت شمارهٔ کارگاه (G.4): «خودکار» → خانهٔ شماره فقط نمایش است (سرور متن کاربر را برای فرش تازه نادیده می‌گیرد)؛
+   * «پیشنهاد بعدی» → Enter/Tab پیشنهاد کم‌رنگ را می‌پذیرد. سرور قدیمی‌تر نمی‌فرستد (undefined = مثل «پیشنهاد بعدی»).
+   */
+  mode?: SerialMode | null
 }
 
 /** `GET /api/rugs/by-serial/{serial}` (پیدا نشد → ۴۰۴). */

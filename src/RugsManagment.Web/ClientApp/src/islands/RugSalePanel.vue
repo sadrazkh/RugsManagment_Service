@@ -14,6 +14,7 @@ import { currencyLabel, faDate, faMoney } from '@/lib/format'
 import { PAYMENT_METHOD_LABELS } from '@/lib/labels'
 import { message } from '@/lib/messages'
 import { confirmDialog, toast } from '@/lib/ui'
+import { previewInvestment, salePreview } from './rugs/salePreview'
 
 interface Sale {
   id: string
@@ -100,11 +101,14 @@ function today(): string {
 
 const methodLabel = (v: number) => PAYMENT_METHODS.find((m) => m.value === v)?.label ?? '—'
 
-/** پیش‌نمایش زنده — کاربر قبل از ذخیره سود را می‌بیند. */
-const preview = computed(() => {
-  const net = Math.max(0, (form.salePrice ?? 0) - (form.discount ?? 0))
-  return { net, profit: net - (props.totalInvestment ?? 0) }
-})
+/**
+ * سرمایهٔ پیش‌نمایش (D.6): ویرایش فروش موجود عکس بهای لحظهٔ فروش را نگه می‌دارد و سرور سود را با همان حساب می‌کند، پس
+ * پیش‌نمایش هم همان را می‌گیرد؛ فقط فروش تازه با بهای امروز فرش است.
+ */
+const investment = computed(() => previewInvestment(sale.value, props.totalInvestment))
+
+/** پیش‌نمایش زنده — کاربر قبل از ذخیره همان سودی را می‌بیند که ذخیره می‌سازد. */
+const preview = computed(() => salePreview(form.salePrice, form.discount, investment.value))
 
 async function load() {
   loading.value = true
@@ -278,7 +282,7 @@ onMounted(() => {
         </div>
         <div>
           <dt class="text-xs text-on-surface-variant">سرمایه‌گذاری</dt>
-          <dd>{{ totalInvestment === null ? '—' : faMoney(totalInvestment) }}</dd>
+          <dd>{{ investment === null ? '—' : faMoney(investment) }}</dd>
         </div>
         <div>
           <dt class="text-xs text-on-surface-variant">سود</dt>

@@ -119,6 +119,20 @@ public static partial class Messages
     public static readonly MessageTemplate PurchaseTooManyLines =
         new("E_PURCHASE_TOO_MANY", "یک فرش حداکثر {n} سطر خرید دارد.");
 
+    /// <summary>
+    /// نرخ درست است ولی مبلغی که با اندازه و تعداد می‌سازد از ستون مبلغ (numeric(18,2)) بیرون می‌زند؛ پیش از ذخیره رد
+    /// می‌شود تا به‌جای خطای فیلد، ۵۰۰ نیاید.
+    /// </summary>
+    public static readonly MessageTemplate PurchaseAmountTooLarge =
+        new("E_PURCHASE_AMOUNT_TOO_LARGE", "مبلغ این سطر از حد بیشتر می‌شود؛ نرخ، اندازه یا تعداد را دوباره ببینید.");
+
+    /// <summary>
+    /// پشتیبان آخر: مبلغی که پاس سازگاری حساب کرد در ستون جا نمی‌شود (سرریز عددی پستگرس، مثلاً اندازهٔ اول تازه از فرم
+    /// قدیمی روی سطر متری بزرگ) — ۴۰۰ به‌جای ۵۰۰.
+    /// </summary>
+    public static readonly MessageTemplate AmountOverflow =
+        new("E_AMOUNT_OVERFLOW", "مبلغی که حساب می‌شود از حد بیشتر است؛ نرخ، اندازه یا تعداد را دوباره ببینید.");
+
     // ── برش دسته (D.9) ───────────────────────────────────────────────────────────────────────
 
     /// <summary>فرشی که دسته نیست (تعداد یک).</summary>

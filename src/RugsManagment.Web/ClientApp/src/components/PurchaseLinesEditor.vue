@@ -44,8 +44,12 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  /** ذخیرهٔ موفق با پاسخ سرور (سطرها، جمع، نسخهٔ تازه، خلاصهٔ بها) */
-  saved: [result: PurchaseLinesResult]
+  /**
+   * ذخیرهٔ موفق با پاسخ سرور (سطرها، جمع، نسخهٔ تازه، خلاصهٔ بها) و نسخه‌ای که ذخیره رویش فرستاده شد. والدی که خودش فرم
+   * همین فرش را دارد (RugForm) نسخهٔ تازه را فقط وقتی برمی‌دارد که این نسخهٔ پایه همان نسخهٔ فرم باشد؛ وگرنه ویرایشگر
+   * تغییر کس دیگری را (با «دوباره بخوان») خوانده و فرمِ ساخته‌شده از دادهٔ کهنه باید ۴۰۹ بگیرد، نه رونویسی بی‌صدا.
+   */
+  saved: [result: PurchaseLinesResult, baseVersion: number]
 }>()
 
 const SOURCE = 'purchase-lines-editor'
@@ -147,6 +151,16 @@ function markDirty() {
   if (!releaseReload) releaseReload = blockReload('purchase-lines')
 }
 
+/**
+ * نرخ سطر از خانهٔ عدد. فقط تغییر واقعی ویرایشگر را «تغییر کرده» می‌کند: فوکوس و خروجِ بی‌تغییر نباید تازه‌سازی صفحه را
+ * قفل کند، «Leave site?» بیاورد و ذخیرهٔ جزیره‌های دیگر را پشت «بعد از ذخیرهٔ کارتان» نگه دارد.
+ */
+function setRate(row: Row, value: number | null) {
+  if (row.rate === value) return
+  row.rate = value
+  markDirty()
+}
+
 function markClean() {
   dirty.value = false
   releaseReload?.()
@@ -216,9 +230,10 @@ function clearErrors() {
 async function save() {
   clearErrors()
   saving.value = true
+  const baseVersion = version.value
   try {
     const result = await api.put<PurchaseLinesResult>(`/api/rugs/${props.rugId}/purchase-lines`, {
-      version: version.value,
+      version: baseVersion,
       lines: rows.value.map((row, index) => ({
         id: row.id,
         categoryId: row.categoryId,
@@ -232,7 +247,7 @@ async function save() {
     })
     apply(result)
     announceRugChanged({ rugId: props.rugId, version: result.version, source: SOURCE })
-    emit('saved', result)
+    emit('saved', result, baseVersion)
   } catch (e) {
     formError.value = errorMessage(e)
     if (e instanceof ApiError) {
@@ -346,7 +361,7 @@ onUnmounted(() => {
 
             <div class="min-w-40 flex-1">
               <NumberField
-                v-model="row.rate"
+                :model-value="row.rate"
                 :kind="isPercentRow(row) ? 'percent' : 'money'"
                 :scale="row.basis === CostBasis.Total ? moneyScale : 4"
                 :allow-negative="row.basis === CostBasis.Total"
@@ -354,7 +369,7 @@ onUnmounted(() => {
                 :invalid="!!rowError(index, 'rate')"
                 :aria-label="`نرخ ${row.label || 'سطر'}`"
                 :words="!isPercentRow(row)"
-                @update:model-value="markDirty"
+                @update:model-value="setRate(row, $event)"
               />
               <p v-if="rowError(index, 'rate')" class="mt-1 text-xs text-error">{{ rowError(index, 'rate') }}</p>
             </div>

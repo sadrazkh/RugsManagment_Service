@@ -129,8 +129,11 @@ public class RugRepository : Repository<Rug>, IRugRepository
         return new PagedResult<RugListItemDto>(items, totalCount, query.Page, query.PageSize);
     }
 
-    private static IQueryable<Rug> ApplyFilters(IQueryable<Rug> source, RugQuery query)
+    private IQueryable<Rug> ApplyFilters(IQueryable<Rug> source, RugQuery query)
     {
+        // خط‌های محموله (فاز محموله): فرش ناوبری به خطش ندارد، پس زیرپرس‌وجوی همبسته روی همان DbContext
+        var lines = Db.Set<ShipmentLine>();
+
         if (query.Status.HasValue)
             source = source.Where(r => r.Status == query.Status.Value);
 
@@ -151,18 +154,27 @@ public class RugRepository : Repository<Rug>, IRugRepository
         if (query.CreatedTo.HasValue)
             source = source.Where(r => r.CreatedAt <= query.CreatedTo.Value);
 
-        // ── محموله و نگله (فاز محموله): تا جدول خط نیامده هیچ فرشی در محموله نیست ──
-        if (query.ShipmentId.HasValue || query.BaleId.HasValue)
-            source = source.Where(r => false);
-        // NotBaled: همهٔ فرش‌ها «در هیچ نگله‌ای نیستند»؛ فیلتری لازم نیست
+        // ── محموله و نگله (فاز محموله): فرش‌هایی که خطی در این محموله / این نگله دارند، یا هیچ خطی ندارند ──
+        if (query.ShipmentId is Guid shipmentId)
+            source = source.Where(r => lines.Any(l => l.RugId == r.Id && l.ShipmentId == shipmentId));
 
-        // ── جای فرش (C.10) تا جایی که فاز ۲ می‌بیند: فروش یا انبار؛ سطل زباله فهرست جدا دارد ──
+        if (query.BaleId is Guid baleId)
+            source = source.Where(r => lines.Any(l => l.RugId == r.Id && l.BaleId == baleId));
+
+        if (query.NotBaled)
+            source = source.Where(r => !lines.Any(l => l.RugId == r.Id));
+
+        // ── جای فرش (C.10)، همان ترتیب RugLocationRules؛ سطل زباله فهرست جدا دارد ──
         if (query.Location is RugLocation location)
         {
             source = location switch
             {
                 RugLocation.Sold => source.Where(r => r.Sale != null),
-                RugLocation.InStock => source.Where(r => r.Sale == null),
+                RugLocation.Exported => source.Where(r => r.Sale == null
+                    && lines.Any(l => l.RugId == r.Id && l.Shipment.Status == ShipmentStatus.Finalized)),
+                RugLocation.InBale => source.Where(r => r.Sale == null
+                    && lines.Any(l => l.RugId == r.Id && l.Shipment.Status == ShipmentStatus.Open)),
+                RugLocation.InStock => source.Where(r => r.Sale == null && !lines.Any(l => l.RugId == r.Id)),
                 _ => source.Where(r => false)
             };
         }
@@ -224,7 +236,9 @@ public class RugRepository : Repository<Rug>, IRugRepository
     /// ساخت ردیف سبک فهرست. بها از <c>RugCostTotal</c> (پاس سازگاری)، نه فرمول؛ مرحلهٔ جاری با زیرکوئری همبسته.
     /// هر عضو فاز ۲ صریح پاس داده می‌شود: داخل expression tree آرگومان اختیاریِ حذف‌شده مقدار پیش‌فرض بی‌صدا می‌گیرد (I.1).
     /// </summary>
-    private static IQueryable<RugListItemDto> Project(IQueryable<Rug> source) => source
+    private IQueryable<RugListItemDto> Project(IQueryable<Rug> source) => Project(source, Db.Set<ShipmentLine>());
+
+    private static IQueryable<RugListItemDto> Project(IQueryable<Rug> source, IQueryable<ShipmentLine> lines) => source
         .Select(r => new RugListItemDto(
             r.Id,
             r.Sku,
@@ -265,10 +279,14 @@ public class RugRepository : Repository<Rug>, IRugRepository
             r.TotalAreaM2,
             r.CostTotal != null,
             r.CostTotal != null ? r.CostTotal.CostPerM2 : null,
-            // ترتیب C.10 تا جایی که فاز ۲ می‌بیند (فاز محموله شاخه‌های نگله و صادرشده را اضافه می‌کند)
-            r.DeletedAt != null ? RugLocation.Trashed : r.Sale != null ? RugLocation.Sold : RugLocation.InStock,
-            (int?)null,
-            (int?)null,
+            // ترتیب C.10 (همان RugLocationRules): سطل زباله ← فروش ← خط در محمولهٔ قطعی ← خط در محمولهٔ باز ← انبار
+            r.DeletedAt != null ? RugLocation.Trashed
+                : r.Sale != null ? RugLocation.Sold
+                : lines.Where(l => l.RugId == r.Id)
+                      .Select(l => (RugLocation?)(l.Shipment.Status == ShipmentStatus.Finalized ? RugLocation.Exported : RugLocation.InBale))
+                      .FirstOrDefault() ?? RugLocation.InStock,
+            lines.Where(l => l.RugId == r.Id).Select(l => (int?)l.Bale.Number).FirstOrDefault(),
+            lines.Where(l => l.RugId == r.Id).Select(l => (int?)l.Shipment.Number).FirstOrDefault(),
             EF.Property<uint>(r, "xmin")));
 
     /// <summary>

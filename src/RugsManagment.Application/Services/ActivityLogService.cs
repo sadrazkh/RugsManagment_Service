@@ -40,8 +40,9 @@ public sealed class ActivityLogService(
         var result = await entries.PageAsync(tenantId, query.Action, query.From, query.To, page, size, ct);
         var terms = await TermsAsync(tenantId, ct);
 
+        // شمارهٔ صفحه همان است که مخزن واقعاً برگرداند: صفحهٔ بعد از آخر به آخرین صفحه بریده می‌شود
         return new ActivityPageDto(
-            result.Items.Select(e => ToDto(e, terms)).ToList(), result.TotalCount, page, size);
+            result.Items.Select(e => ToDto(e, terms)).ToList(), result.TotalCount, result.Page, size);
     }
 
     public async Task<IReadOnlyList<ActivityEntryDto>> ForEntityAsync(

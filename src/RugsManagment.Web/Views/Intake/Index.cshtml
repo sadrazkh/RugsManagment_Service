@@ -1,0 +1,42 @@
+@model RugsManagment.Application.DTOs.Grid.IntakePageDto
+@using RugsManagment.Web.Auth
+@using RugsManagment.Web.Navigation
+@inject Microsoft.AspNetCore.Mvc.Infrastructure.IActionDescriptorCollectionProvider Actions
+@{
+    ViewData["Title"] = "ورود فرش";
+    var business = Policies.IsBusiness(User);
+    var hasImport = business && AppShell.HasController(Actions, ShellFeatures.ImportController);
+}
+
+@*
+    صفحهٔ «ورود فرش» (H.1). همه‌چیزِ صفحه جزیرهٔ intake-grid است (islands/intake/IntakeGrid.island.vue): سربرگ با
+    «تاریخ رسیدن» و عنوانی که با تاریخ عوض می‌شود، نوار «ورودی‌های اخیر»، جدول (GET /api/grid/intake)، پانویس هر
+    فروشنده با دکمهٔ «هزینه یا خرید یکجای این ورودی» (Business)، و «چاپ برچسب‌ها». این قاب فقط props اول را می‌دهد.
+*@
+<div class="space-y-4" data-hotkeys-off>
+    @*
+        عنوان دیدنی («ورودی امروز» / «ورودی دیروز» / «ورودی ۱۴۰۵/۰۶/۱۰») را جزیره با تاریخ عوض می‌کند (h2 خودش)؛ این h1
+        روز را نمی‌گوید، چون جزیره روز را بی بار دوبارهٔ صفحه عوض می‌کند و h1 سرور «ورودی امروز» می‌ماند و برای صفحه‌خوان
+        روز دیگری را اعلام می‌کرد.
+    *@
+    <h1 class="sr-only">ورود فرش</h1>
+    @if (hasImport)
+    {
+        <div class="flex justify-end">
+            <a href="/Import"
+               class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-4 hover:bg-surface-container">
+                <icon name="upload" class="h-5 w-5" />
+                ورود از اکسل
+            </a>
+        </div>
+    }
+
+    <div data-island="intake-grid" data-skeleton="30rem"
+         data-props='@Json.Serialize(new
+                     {
+                         date = Model.Date,
+                         defaultSeller = Model.DefaultSeller,
+                         serialMode = Model.SerialMode,
+                         maxPlausibleSideM = Model.MaxPlausibleSideM
+                     })'></div>
+</div>

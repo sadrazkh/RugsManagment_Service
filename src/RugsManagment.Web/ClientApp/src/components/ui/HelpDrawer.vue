@@ -4,12 +4,14 @@
  * «اندازهٔ نوشته» و پیوند «کارت راهنما» برای چاپ و گذاشتن کنار رایانه.
  *
  * متن هر صفحه در `lib/help.ts` است؛ کلید صفحه از `page`، وگرنه از `data-help-page` روی body یا مسیر نشانی.
- * واژهٔ نگله/عدل از `terms` کارگاه پر می‌شود.
+ * واژهٔ نگله/عدل از `terms` کارگاه پر می‌شود. گام‌های فقط-Business (ثبت هزینه، مبلغ‌ها، «قطعی کن») برای انباردار
+ * نشان داده نمی‌شوند (H.3: متن از سیاست بیننده پیروی می‌کند).
  *
  *   <HelpDrawer v-model:open="helpOpen" page="rugs" />
  */
 import { computed } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
+import { appContext } from '@/lib/context'
 import { toPersianDigits } from '@/lib/format'
 import { currentHelpPage, helpFor } from '@/lib/help'
 import { fillMessage } from '@/lib/messages'
@@ -19,7 +21,8 @@ import TextScaleControl from './TextScaleControl.vue'
 const props = withDefaults(defineProps<{ open: boolean; page?: string }>(), { page: undefined })
 const emit = defineEmits<{ 'update:open': [value: boolean]; close: [] }>()
 
-const topic = computed(() => helpFor(props.page ?? currentHelpPage()))
+const ctx = appContext()
+const topic = computed(() => helpFor(props.page ?? currentHelpPage(), { business: ctx.policies.business }))
 const steps = computed(() => topic.value.steps.map((s) => ({ ...s, text: fillMessage(s.text) })))
 
 function update(value: boolean) {

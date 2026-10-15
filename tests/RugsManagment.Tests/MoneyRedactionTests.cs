@@ -117,8 +117,25 @@ public class MoneyRedactionTests
     public void WriteRule_NullMembersPass_ForEveryone()
     {
         Operator.EnsureMayWriteMoney(null, null);
-        Operator.EnsureMayWriteStepPricing(new AdvanceRugStepRequest(null, null, null, null, "  ", null, "note",
+        Operator.EnsureMayWriteStepPricing(new AdvanceRugStepRequest(null, null, null, null, null, null, "note",
             ClearManualOverride: false));
+    }
+
+    /// <summary>
+    /// پیکربندی ترکیبیِ خالی یا فاصله از انباردار هم ۴۰۳ است: موتور گردش کار هر مقدار غیر null را «پاک کن»
+    /// می‌خواند (یافتهٔ بازبینی فاز ۱: «pricingConfigJson»: "" از نگهبان رد می‌شد و قیمت ترکیبی را پاک می‌کرد).
+    /// </summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void WriteRule_BlankPricingConfig_FromOperator_Is403(string blank)
+    {
+        var ex = Assert.Throws<UnauthorizedAccessException>(() => Operator.EnsureMayWriteStepPricing(
+            new AdvanceRugStepRequest(null, null, null, null, blank, null, null)));
+        Assert.Equal(Messages.MoneyWriteForbidden.Text, ex.Message);
+
+        // بازرگان همچنان می‌تواند پیکربندی را با رشتهٔ خالی پاک کند
+        Merchant.EnsureMayWriteStepPricing(new AdvanceRugStepRequest(null, null, null, null, blank, null, null));
     }
 
     [Fact]

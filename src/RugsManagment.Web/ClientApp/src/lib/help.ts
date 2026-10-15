@@ -5,6 +5,10 @@
  * چاپی هم همین گام‌ها می‌آیند؛ پس فقط این فایل ویرایش می‌شود، نه HelpDrawer. متن به زبان ساده و بازاری
  * است و از واژه‌نامهٔ A.2 بیرون نمی‌رود. واژهٔ نگله/عدل با نشانهٔ `{bale}` و `{baleOf}` نوشته می‌شود و از
  * `terms` کارگاه پر می‌شود.
+ *
+ * متن از سیاست بیننده پیروی می‌کند (H.3): گامی که دکمه یا خانه‌اش فقط برای Business است (ثبت هزینه، مبلغ‌ها،
+ * «قطعی کن») `business: true` دارد و برای انباردار نشان داده نمی‌شود — همان قاعدهٔ `MerchantSteps.For` سرور که
+ * راهنمای شروع خانه و «کارت راهنما» را می‌سازد، تا دو راهنما دو حرف نزنند.
  */
 
 export interface HelpStep {
@@ -14,6 +18,8 @@ export interface HelpStep {
   icon?: string
   /** کلیدهای صفحه‌کلید، مثل ['Ctrl', 'K'] */
   keys?: string[]
+  /** فقط برای کسی که سیاست Business دارد (دکمه یا خانه‌اش برای انباردار نیست) */
+  business?: boolean
 }
 
 export interface HelpTopic {
@@ -40,7 +46,7 @@ const TOPICS: Record<HelpPage, HelpTopic> = {
     steps: [
       { text: 'برای ثبت فرش‌هایی که رسیده، «ثبت فرش تازه» را بزنید.', icon: 'plus' },
       { text: 'برای بستن فرش‌ها در {bale}، «{bale}‌بندی» را بزنید.', icon: 'bale' },
-      { text: 'هر رسید یا هزینه را با «ثبت هزینه» بنویسید.', icon: 'receipt' },
+      { text: 'هر رسید یا هزینه را با «ثبت هزینه» بنویسید.', icon: 'receipt', business: true },
       { text: 'برای گرفتن اکسل یا چاپ اظهارنامه، «اکسل و چاپ» را بزنید.', icon: 'printer' },
       { text: 'هر جا گیر کردید، دکمهٔ «؟ راهنما» همین صفحه را باز کنید.', icon: 'help' },
     ],
@@ -68,8 +74,8 @@ const TOPICS: Record<HelpPage, HelpTopic> = {
     steps: [
       { text: 'طول و عرض را به متر بنویسید، مثل ۲٫۰۸. اگر به سانت بنویسید (۲۰۸) خودش می‌پرسد.', icon: 'ruler' },
       { text: 'می‌توانید «۲۰۸×۲۱۰» را یک‌جا بنویسید تا هر دو خانه پر شود.', icon: 'ruler' },
-      { text: 'مبلغ را با «م» برای میلیون و «ه» برای هزار هم می‌شود نوشت: ۱۰م یعنی ده میلیون.', icon: 'coins' },
-      { text: 'زیر هر مبلغ، همان عدد به حروف نوشته می‌شود؛ یک نگاه بیندازید که صفرها درست باشد.', icon: 'check' },
+      { text: 'مبلغ را با «م» برای میلیون و «ه» برای هزار هم می‌شود نوشت: ۱۰م یعنی ده میلیون.', icon: 'coins', business: true },
+      { text: 'زیر هر مبلغ، همان عدد به حروف نوشته می‌شود؛ یک نگاه بیندازید که صفرها درست باشد.', icon: 'check', business: true },
       { text: 'در آخر «ثبت فرش» را بزنید.', icon: 'check', keys: ['Enter'] },
     ],
   },
@@ -96,7 +102,7 @@ const TOPICS: Record<HelpPage, HelpTopic> = {
       { text: 'هر محموله یعنی یک اظهارنامهٔ صادرات.', icon: 'truck' },
       { text: 'شمارهٔ فرش را بزنید تا در {baleOf} جاری برود.', icon: 'scan' },
       { text: 'اندازهٔ نهایی هر فرش را بنویسید، یا «همان اندازه» را بزنید.', icon: 'ruler', keys: ['='] },
-      { text: 'وقتی همه آماده شد، «قطعی کن» را بزنید.', icon: 'lock' },
+      { text: 'وقتی همه آماده شد، «قطعی کن» را بزنید.', icon: 'lock', business: true },
     ],
   },
   costs: {
@@ -125,9 +131,19 @@ const TOPICS: Record<HelpPage, HelpTopic> = {
   },
 }
 
-/** متن راهنمای یک صفحه؛ صفحهٔ ناشناخته راهنمای کلی می‌گیرد. */
-export function helpFor(page: string | null | undefined): HelpTopic {
-  return isHelpPage(page) ? TOPICS[page] : TOPICS.default
+/** آنچه بیننده می‌تواند ببیند (از `policies` در app-context). */
+export interface HelpViewer {
+  business: boolean
+}
+
+/**
+ * متن راهنمای یک صفحه؛ صفحهٔ ناشناخته راهنمای کلی می‌گیرد. با `viewer`، گام‌های Business برای کسی که Business
+ * نیست حذف می‌شوند (شماره‌گذاری بعد از حذف است). بی `viewer` همهٔ گام‌ها (کارت راهنمای چاپی بازرگان و آزمون).
+ */
+export function helpFor(page: string | null | undefined, viewer?: HelpViewer): HelpTopic {
+  const topic = isHelpPage(page) ? TOPICS[page] : TOPICS.default
+  if (!viewer || viewer.business) return topic
+  return { ...topic, steps: topic.steps.filter((s) => !s.business) }
 }
 
 /** آیا این کلید یک صفحهٔ راهنماست؟ (کلیدهای پیش‌نمونهٔ شیء مثل «constructor» نه) */

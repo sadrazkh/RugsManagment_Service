@@ -92,9 +92,18 @@ export interface ParseDecimalOptions {
   allowNegative?: boolean
   /** مبلغ: برچسب واحد برای پیام «مبلغ تومان اعشار ندارد» (پیش‌فرض از app-context) */
   currencyLabel?: string
-  /** اندازه: ضلع تا این عدد بی‌پرسش متر است (TenantPreferences.MaxPlausibleSideM، پیش‌فرض ۱۲) */
+  /** اندازه: ضلع تا این عدد بی‌پرسش متر است (پیش‌فرض: `maxPlausibleSideM` کارگاه از app-context) */
   maxPlausibleSideM?: number
+  /**
+   * مبلغ: رقم اعشار **ارز** کارگاه (MoneyScale) برای پرسش «۱۰٬۰۰۰؟»، جدا از `scale` (دقت همین خانه). نرخ «هر متر» و
+   * «هر تخته» سطر خرید تا ۴ رقم اعشار دارد ولی همان تومان است: «۳۰۰.۰۰۰» در کارگاه تومانی یعنی سیصد هزار، نه سیصد (G.4).
+   * پیش‌فرض: `scale` وقتی در بازهٔ MoneyScale است (۰ تا ۲؛ خودِ مبلغ)، وگرنه MoneyScale کارگاه از app-context.
+   */
+  moneyScale?: number
 }
+
+/** بیشترین MoneyScale کارگاه (TenantPreferences.MaxMoneyScale)؛ خانهٔ مبلغی با دقت بیشتر نرخ است، نه خودِ مبلغ. */
+const MAX_MONEY_SCALE = 2
 
 /** حدهای سخت اندازه (G.4): از ۵ سانت تا ۳۰ متر، حداکثر دو رقم اعشار. */
 export const MIN_SIDE_M = '0.05'
@@ -105,6 +114,23 @@ const MAX_CM = 3000
 export const LARGE_AREA_M2 = '60'
 
 const NUMBER_SHAPE = /^-?(\d+\.?\d*|\.\d+)$/
+
+/**
+ * جداکنندهٔ هزارگان درست: یک تا سه رقم، بعد گروه‌های دقیقاً سه‌رقمی، فقط در بخش صحیح («1,234,567»، «۱٬۲۵۰٬۰۰۰٫۵»).
+ * نشانهٔ منفی/مثبت آغاز و ممیز «.» پایانی را هم می‌پذیرد؛ متن بی‌جداکننده را این قاعده نمی‌سنجد.
+ */
+const WELL_GROUPED = /^[-+]?\d{1,3}(?:[,٬]\d{3})+(?:\.\d*)?$/
+
+/**
+ * «,» و «٬» را فقط وقتی جداکنندهٔ هزارگان درست‌اند برمی‌دارد؛ جای نادرست (۲٬۵، 45,55، 1,23) null می‌دهد.
+ *
+ * چرا نه حذف بی‌قید: روی کیبورد فارسی «٬» (هزارگان) و «٫» (ممیز) دو کلید کنار هم با Shift‌اند و تقریباً یک شکل‌اند.
+ * کسی که «۲٬۵م» نوشته منظورش ۲٫۵ میلیون است؛ حذف بی‌قید «۲۵م» = ۲۵ میلیون می‌ساخت، یعنی ده برابر، بی‌صدا.
+ */
+function stripGrouping(text: string): string | null {
+  if (!/[,٬]/.test(text)) return text
+  return WELL_GROUPED.test(text) ? text.replace(/[,٬]/g, '') : null
+}
 
 /** متن عددی فارسی برای پیام‌ها و دکمه‌ها: «۲٫۰۸»، «۱۰٬۰۰۰». */
 function faText(value: Dec | string, minDecimals = 0): string {
@@ -149,8 +175,10 @@ function parseMoney(raw: string, options: ParseDecimalOptions): ParsedDecimal {
     }
   }
 
-  // در مبلغ «,» و «٬» جداکنندهٔ هزارگان‌اند
-  text = text.replace(/[,٬]/g, '')
+  // در مبلغ «,» و «٬» جداکنندهٔ هزارگان‌اند، ولی فقط سر جای درستشان
+  const ungrouped = stripGrouping(text)
+  if (ungrouped === null) return invalid('E_NUMBER_GROUPING')
+  text = ungrouped
   const { negative, body } = splitSign(text)
   if (!body) return invalid('E_NUMBER')
   if ((body.match(/\./g) ?? []).length > 1 || !NUMBER_SHAPE.test(body)) return invalid('E_NUMBER')
@@ -158,10 +186,13 @@ function parseMoney(raw: string, options: ParseDecimalOptions): ParsedDecimal {
 
   const literal = dec((negative ? '-' : '') + body)
 
-  // «10.000» بدون پسوند وقتی مبلغ اعشار ندارد: شاید منظور ده هزار بوده (نقطه به‌جای جداکننده)
-  if (factor === null && scale === 0 && /^\d+\.\d{3}$/.test(body)) {
+  // «10.000» بدون پسوند وقتی ارز کارگاه اعشار ندارد: شاید منظور ده هزار بوده (نقطه به‌جای جداکننده). معیار رقم اعشار
+  // ارز است نه دقت خانه، تا نرخ «هر متر» (دقت ۴) در کارگاه تومانی هم بپرسد و «۳۰۰.۰۰۰» بی‌صدا ۳۰۰ نشود.
+  const currencyScale = options.moneyScale ?? (scale <= MAX_MONEY_SCALE ? scale : appContext().moneyScale)
+  if (factor === null && currencyScale === 0 && /^\d+\.\d{3}$/.test(body)) {
     const asThousands = dec((negative ? '-' : '') + body.replace('.', ''))
-    const asTyped = isInteger(literal) ? toPlainString(literal) : null
+    // «نه»: همان عدد تایپ‌شده، اگر دقت این خانه آن را می‌پذیرد (نرخ ۱۰٫۵۰۰ درست است؛ مبلغ تومانی ۱۰٫۵ نه)
+    const asTyped = significantDecimals(literal) <= scale ? toPlainString(normalize(literal)) : null
     return {
       status: 'ask',
       code: 'Q_MONEY_THOUSANDS',
@@ -188,7 +219,9 @@ function parsePlainNumber(raw: string, options: ParseDecimalOptions): ParsedDeci
   const scale = options.scale ?? 2
   let text = normalizeNumericText(raw)
   if (!text) return { status: 'empty' }
-  text = text.replace(/[,٬]/g, '')
+  const ungrouped = stripGrouping(text)
+  if (ungrouped === null) return invalid('E_NUMBER_GROUPING')
+  text = ungrouped
   const { negative, body } = splitSign(text)
   if (!body || (body.match(/\./g) ?? []).length > 1 || !NUMBER_SHAPE.test(body)) return invalid('E_NUMBER')
   if (negative && !options.allowNegative) return invalid('E_NEGATIVE')
@@ -218,7 +251,7 @@ function parseDimensionValue(text: string, options: ParseDecimalOptions): Parsed
   if ((body.match(/\./g) ?? []).length > 1 || !NUMBER_SHAPE.test(body)) return invalid('E_DIMENSION')
 
   const value = dec(body)
-  const maxPlausible = dec(options.maxPlausibleSideM ?? 12)
+  const maxPlausible = dec(options.maxPlausibleSideM ?? appContext().maxPlausibleSideM)
 
   // فقط عددی که بی‌ممیز تایپ شده مبهم است؛ «30.00» یعنی صریحاً متر
   if (!body.includes('.') && isInteger(value)) {
@@ -256,11 +289,11 @@ function parseDimensionValue(text: string, options: ParseDecimalOptions): Parsed
 
 /**
  * خواندن یک عدد تایپ‌شده (G.4).
- * - `money`: «,» و «٬» جداکنندهٔ هزارگان؛ پسوند «م/میلیون» × ۱٬۰۰۰٬۰۰۰ و «ه/هزار» × ۱٬۰۰۰؛ با MoneyScale صفر،
+ * - `money`: «,» و «٬» جداکنندهٔ هزارگان (فقط سر جای درست: گروه‌های سه‌رقمی؛ وگرنه E_NUMBER_GROUPING)؛ پسوند «م/میلیون» × ۱٬۰۰۰٬۰۰۰ و «ه/هزار» × ۱٬۰۰۰؛ با MoneyScale صفر،
  *   «10.000» پرسیده می‌شود و هر اعشار دیگری رد.
  * - `dim`: «,» ممیز است؛ ۰٫۰۵ تا ۳۰ متر با حداکثر دو رقم اعشار؛ عدد صحیح ۳۱ تا ۳۰۰۰ تأیید سانت، و عدد صحیح
  *   بزرگ‌تر از ضلع معقول تا ۳۰ پرسش «متر یا سانت؟».
- * - `number`: عدد ساده با حداکثر `scale` رقم اعشار.
+ * - `number`: عدد ساده با حداکثر `scale` رقم اعشار؛ جداکنندهٔ هزارگان با همان قاعدهٔ مبلغ.
  * بیش از یک ممیز همیشه رد می‌شود.
  */
 export function parseDecimal(raw: string, kind: DecimalKind, options: ParseDecimalOptions = {}): ParsedDecimal {

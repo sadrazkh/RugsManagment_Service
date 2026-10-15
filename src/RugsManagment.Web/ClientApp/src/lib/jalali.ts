@@ -134,16 +134,30 @@ export function jalaliToGregorian(jy: number, jm: number, jd: number): { gy: num
 
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})/
 
-/** «2026-09-06» (یا شروع یک ISO کامل) → شمسی؛ متن نامعتبر null. */
+/**
+ * «2026-09-06» (یا شروع یک ISO کامل) → شمسی؛ متن نامعتبر یا سال بیرون از بازهٔ پشتیبانی‌شده (۱۲۰۰ تا ۱۵۰۰ شمسی) null.
+ *
+ * چرا بازه این‌جا هم: الگوریتم برای سال‌های خیلی دور RangeError پرتاب می‌کرد. «0001-01-01» (پیش‌فرض DateOnly) یا
+ * «0024-05-01» (سال دو رقمیِ <input type="date"> قدیمی) در دادهٔ کهنه هست؛ بی این بررسی باز کردن فرم ویرایش همان
+ * فرش (JalaliDateField) و هر فهرستی که faJalali می‌گیرد خطا می‌داد، به‌جای «—».
+ */
 export function isoToJalali(iso: string | null | undefined): JalaliDate | null {
   const m = iso ? ISO_DATE.exec(iso) : null
   if (!m) return null
   const [gy, gm, gd] = [Number(m[1]), Number(m[2]), Number(m[3])]
   if (gm < 1 || gm > 12 || gd < 1 || gd > 31) return null
-  const j = gregorianToJalali(gy, gm, gd)
-  // روز ۳۱ ماه ۳۰ روزه و مانند آن را رد کن: برگشت باید همان تاریخ باشد
-  const back = jalaliToGregorian(j.jy, j.jm, j.jd)
-  return back.gy === gy && back.gm === gm && back.gd === gd ? j : null
+  // یک سال حاشیه دو طرف: ۱ فروردین ۱۲۰۰ در ۱۸۲۱ میلادی است و ۲۹ اسفند ۱۵۰۰ در ۲۱۲۲
+  if (gy < MIN_JALALI_YEAR + 621 || gy > MAX_JALALI_YEAR + 622) return null
+  try {
+    const j = gregorianToJalali(gy, gm, gd)
+    if (j.jy < MIN_JALALI_YEAR || j.jy > MAX_JALALI_YEAR) return null
+    // روز ۳۱ ماه ۳۰ روزه و مانند آن را رد کن: برگشت باید همان تاریخ باشد
+    const back = jalaliToGregorian(j.jy, j.jm, j.jd)
+    return back.gy === gy && back.gm === gm && back.gd === gd ? j : null
+  } catch {
+    // احتیاط: نمایش تاریخ هرگز نباید صفحه را بشکند
+    return null
+  }
 }
 
 /** شمسی → «2026-09-06». */

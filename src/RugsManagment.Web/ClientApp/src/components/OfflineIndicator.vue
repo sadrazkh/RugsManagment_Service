@@ -11,6 +11,7 @@
 import { computed, ref } from 'vue'
 import AppIcon from './AppIcon.vue'
 import { faNumber } from '@/lib/format'
+import { message } from '@/lib/messages'
 import { clear, flush, isOnline, queue } from '@/lib/offlineQueue'
 import { confirmDialog, requestReload, toast } from '@/lib/ui'
 
@@ -31,6 +32,7 @@ async function retryNow() {
     const result = await flush()
     if (result.sent > 0) toast.success(`${faNumber(result.sent)} عملیات ارسال شد.`)
     for (const r of result.rejected) toast.error(`${r.label}: ${r.message}`)
+    if (result.signInRequired) toast.warning(message('E_OFFLINE_SIGN_IN', { n: result.remaining }))
     if (result.sent > 0) requestReload({ delayMs: 900 })
   } finally {
     sending.value = false

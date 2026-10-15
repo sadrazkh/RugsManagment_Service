@@ -189,7 +189,10 @@ public static class EntityMappers
         step.Notes,
         step.Adjustment,
         step.CompletedByName,
-        step.ManualCostOverride);
+        step.ManualCostOverride,
+        step.PricedLength,
+        step.PricedWidth,
+        step.PricedQuantity);
 
     /// <summary>
     /// خلاصهٔ هزینه. اگر فرش فروخته شده باشد، سود واقعی هم کنار سود تخمینی می‌آید

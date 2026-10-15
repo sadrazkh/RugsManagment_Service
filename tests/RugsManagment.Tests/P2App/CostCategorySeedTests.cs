@@ -15,7 +15,7 @@ public class CostCategorySeedTests
     public async Task Seeds_TheThreePurchaseCategories_Once()
     {
         var categories = new P2MemoryRepository<CostCategory>();
-        var contributor = new CostCategorySeedContributor(categories, new P2MemoryRepository<RugPurchaseLine>());
+        var contributor = new CostCategorySeedContributor(categories, new P2TrashAwareQueries());
 
         await contributor.SeedAsync(TenantId, CancellationToken.None);
         await contributor.SeedAsync(TenantId, CancellationToken.None);
@@ -39,7 +39,7 @@ public class CostCategorySeedTests
         renamed.Name = "خرید";
         var categories = new P2MemoryRepository<CostCategory>(renamed);
 
-        await new CostCategorySeedContributor(categories, new P2MemoryRepository<RugPurchaseLine>()).SeedAsync(TenantId, CancellationToken.None);
+        await new CostCategorySeedContributor(categories, new P2TrashAwareQueries()).SeedAsync(TenantId, CancellationToken.None);
 
         Assert.Equal(3, categories.Items.Count);
         Assert.Equal("خرید", categories.Items[renamed.Id].Name);
@@ -61,7 +61,7 @@ public class CostCategorySeedTests
         var lines = new P2MemoryRepository<RugPurchaseLine>(legacy, free, otherTenant);
         var categories = new P2MemoryRepository<CostCategory>();
 
-        await new CostCategorySeedContributor(categories, lines).SeedAsync(TenantId, CancellationToken.None);
+        await new CostCategorySeedContributor(categories, new P2TrashAwareQueries(lines)).SeedAsync(TenantId, CancellationToken.None);
 
         var price = categories.Items.Values.Single(c => c.SeedKey == CostCategorySeedContributor.PriceKey);
         Assert.Equal(price.Id, legacy.CategoryId);

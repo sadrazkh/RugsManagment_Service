@@ -15,14 +15,16 @@ namespace RugsManagment.Application.Seed;
 /// (<see cref="RugPurchaseLine.LegacyPurchaseLabel"/>). این‌جا همان سطرها به نوع <c>purchase.price</c> وصل می‌شوند، چون
 /// خانهٔ «قیمت خرید» جدول ورود سطرِ همان نوع را نشان می‌دهد (G.2): فرش قدیمی باید «کل ۴۰٬۰۰۰٬۰۰۰» ببیند، نه خانهٔ خالی
 /// که با نوشتنش سطر دوم ساخته شود و خرید دوبار حساب شود. فقط نوع عوض می‌شود؛ مبنا، نرخ و مبلغ همان می‌ماند. سطری که
-/// یک بار وصل شد دیگر پیدا نمی‌شود، پس این کار در استارت‌های بعدی هزینه‌ای ندارد.</para>
+/// یک بار وصل شد دیگر پیدا نمی‌شود، پس این کار در استارت‌های بعدی هزینه‌ای ندارد. سطرهای فرش‌های سطل زباله هم وصل می‌شوند
+/// (<see cref="ITrashAwareQueries"/>): M2 قیمت آن‌ها را هم سطر کرد تا با بازگردانی برگردد، و سطر بی‌نوعِ فرش برگشته با
+/// نوشتن خانهٔ «قیمت خرید» سطر دوم می‌ساخت و خرید دوبار حساب می‌شد.</para>
 ///
 /// <para>نرخ پیش‌فرض «دلالی» درصد است، نه مبلغ؛ قفل تعداد رقم اعشار مبلغ‌ها (D.5 #22) نباید آن را «مبلغ ذخیره‌شده»
 /// بشمارد، وگرنه هر کارگاه تازه از روز اول قفل می‌شد.</para>
 /// </summary>
 public sealed class CostCategorySeedContributor(
     IRepository<CostCategory> categories,
-    IRepository<RugPurchaseLine> purchaseLines) : ITenantSeedContributor
+    ITrashAwareQueries legacyLines) : ITenantSeedContributor
 {
     public const string PriceKey = "purchase.price";
     public const string BrokerKey = "purchase.broker";
@@ -95,22 +97,20 @@ public sealed class CostCategorySeedContributor(
         await LinkLegacyLinesAsync(tenantId, bySeedKey[PriceKey].Id, cancellationToken);
     }
 
-    /// <summary>سطرهای «قیمت خرید» بی‌نوع (ساختهٔ M2) را به نوع <c>purchase.price</c> وصل می‌کند.</summary>
+    /// <summary>
+    /// سطرهای «قیمت خرید» بی‌نوع (ساختهٔ M2) را، فرش سطل زباله هم، به نوع <c>purchase.price</c> وصل می‌کند. سطرها
+    /// ردیابی‌شده می‌آیند، تا پاس سازگاری فقط تغییر واقعی (CategoryId) را ببیند، نه کل سطر.
+    /// </summary>
     private async Task LinkLegacyLinesAsync(Guid tenantId, Guid priceCategoryId, CancellationToken cancellationToken)
     {
-        const string label = RugPurchaseLine.LegacyPurchaseLabel;
-        var legacy = await purchaseLines.ListAsync(
-            l => l.TenantId == tenantId && l.CategoryId == null && l.Label == label, cancellationToken);
-
-        foreach (var snapshot in legacy)
+        var now = DateTimeOffset.UtcNow;
+        foreach (var line in await legacyLines.TrackUnlinkedLegacyPurchaseLinesAsync(tenantId, cancellationToken))
         {
-            // نسخهٔ ردیابی‌شده، تا پاس سازگاری فقط تغییر واقعی (CategoryId) را ببیند، نه کل سطر
-            var line = await purchaseLines.GetByIdAsync(snapshot.Id, cancellationToken);
-            if (line is null || line.TenantId != tenantId || line.CategoryId is not null)
+            if (line.TenantId != tenantId || line.CategoryId is not null)
                 continue;
 
             line.CategoryId = priceCategoryId;
-            line.UpdatedAt = DateTimeOffset.UtcNow;
+            line.UpdatedAt = now;
         }
     }
 }

@@ -8,13 +8,14 @@
  * بسته شروع می‌شود (صفحهٔ بازرگان شلوغ نشود) و فقط با باز شدن می‌خواند؛ اگر جزیرهٔ دیگری روی همین فرش ذخیره کند و
  * این بخش باز باشد، دوباره می‌خواند.
  */
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { api, errorMessage } from '@/lib/api'
 import { faDate, faDecimal, faMoney, toPersianDigits } from '@/lib/format'
 import { stepStatus } from '@/lib/labels'
 import { message } from '@/lib/messages'
 import AppIcon from '@/components/AppIcon.vue'
-import { CostBasis, CostGroup, WorkflowStepStatus, type RugCostBreakdown } from '@/lib/types/rugs'
+import { CostGroup, WorkflowStepStatus, type RugCostBreakdown } from '@/lib/types/rugs'
+import { hasLumpPurchaseShare, purchaseRateText } from './costBreakdownText'
 import { onRugChanged } from './rugEvents'
 
 const props = defineProps<{ rugId: string }>()
@@ -23,13 +24,6 @@ const open = ref(false)
 const loading = ref(false)
 const error = ref('')
 const data = ref<RugCostBreakdown | null>(null)
-
-const BASIS_LABELS: Record<number, string> = {
-  [CostBasis.Total]: 'کل',
-  [CostBasis.PerM2]: 'هر متر',
-  [CostBasis.PerPiece]: 'هر تخته',
-  [CostBasis.Percent]: 'درصد',
-}
 
 async function load() {
   loading.value = true
@@ -48,9 +42,10 @@ function toggle() {
   if (open.value && !data.value) void load()
 }
 
-function rateText(basis: CostBasis, rate: number): string {
-  return basis === CostBasis.Percent ? `${faDecimal(rate, 4)}٪` : `${BASIS_LABELS[basis]} ${faMoney(rate)}`
-}
+/** جمع خرید کارت با جمع دقیق سطرها فرق دارد (سهم خریدهای یکجا)؛ با `lib/num.ts`، نه جمع float. */
+const lumpShare = computed(() =>
+  data.value ? hasLumpPurchaseShare(data.value.summary.purchaseCost, data.value.purchase.map((l) => l.amount)) : false,
+)
 
 function snapshotText(length: number | null, width: number | null, quantity: number | null): string | null {
   if (length === null || width === null) return null
@@ -105,16 +100,13 @@ onUnmounted(() => stop?.())
             <li v-for="line in data.purchase" :key="line.id ?? line.label" class="flex justify-between gap-3 py-1.5">
               <span>
                 {{ line.label }}
-                <span class="text-xs text-on-surface-variant">({{ rateText(line.basis, line.rate) }})</span>
+                <span class="text-xs text-on-surface-variant">({{ purchaseRateText(line.basis, line.rate) }})</span>
               </span>
               <span>{{ faMoney(line.amount) }}</span>
             </li>
           </ul>
           <p v-else class="text-on-surface-variant">سطر خریدی نیست.</p>
-          <p
-            v-if="data.summary.purchaseCost !== data.purchase.reduce((s, l) => s + l.amount, 0)"
-            class="mt-1 text-xs text-on-surface-variant"
-          >
+          <p v-if="lumpShare" class="mt-1 text-xs text-on-surface-variant">
             با سهم خریدهای یکجا: {{ faMoney(data.summary.purchaseCost) }}
           </p>
         </section>

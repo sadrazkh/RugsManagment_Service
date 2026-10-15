@@ -42,6 +42,19 @@
     // نشان داده می‌شوند تا چیپی که همیشه خالی است بازرگان را گیج نکند.
     var locationChips = new List<RugLocation> { RugLocation.InStock, RugLocation.Sold };
     if (q.Location is RugLocation.InBale or RugLocation.Exported) locationChips.Insert(1, q.Location.Value);
+
+    // نمای جدول (فاز ۳، جزیرهٔ rugs-grid): همان فیلترهای آدرس، به‌صورت جدول اکسل‌مانند؛ «?view=grid» در آدرس می‌ماند
+    var gridView = string.Equals(Context.Request.Query["view"], "grid", StringComparison.OrdinalIgnoreCase);
+    var gridQuery = Context.Request.Query
+        .Where(p => !string.Equals(p.Key, "view", StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(p.Key, "page", StringComparison.OrdinalIgnoreCase))
+        .ToDictionary(p => p.Key, p => p.Value.ToString(), StringComparer.Ordinal);
+    var toggleView = QueryString.Create(Context.Request.Query
+        .Where(p => !string.Equals(p.Key, "view", StringComparison.OrdinalIgnoreCase))
+        .Select(p => new KeyValuePair<string, string?>(p.Key, p.Value.ToString()))
+        .Concat(gridView
+            ? Array.Empty<KeyValuePair<string, string?>>()
+            : new[] { new KeyValuePair<string, string?>("view", "grid") }));
 }
 
 <div class="space-y-5">
@@ -65,7 +78,14 @@
                     سطل زباله
                 </a>
             }
-            <a asp-action="Create"
+            @* «جدول» / «فهرست»: همان فرش‌ها و فیلترها در نمای جدول اکسل‌مانند، یا برگشت به فهرست *@
+            <a href="/Rugs@(toggleView)"
+               class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-4 hover:bg-surface-container">
+                <icon name="@(gridView ? "rug" : "spreadsheet")" class="h-5 w-5" />
+                @(gridView ? "فهرست" : "جدول")
+            </a>
+            @* «ثبت فرش تازه» از فاز ۳ جدول ورود است (A.2)؛ فرم تک‌فرش هنوز از «ثبت اولین فرش» و جزئیات در دسترس است *@
+            <a href="/Intake"
                class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 font-semibold text-on-primary hover:bg-primary-hover">
                 <icon name="plus" class="h-5 w-5" />
                 ثبت فرش تازه
@@ -112,6 +132,10 @@
         @if (q.PageSize != RugQuery.DefaultPageSize)
         {
             <input type="hidden" name="pageSize" value="@q.PageSize" />
+        }
+        @if (gridView)
+        {
+            <input type="hidden" name="view" value="grid" />
         }
 
         <div class="flex flex-wrap gap-3">
@@ -271,7 +295,13 @@
         </details>
     </form>
 
-    @if (result.TotalCount == 0)
+    @if (gridView)
+    {
+        @* جدول فرش‌ها (GET /api/grid/rugs با همین فیلترها)؛ ذخیره از POST /api/grid/rugs/batch *@
+        <div data-island="rugs-grid" data-skeleton="30rem" data-hotkeys-off
+             data-props='@Json.Serialize(new { query = gridQuery })'></div>
+    }
+    else if (result.TotalCount == 0)
     {
         <div class="rounded-xl border border-dashed border-outline-variant bg-surface-container-lowest p-12 text-center">
             <span class="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full bg-surface-container text-on-surface-variant">

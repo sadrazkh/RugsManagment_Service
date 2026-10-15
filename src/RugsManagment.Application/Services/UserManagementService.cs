@@ -75,10 +75,30 @@ public sealed class UserManagementService(
         return user.ToDto();
     }
 
+    /// <remarks>
+    /// ویرایشی که ممکن است یک تنظیم‌کنندهٔ فعال را کم کند (نقش تازه غیر تنظیم‌کننده، یا غیرفعال) در یک تراکنش و زیر
+    /// قفل تنظیم‌کننده‌های کارگاه (<see cref="IUserRepository.LockTenantAdminsAsync"/>) اجرا می‌شود: خواندن کاربر، شمردن
+    /// تنظیم‌کننده‌های دیگر و نوشتن، هر سه پشت همان قفل. بدون آن، دو تنظیم‌کننده که هم‌زمان نقش هم را پایین می‌آوردند
+    /// هر کدام دیگری را هنوز فعال می‌دیدند و کارگاه بی تنظیم‌کننده می‌ماند. ویرایشی که تنظیم‌کننده‌ای را کم نمی‌کند
+    /// (نقش تنظیم‌کننده و فعال) قفل نمی‌خواهد.
+    /// </remarks>
     public async Task<UserUpdateResult> UpdateAsync(Guid tenantId, Guid userId, UpdateUserRequest request, CancellationToken ct = default)
     {
         EnsureTenantRole(request.Role);
 
+        var mayRemoveAdmin = request.Role != UserRole.TenantAdmin || !request.IsActive;
+        if (!mayRemoveAdmin)
+            return await UpdateCoreAsync(tenantId, userId, request, ct);
+
+        return await unitOfWork.ExecuteInTransactionAsync(async token =>
+        {
+            await users.LockTenantAdminsAsync(tenantId, token);
+            return await UpdateCoreAsync(tenantId, userId, request, token);
+        }, ct);
+    }
+
+    private async Task<UserUpdateResult> UpdateCoreAsync(Guid tenantId, Guid userId, UpdateUserRequest request, CancellationToken ct)
+    {
         var user = await users.GetByIdAsync(userId, ct);
 
         // جداسازی مستأجر: کاربر کارگاه دیگر درست مثل کاربرِ ناموجود «یافت نشد» است (۴۰۴، نه ۴۰۳)

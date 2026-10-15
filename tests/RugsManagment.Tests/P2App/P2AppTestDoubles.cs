@@ -53,6 +53,26 @@ internal sealed class P2MemoryRepository<T> : IRepository<T> where T : BaseEntit
 }
 
 /// <summary>
+/// <see cref="ITrashAwareQueries"/> روی همان مخزن درون‌حافظه: در حافظه فیلتر سطل زباله‌ای نیست، پس همهٔ سطرها دیده
+/// می‌شوند (همان که پیاده‌سازی EF با IgnoreQueryFilters می‌دهد).
+/// </summary>
+internal sealed class P2TrashAwareQueries(
+    P2MemoryRepository<RugPurchaseLine>? lines = null, IReadOnlyCollection<RugWorkflowStep>? steps = null) : ITrashAwareQueries
+{
+    public Task<bool> IsStepTypeUsedAsync(Guid processStepTypeId, CancellationToken cancellationToken = default)
+        => Task.FromResult(steps?.Any(s => s.ProcessStepTypeId == processStepTypeId) ?? false);
+
+    public Task<IReadOnlyList<RugPurchaseLine>> TrackUnlinkedLegacyPurchaseLinesAsync(
+        Guid tenantId, CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<RugPurchaseLine> found = (lines?.Items.Values ?? Enumerable.Empty<RugPurchaseLine>())
+            .Where(l => l.TenantId == tenantId && l.CategoryId == null && l.Label == RugPurchaseLine.LegacyPurchaseLabel)
+            .ToList();
+        return Task.FromResult(found);
+    }
+}
+
+/// <summary>
 /// پایهٔ جایگزین‌های <see cref="IRugRepository"/> در این آزمون‌ها: هر متد NotSupported است و آزمون فقط همان‌هایی را که لازم
 /// دارد بازنویسی می‌کند (اگر کد چیز دیگری صدا بزند، آزمون با پیام روشن می‌شکند).
 /// </summary>

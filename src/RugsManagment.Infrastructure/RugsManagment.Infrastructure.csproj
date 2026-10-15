@@ -18,6 +18,13 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.10" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.8" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
+    <!--
+      نوشتن فایل اکسل سند (spec E.6/E.7). ClosedXML 0.105.1 کتاب کار را می‌سازد و DocumentFormat.OpenXml (همان نسخه‌ای که
+      ClosedXML می‌خواهد: [3.1.1, 4.0.0) → 3.1.1) بعدش مقدار ذخیره‌شدهٔ دقیق خانه‌ها، پهنای دقیق ستون‌ها و fitToPage + scale را
+      می‌گذارد (CachedValueInjector) — کارهایی که ClosedXML خودش درست نمی‌نویسد.
+    -->
+    <PackageReference Include="ClosedXML" Version="0.105.1" />
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.1.1" />
   </ItemGroup>
 
   <ItemGroup>

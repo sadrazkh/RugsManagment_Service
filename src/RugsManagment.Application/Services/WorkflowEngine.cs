@@ -1,7 +1,9 @@
 using RugsManagment.Application.Abstractions.Persistence;
 using RugsManagment.Application.Abstractions.Services;
+using RugsManagment.Application.Common;
 using RugsManagment.Application.Features.Rugs;
 using RugsManagment.Application.Ledger;
+using RugsManagment.Domain.Common;
 using RugsManagment.Domain.Costing;
 using RugsManagment.Domain.Entities;
 using RugsManagment.Domain.Enums;
@@ -125,6 +127,7 @@ public sealed class WorkflowEngine(
 
         step.FieldValuesJson = request.FieldValuesJson ?? step.FieldValuesJson;
         step.Notes = request.Notes ?? step.Notes;
+        EnsureStepMoneyFits(request, await MoneyScaleAsync(rug, cancellationToken));
         ApplyStepPricing(step, request);
         await PriceAsync(rug, step, request.RefreshPricedSize, cancellationToken);
 
@@ -157,6 +160,7 @@ public sealed class WorkflowEngine(
         ApplyServiceProvider(step, request);
         if (request.Notes is not null)
             step.Notes = request.Notes;
+        EnsureStepMoneyFits(request, await MoneyScaleAsync(rug, cancellationToken));
         ApplyStepPricing(step, request);
         await PriceAsync(rug, step, request.RefreshPricedSize, cancellationToken);
 
@@ -429,6 +433,26 @@ public sealed class WorkflowEngine(
             null,
             scale);
     }
+
+    /// <summary>
+    /// مبلغ دستی و تعدیل مرحله مبلغ‌اند، پس رقم اعشارشان بیش از MoneyScale کارگاه نیست و از سقف مبلغ نمی‌گذرند (مثل قیمت
+    /// فروش هدف). چرا: ستون‌های مرحله numeric بی‌سقف‌اند ولی جمع فرش (RugCostTotals) numeric(18,2) است؛ ۱۰۰٫۱۲۵ در جمع
+    /// ۱۰۰٫۱۳ می‌شد و بررسی حساب‌ها برای همیشه «ناهمخوان» می‌گفت (بازسازی همان عدد گردشده را می‌نوشت)، و در MoneyScale ۰
+    /// بهای تومانیِ اعشاری می‌ماند. نادرست → ۴۰۰ روی همان عضو درخواست.
+    /// </summary>
+    private static void EnsureStepMoneyFits(AdvanceStepRequest request, int moneyScale)
+    {
+        var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
+        if (request.ManualCostOverride is { } manual && !FitsMoney(manual, moneyScale))
+            errors["manualCostOverride"] = [Messages.InvalidValue.Format(("label", "مبلغ دستی"))];
+        if (request.Adjustment is { } adjustment && !FitsMoney(adjustment, moneyScale))
+            errors["adjustment"] = [Messages.InvalidValue.Format(("label", "تخفیف یا اضافه"))];
+        if (errors.Count > 0)
+            throw new AppValidationException(errors.Values.First()[0], errors);
+    }
+
+    private static bool FitsMoney(decimal value, int moneyScale)
+        => Num.HasAtMostDecimals(value, moneyScale) && Math.Abs(value) <= RugFieldWriter.MaxAmount;
 
     /// <summary>
     /// فقط مقادیرِ دارای مقدار روی مرحله نوشته می‌شوند؛ null یعنی «دست نزن».
