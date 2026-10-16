@@ -1,0 +1,122 @@
+@using RugsManagment.Application.Common
+@using RugsManagment.Web.Shipments
+@model BalesTabModel
+@*
+    زبانهٔ «نگله‌ها» (فاز ۴b، H.1): میزبان جزیرهٔ baling-board با props همان I.5 (به‌اضافهٔ شمارهٔ محموله و نشانی حالت اسکن).
+    جزیره خودش «نگلهٔ جاری ▾ [نگلهٔ بعد]»، دو نمای «جدول / کارت‌ها»، پیوند «حالت اسکن (گوشی)» با QR و جعبهٔ «شماره را بزنید یا
+    اسکن کنید» را دارد. داخل میزبان همان‌ها به شکل بی‌اسکریپت آمده — پیوند دو نما (?view=)، پیوند حالت اسکن و خلاصهٔ
+    فقط‌خواندنی نگله‌ها — تا وقتی جزیره سوار نشده (یا اگر نشد) صفحه خالی نماند؛ جزیره هنگام سوار شدن همه را با خودش
+    جایگزین می‌کند، پس دو بار دیده نمی‌شوند. data-hotkeys-off: جعبهٔ شماره و جدول کلیدهای «n» و «/» را برای خودشان می‌خواهند
+    (G.1). واژهٔ نگله همه‌جا از Model.Terms، هرگز ثابت.
+*@
+@{
+    var s = Model.Shipment;
+    var terms = Model.Terms;
+    var cards = Model.View == BalesTabViews.Cards;
+
+    const string SegmentBase = "inline-flex min-h-11 items-center gap-2 px-4 text-sm";
+    const string SegmentOn = "bg-primary/10 font-semibold text-primary";
+    const string SegmentOff = "text-on-surface-variant hover:bg-surface-container";
+}
+
+<div data-island="baling-board" data-skeleton="off" data-hotkeys-off data-bales-tab="@s.Id"
+     data-props='@Json.Serialize(Model.IslandProps)'>
+    <div class="space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <nav aria-label="نمای @terms.Bales">
+                <ul class="inline-flex overflow-hidden rounded-lg border border-outline-variant">
+                    <li>
+                        <a href="@Model.TableHref" aria-current="@(cards ? null : "page")" data-bales-view="table"
+                           class="@SegmentBase @(cards ? SegmentOff : SegmentOn)">
+                            <icon name="spreadsheet" class="h-5 w-5" />
+                            جدول
+                        </a>
+                    </li>
+                    <li class="border-s border-outline-variant">
+                        <a href="@Model.CardsHref" aria-current="@(cards ? "page" : null)" data-bales-view="cards"
+                           class="@SegmentBase @(cards ? SegmentOn : SegmentOff)">
+                            <icon name="bale" class="h-5 w-5" />
+                            کارت‌ها
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+
+            @if (!Model.Locked)
+            {
+                @* گوشی در انبار: جعبهٔ شمارهٔ بزرگ، دکمهٔ اسکن و «نگلهٔ جاری» با جمع‌ها (G.5) *@
+                <a href="@Model.PackHref" data-pack-link
+                   class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-4 text-sm font-medium hover:bg-surface-container">
+                    <icon name="scan" class="h-5 w-5" />
+                    حالت اسکن (گوشی)
+                </a>
+            }
+        </div>
+
+        @if (s.Bales.Count == 0)
+        {
+            <div class="rounded-xl border border-dashed border-outline-variant bg-surface-container-lowest p-10 text-center">
+                <span class="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full bg-surface-container text-on-surface-variant">
+                    <icon name="bale" class="h-7 w-7" />
+                </span>
+                @if (Model.Locked)
+                {
+                    <p class="font-medium">این محموله @terms.Bale ندارد.</p>
+                }
+                else
+                {
+                    <p class="mx-auto max-w-md font-medium">
+                        این محموله هنوز @terms.Bale ندارد. شمارهٔ اولین فرش @terms.BaleOf @Messages.FormatNumber(1) را بزنید.
+                    </p>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="overflow-x-auto rounded-xl border border-outline-variant bg-surface-container-lowest">
+                <table class="w-full min-w-[32rem] text-start" data-numeric>
+                    <caption class="sr-only">@terms.Bales این محموله</caption>
+                    <thead class="bg-surface-container text-sm text-on-surface-variant">
+                        <tr>
+                            <th scope="col" class="px-3 py-2 text-start font-medium">@terms.Bale</th>
+                            <th scope="col" class="px-3 py-2 text-start font-medium">تخته</th>
+                            <th scope="col" class="px-3 py-2 text-start font-medium">متر</th>
+                            <th scope="col" class="px-3 py-2 text-start font-medium">دلار</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-outline-variant">
+                        @foreach (var bale in s.Bales.OrderBy(b => b.Number))
+                        {
+                            var state = BaleTarget.State(bale.AreaM2, Model.TargetAreaM2, Model.TolerancePercent);
+                            <tr data-bale-number="@bale.Number">
+                                <th scope="row" class="px-3 py-2 text-start font-semibold">@terms.BaleOf @Messages.FormatNumber(bale.Number)</th>
+                                <td class="px-3 py-2">@Messages.FormatNumber(bale.Pieces)</td>
+                                <td class="px-3 py-2">
+                                    <span class="inline-flex items-center gap-1.5">
+                                        @Messages.FormatNumber(bale.AreaM2)
+                                        @if (state == BaleTargetState.Over)
+                                        {
+                                            <span class="inline-flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-xs font-medium text-warning">
+                                                <icon name="warning" class="h-3.5 w-3.5" />
+                                                بیشتر از هدف
+                                            </span>
+                                        }
+                                    </span>
+                                </td>
+                                <td class="px-3 py-2">@Messages.FormatNumber(bale.UsdTotal)</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="bg-secondary-container font-semibold text-on-secondary-container">
+                            <th scope="row" class="px-3 py-2 text-start">جمع</th>
+                            <td class="px-3 py-2">@Messages.FormatNumber(s.Totals.Pieces)</td>
+                            <td class="px-3 py-2">@Messages.FormatNumber(s.Totals.AreaM2)</td>
+                            <td class="px-3 py-2">@Messages.FormatNumber(s.Totals.UsdTotal)</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        }
+    </div>
+</div>

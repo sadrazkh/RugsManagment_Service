@@ -66,7 +66,9 @@
         </ul>
     </nav>
 
-    <div data-island="shipment-list" data-skeleton="off" data-props='@Json.Serialize(new { canCreate = Model.CanCreate })'>
+    @* جزیرهٔ shipment-list (فاز ۴b): props I.5 ({ canCreate }) به‌اضافهٔ فیلتر وضعیت همین صفحه (status: «open»، «finalized» یا null) *@
+    <div data-island="shipment-list" data-skeleton="off"
+         data-props='@Json.Serialize(new { canCreate = Model.CanCreate, status = currentFilter })'>
         @if (Model.Shipments.Count == 0)
         {
             <div class="rounded-xl border border-dashed border-outline-variant bg-surface-container-lowest p-10 text-center sm:p-12">

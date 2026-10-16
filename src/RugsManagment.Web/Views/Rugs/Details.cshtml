@@ -47,10 +47,15 @@
                             دسته · @PersianFormat.Count(Model.Quantity) تخته
                         </span>
                     }
-                    <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs @st.Css">
-                        <icon name="@st.Icon" class="h-3.5 w-3.5" />
-                        @st.Label
-                    </span>
+                    @if (!simple)
+                    {
+                        <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs @st.Css">
+                            <icon name="@st.Icon" class="h-3.5 w-3.5" />
+                            @st.Label
+                        </span>
+                    }
+                    @* «جا» (C.10) در هر دو نما؛ نمای ساده به‌جای وضعیت کارگاهی فقط همین را دارد (A.3) *@
+                    <partial name="_Details.LocationChip" model="Model" />
                 </div>
                 <div class="flex flex-wrap items-center gap-2 text-sm text-on-surface-variant">
                     @if (Model.SerialNo is not null && !string.IsNullOrEmpty(Model.Title))
@@ -118,6 +123,7 @@
 
             <partial name="_Details.Specs" model="Model" />
             <partial name="_Details.Custom" model="Model" />
+            <partial name="_Details.Location" model="Model" />
 
             @await Component.InvokeAsync("RugDetailPanels", new { rug = Model, slot = RugDetailSlot.Main })
         </div>

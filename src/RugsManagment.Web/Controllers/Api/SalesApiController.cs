@@ -42,8 +42,12 @@ public class SalesApiController(IRugSaleService sales) : ApiControllerBase
     public async Task<IActionResult> RefreshCost(Guid rugId, CancellationToken ct)
         => Ok(await sales.RefreshCostAtSaleAsync(User.RequireTenantId(), rugId, ct));
 
-    /// <summary>گزارش فروش و سود واقعی.</summary>
+    /// <summary>
+    /// گزارش فروش و سود واقعی. <c>from</c> و <c>to</c> «روز»اند (<c>yyyy-MM-dd</c>) و مثل CSV و چاپ صفحهٔ فروش از آغاز روز «از» تا
+    /// پایان روز «تا» به وقت ایران خوانده می‌شوند (<see cref="SalesDayRange"/>)؛ پس صفحه و فایل همیشه همان فروش‌ها را دارند.
+    /// </summary>
     [HttpGet("report")]
-    public async Task<IActionResult> Report([FromQuery] SalesQuery query, CancellationToken ct)
-        => Ok(await sales.GetReportAsync(User.RequireTenantId(), query, ct));
+    public async Task<IActionResult> Report(
+        [FromQuery] DateTimeOffset? from, [FromQuery] DateTimeOffset? to, [FromQuery] bool onlyOutstanding, CancellationToken ct)
+        => Ok(await sales.GetReportAsync(User.RequireTenantId(), SalesDayRange.Build(from, to, onlyOutstanding), ct));
 }

@@ -1,0 +1,9 @@
+@using RugsManagment.Web.Shipments
+@model ShipmentSummaryTabModel
+@*
+    زبانهٔ «حساب محموله» (فاز ۵، Business؛ D.6): میزبان جزیرهٔ shipment-summary (islands/costs/ShipmentSummary.island.vue) —
+    فروش محموله با نرخ دلار، قیمت تمام‌شدهٔ هر متر و سود. عددها همه از سرور (/api/shipments/{id}/profit).
+*@
+<div data-tab-summary="@Model.ShipmentId">
+    <div data-island="shipment-summary" data-skeleton="20rem" data-props='@Json.Serialize(Model.IslandProps)'></div>
+</div>

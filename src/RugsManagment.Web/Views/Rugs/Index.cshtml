@@ -38,10 +38,17 @@
     var advancedOpen = q.BatchId.HasValue || q.WithoutBatch || (!simple && q.StepTypeId.HasValue)
                        || q.CreatedFrom.HasValue || q.CreatedTo.HasValue || !string.IsNullOrWhiteSpace(q.Serial);
 
-    // چیپ‌های جا (C.10). «در نگله» و «صادر شده» از فاز محموله معنا پیدا می‌کنند؛ تا آن موقع فقط اگر از لینکی فعال شده‌اند
-    // نشان داده می‌شوند تا چیپی که همیشه خالی است بازرگان را گیج نکند.
-    var locationChips = new List<RugLocation> { RugLocation.InStock, RugLocation.Sold };
-    if (q.Location is RugLocation.InBale or RugLocation.Exported) locationChips.Insert(1, q.Location.Value);
+    // چیپ‌های جا (C.10، H.1): «در انبار»، «در نگله»، «صادر شده»، «فروخته‌شده» — از فاز ۴b که محموله و نگله هست، همیشه هر
+    // چهار. «در نگله» واژهٔ کارگاه را می‌گیرد (عدل).
+    var locationChips = new List<RugLocation> { RugLocation.InStock, RugLocation.InBale, RugLocation.Exported, RugLocation.Sold };
+
+    // متن چیپ «جا»ی یک ردیف: «در نگلهٔ ۳» با شمارهٔ نگله، و برای فرش داخل محموله شمارهٔ محموله کنارش
+    string LocationText(RugListItemDto r) => r.Location == RugLocation.InBale && r.BaleNumber is { } bale
+        ? $"در {terms.BaleOf} {PersianFormat.Count(bale)}"
+        : RugDetailsFormat.LocationLabel(r.Location, terms.Bale);
+    string? ShipmentText(RugListItemDto r) => r.Location is RugLocation.InBale or RugLocation.Exported && r.ShipmentNumber is { } n
+        ? $"محمولهٔ {PersianFormat.Count(n)}"
+        : null;
 
     // نمای جدول (فاز ۳، جزیرهٔ rugs-grid): همان فیلترهای آدرس، به‌صورت جدول اکسل‌مانند؛ «?view=grid» در آدرس می‌ماند
     var gridView = string.Equals(Context.Request.Query["view"], "grid", StringComparison.OrdinalIgnoreCase);
@@ -395,11 +402,38 @@
                                         <span class="font-mono" dir="ltr">@r.Sku</span>
                                     </div>
                                 </div>
-                                <span class="inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs @st.Css">
-                                    <icon name="@st.Icon" class="h-3.5 w-3.5" />
-                                    @st.Label
-                                </span>
+                                @if (simple)
+                                {
+                                    @* نمای ساده: به‌جای وضعیت کارگاهی فقط «جا» (A.3) *@
+                                    <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-container px-2.5 py-1 text-xs" data-numeric data-rug-location="@r.Location">
+                                        <icon name="@RugDetailsFormat.LocationIcon(r.Location)" class="h-3.5 w-3.5" />
+                                        @LocationText(r)
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs @st.Css">
+                                        <icon name="@st.Icon" class="h-3.5 w-3.5" />
+                                        @st.Label
+                                    </span>
+                                }
                             </div>
+                            @if (!simple || ShipmentText(r) is not null)
+                            {
+                                <p class="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-on-surface-variant" data-numeric>
+                                    @if (!simple)
+                                    {
+                                        <span class="inline-flex items-center gap-1 rounded-full bg-surface-container px-2 py-0.5" data-rug-location="@r.Location">
+                                            <icon name="@RugDetailsFormat.LocationIcon(r.Location)" class="h-3.5 w-3.5" />
+                                            @LocationText(r)
+                                        </span>
+                                    }
+                                    @if (ShipmentText(r) is { } shipmentText)
+                                    {
+                                        <span>@shipmentText</span>
+                                    }
+                                </p>
+                            }
                             <dl class="mt-3 grid @(simple ? "grid-cols-2" : "grid-cols-3") gap-2 text-center text-sm" data-numeric>
                                 <div>
                                     <dt class="text-xs text-on-surface-variant">اندازه</dt>
@@ -451,9 +485,9 @@
                                     }
                                 </a>
                             </th>
-                            @if (simple && column == RugSortBy.Area)
+                            @if (column == RugSortBy.Area)
                             {
-                                @* نمای ساده: به‌جای وضعیت کارگاهی فقط اینکه فرش کجاست (در انبار، فروخته‌شده، …) *@
+                                @* «جا» (C.10) در هر دو نما؛ نمای ساده به‌جای وضعیت کارگاهی فقط همین را دارد (A.3) *@
                                 <th scope="col" class="p-3 text-right font-medium">جا</th>
                             }
                         }
@@ -522,16 +556,17 @@
                                 @RugDetailsFormat.Decimal2(r.TotalAreaM2)
                                 <span class="text-xs text-on-surface-variant">م²</span>
                             </td>
-                            @if (simple)
-                            {
-                                <td class="p-3">
-                                    <span class="inline-flex items-center gap-1 rounded-full bg-surface-container px-2.5 py-1 text-xs">
-                                        <icon name="@RugDetailsFormat.LocationIcon(r.Location)" class="h-3.5 w-3.5" />
-                                        @RugDetailsFormat.LocationLabel(r.Location, terms.Bale)
-                                    </span>
-                                </td>
-                            }
-                            else
+                            <td class="p-3" data-numeric>
+                                <span class="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-surface-container px-2.5 py-1 text-xs" data-rug-location="@r.Location">
+                                    <icon name="@RugDetailsFormat.LocationIcon(r.Location)" class="h-3.5 w-3.5" />
+                                    @LocationText(r)
+                                </span>
+                                @if (ShipmentText(r) is { } shipmentText)
+                                {
+                                    <span class="mt-0.5 block text-xs text-on-surface-variant">@shipmentText</span>
+                                }
+                            </td>
+                            @if (!simple)
                             {
                                 <td class="p-3">@(r.CurrentStepNameFa ?? "—")</td>
                                 <td class="p-3">

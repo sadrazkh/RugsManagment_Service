@@ -86,4 +86,94 @@ export const messages: Record<string, string> = {
   I_DECLARED_VALUES_NO_FALLBACK: 'هر {label} که در جدول نیست بی‌نرخ می‌ماند و جلوی قطعی شدن محموله را می‌گیرد.',
   I_DECLARED_VALUES_EMPTY: 'هنوز نرخی ننوشته‌اید. برای هر {label} یک ردیف بزنید.',
   Q_DECLARED_VALUES_DISCARD: 'تغییرهای ذخیره‌نشده کنار گذاشته شود؟',
+
+  // ══ فاز ۴b: تختهٔ نگله‌بندی، حالت اسکن، «افزودن به نگله» (فقط جزیره‌ها) ══
+  // عددها (`{n}`، `{pieces}`) ارقام فارسی می‌شوند؛ متراژ و دلار پانویس را جزیره با دو رقم اعشار می‌سازد («۱۳٫۵۱»).
+
+  // ── نگلهٔ جاری (C.2) ──
+  I_BOARD_CURRENT: '{baleOf} جاری',
+  I_BOARD_NEXT: '{baleOf} بعد',
+  I_BOARD_NEW_BALE: '{baleOf} تازه',
+  /** «نگلهٔ ۴ هنوز فرشی ندارد…» — «نگلهٔ بعد» چیزی نمی‌سازد؛ اولین فرش نگله را می‌سازد */
+  I_BOARD_CURRENT_EMPTY: '{baleOf} {n} هنوز فرشی ندارد؛ اولین فرشش آن را می‌سازد.',
+  I_BOARD_SERIAL_HINT: 'شماره را بزنید یا اسکن کنید',
+  I_BOARD_EMPTY: 'این محموله هنوز {bale} ندارد. شمارهٔ اولین فرش {baleOf} {n} را بزنید.',
+  /** پانویس هر نگله، مثل اکسل: «نگلهٔ ۱ · شامل ۴ تخته · ۱۳٫۵۱ متر · ۶۰۷٫۹۵ دلار» */
+  I_BOARD_FOOTER: '{baleOf} {n} · شامل {pieces} تخته · {area} متر · {usd} دلار',
+  I_BOARD_TOTALS: 'شامل {pieces} تخته · {area} متر · {usd} دلار',
+  /** خواندن جمع برای صفحه‌خوان (`aria-live`، H.6) */
+  I_BOARD_ANNOUNCE: '{baleOf} {n}: {pieces} تخته، {area} متر',
+  /** متن نوار هدف (`aria-valuetext`، H.7) */
+  I_BOARD_TARGET_VALUE: '{area} از {target} متر',
+  I_BOARD_TARGET_BELOW: 'هنوز به {target} متر هدف نرسیده',
+  I_BOARD_TARGET_WITHIN: 'به اندازهٔ هدف ({target} متر)',
+
+  // ── کارها و «برگردان» ──
+  I_BOARD_ADDED: '{serial} به {baleOf} {n} رفت.',
+  I_BOARD_MOVED: '{serial} به {baleOf} {n} منتقل شد.',
+  I_BOARD_REMOVED: '{serial} به انبار برگشت',
+  I_BOARD_MEASURED: 'اندازهٔ نهایی {serial} ثبت شد.',
+  I_BOARD_MEASURE_CLEARED: 'اندازهٔ نهایی {serial} پاک شد.',
+  I_BOARD_UNDONE: 'برگشت؛ همان‌طور که بود شد.',
+  I_BOARD_UNDO_EMPTY: 'کاری برای برگشتن نمانده.',
+  Q_BOARD_SAME_AS_INTAKE: 'اندازهٔ نهایی {n} فرش همان اندازهٔ اول ثبت شود؟',
+  I_BOARD_SAME_AS_INTAKE_DONE: 'اندازهٔ نهایی {n} فرش همان اندازهٔ اول ثبت شد.',
+  I_BOARD_SHOWING: 'فقط {n} فرش نشان داده شده.',
+  I_BOARD_BALE_DELETED: '{baleOf} {n} حذف شد.',
+  I_BOARD_RELOADED: 'این {bale} را همین الان کس دیگری هم عوض کرد؛ تازه‌اش را آوردیم. دوباره امتحان کنید.',
+  I_BOARD_PENDING: '{n} فرش برای قطع اینترنت ذخیره نشد؛ روی همین دستگاه مانده.',
+  E_BOARD_LOAD: '{bales} این محموله بار نشد؛ صفحه را تازه کنید.',
+  /** راهنمای صفحه‌کلید (فقط با موس دیده می‌شود)؛ نام کلیدها نشانه‌اند */
+  I_BOARD_KEYS_HINT: 'شماره و {enter}؛ طول و {tab}؛ عرض و {enter}. «{same}» یعنی همان اندازه.',
+
+  // ── انتقال (بی کشیدن؛ H.7) ──
+  I_BOARD_MOVE_TITLE: 'انتقال {serial}',
+  I_BOARD_MOVE_NOW: 'الان در {baleOf} {n} است.',
+  I_BOARD_MOVE_OTHER: 'شمارهٔ {bale} دیگر',
+  I_BOARD_BACK_TO_STOCK: 'برگشت به انبار',
+
+  // ── اندازهٔ نهایی (C.4، H.6) ──
+  I_BOARD_SIZE_TITLE: 'اندازهٔ نهایی {serial}',
+  I_BOARD_INTAKE_SIZE: 'اندازهٔ اول: {size}',
+  I_BOARD_SIZE_DOWN: '{n} سانت کوچک‌تر شده',
+  I_BOARD_SIZE_UP: '{n} سانت بزرگ‌تر شده',
+
+  // ── «داخل دسته» و جدا کردن (D.9) ──
+  I_BOARD_SPLIT_ASK: 'این دسته {n} تخته است. چند تخته جدا شود؟',
+
+  // ── انبار ──
+  I_BOARD_STOCK_TITLE: 'افزودن از انبار به {baleOf} {n}',
+  I_BOARD_STOCK_EMPTY: 'فرشی در انبار نیست.',
+  I_BOARD_STOCK_NOT_FOUND: 'فرشی با این نوشته در انبار پیدا نشد.',
+  I_BOARD_ADD_TO: 'افزودن به {baleOf} {n}',
+
+  // ── اسکن (H.6) ──
+  I_BOARD_SCAN_TITLE: 'اسکن برچسب',
+  I_BOARD_SCAN_HINT: 'برچسب شماره را جلوی دوربین بگیرید؛ هر برچسب خوانده‌شده به {baleOf} جاری می‌رود.',
+  I_BOARD_SCAN_READ: 'خوانده شد: {code}',
+  E_BOARD_SCAN_UNSUPPORTED: 'این مرورگر اسکن با دوربین را پشتیبانی نمی‌کند؛ شماره را بنویسید.',
+  E_BOARD_SCAN_DENIED: 'دسترسی به دوربین رد شد؛ شماره را بنویسید.',
+  E_BOARD_SCAN_CAMERA: 'دوربین در دسترس نیست؛ شماره را بنویسید.',
+
+  // ── حالت اسکن (G.5) ──
+  I_BOARD_PACK_LINK: 'حالت اسکن (گوشی)',
+  I_BOARD_PACK_QR: 'این کد را با دوربین گوشی بخوانید تا حالت اسکن همین محموله روی گوشی باز شود.',
+  I_BOARD_RECENT: 'آخرین فرش‌های این نوبت',
+  I_BOARD_ASK_SIZE: 'اندازهٔ نهایی را هم بپرس',
+
+  // ── «افزودن به نگله» از فهرست فرش‌ها (H.1، A.4) ──
+  I_BOARD_ADD_TO_BALE: 'افزودن به {bale}',
+  I_BOARD_ADD_MANY_TITLE: 'افزودن {n} فرش به…',
+  I_BOARD_ADDED_MANY: '{n} فرش به {baleOf} {number} محمولهٔ {shipment} رفت.',
+  Q_BOARD_MOVE_MANY: '{n} فرش در {bale} دیگری است؛ منتقل شوند؟',
+  I_BOARD_CHOOSE_SHIPMENT: 'کدام محموله؟',
+  /** دکمهٔ انتخاب محموله: «محمولهٔ ۸ (۱۴۰۵/۰۶/۱۵) — ۱۲ نگله» */
+  I_BOARD_SHIPMENT_CHOICE: 'محمولهٔ {number} ({date}) — {count} {bale}',
+  I_BOARD_NO_OPEN_SHIPMENT: 'هنوز محمولهٔ بازی نیست؛ از بازرگان بخواهید یکی بسازد.',
+  I_BOARD_NO_OPEN_SHIPMENT_BUSINESS: 'محمولهٔ بازی نیست. یک محمولهٔ تازه بسازید تا این فرش‌ها در آن بروند.',
+  E_BOARD_ADD_SOME_FAILED: '{n} فرش اضافه نشد: {reason}',
+
+  // ── ارزش گمرکی از تراشه (C.5) ──
+  I_BOARD_RATE_FORM: 'ارزش گمرکی «{key}» برای هر متر:',
+  I_BOARD_RATE_CLEAR: 'نرخ دستی پاک شد؛ از جدول حساب می‌شود.',
 }

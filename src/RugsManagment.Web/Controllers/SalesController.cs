@@ -62,9 +62,26 @@ public class SalesController(IRugSaleService sales) : Controller
 
     /// <summary>
     /// تاریخ‌های ورودی «روز» هستند؛ به ابتدا و انتهای همان روز به وقت ایران تبدیل می‌شوند
-    /// تا «تا تاریخ» شامل خود آن روز باشد.
+    /// تا «تا تاریخ» شامل خود آن روز باشد. همان را API گزارش (<c>/api/sales/report</c>) هم به کار می‌برد.
     /// </summary>
-    private static SalesQuery BuildQuery(DateTimeOffset? from, DateTimeOffset? to, bool onlyOutstanding) => new()
+    private static SalesQuery BuildQuery(DateTimeOffset? from, DateTimeOffset? to, bool onlyOutstanding)
+        => SalesDayRange.Build(from, to, onlyOutstanding);
+}
+
+/// <summary>
+/// بازهٔ روزهای گزارش فروش، یک‌جا برای صفحه (فهرست، CSV، چاپ) و API.
+///
+/// چرا: پیش از این API گزارش (<c>GET /api/sales/report?from=…&amp;to=…</c>) «۱۴۰۵/۰۶/۱۵» را نیمه‌شب UTC می‌گرفت و «تا تاریخ» را
+/// همان لحظه، در حالی که CSV و چاپ همان دو روز را از آغاز تا پایان روز ایران می‌گرفتند؛ پس فروش‌های عصرِ روز آخر (و
+/// فروش‌های بامداد روز اول، پیش از ۳:۳۰) روی صفحه نبودند ولی در فایل بودند (map §11، J.3). حالا هر دو یک بازه دارند:
+/// از آغاز روز «از» تا پایان روز «تا»، به وقت ایران.
+/// </summary>
+public static class SalesDayRange
+{
+    /// <param name="from">روز آغاز (فقط بخش تاریخش)؛ null بی‌کران</param>
+    /// <param name="to">روز پایان، خودش هم شامل؛ null بی‌کران</param>
+    /// <param name="onlyOutstanding">فقط تسویه‌نشده‌ها</param>
+    public static SalesQuery Build(DateTimeOffset? from, DateTimeOffset? to, bool onlyOutstanding) => new()
     {
         From = PersianFormat.IranDayStartUtc(from),
         To = PersianFormat.IranDayEndUtc(to),

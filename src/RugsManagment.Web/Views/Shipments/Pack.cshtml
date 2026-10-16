@@ -1,0 +1,58 @@
+@using RugsManagment.Application.Common
+@using RugsManagment.Web.Controllers
+@using RugsManagment.Web.Navigation
+@using RugsManagment.Web.Shipments
+@model ShipmentPackModel
+@*
+    «حالت اسکن (گوشی)» (/Shipments/{id}/Pack، Floor، G.5): میزبان جزیرهٔ pack-mode با props همان I.5
+    ({ shipmentId, baleId, locked }) به‌اضافهٔ عضوهای اختیاری خودِ جزیره (هدف و تلورانس نوار هدف، شمارهٔ محموله برای عنوان و
+    متن قفل، نشانی بازگشت). جزیره خودش سربرگ، متن قفل، جعبهٔ شمارهٔ بزرگ، دکمهٔ اسکن، «نگلهٔ جاری» با جمع‌ها، پنج فرش آخر با
+    «برگردان» و «نگلهٔ بعد» را دارد؛ داخل میزبان فقط سربرگ و متن قفلِ بی‌اسکریپت است تا پیش از سوار شدن (یا اگر نشد) صفحه
+    خالی نماند، و جزیره هنگام سوار شدن جایگزینش می‌کند. واژهٔ نگله از Model.Terms، هرگز ثابت.
+*@
+@{
+    var s = Model.Shipment;
+    var terms = Model.Terms;
+    var number = Messages.FormatNumber(s.Number);
+    ViewData["Title"] = $"حالت اسکن · محمولهٔ {number}";
+
+    var lockMessage = Model.CanBusiness
+        ? Messages.ShipmentLockedHeader.Format(("number", s.Number))
+        : Messages.ShipmentLockedOperator.Text;
+    var backHref = NavBuilder.Resolve(Context, ShipmentRoutes.Tab(s.Id, ShipmentTabKeys.Bales));
+
+    // سه عضو اول همان I.5؛ بقیه عضوهای اختیاری خودِ جزیره‌اند (نوار هدف، متن قفل، بازگشت)
+    var props = new
+    {
+        shipmentId = s.Id,
+        baleId = Model.BaleId,
+        locked = Model.Locked,
+        targetAreaM2 = s.EffectiveTargetAreaM2 ?? s.TargetBaleAreaM2,
+        tolerancePercent = (int)s.BaleTargetTolerancePercent,
+        shipmentNumber = s.Number,
+        backUrl = backHref
+    };
+}
+
+<div data-island="pack-mode" data-skeleton="off" data-hotkeys-off data-pack-page="@s.Id" data-props='@Json.Serialize(props)'>
+    <div class="mx-auto max-w-lg space-y-4">
+        <div class="flex items-center gap-2">
+            @* در RTL «بازگشت» به سمت راست اشاره می‌کند *@
+            <a href="@backHref"
+               class="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-outline-variant hover:bg-surface-container">
+                <icon name="arrow-right" label="بازگشت به @terms.Bales" />
+            </a>
+            <h1 class="min-w-0 flex-1 truncate text-xl font-bold" data-numeric>محمولهٔ @number · حالت اسکن</h1>
+        </div>
+
+        @if (Model.Locked)
+        {
+            <p class="flex items-start gap-2 rounded-lg bg-surface-container-high px-4 py-3 text-sm" role="status" data-numeric>
+                <icon name="lock" class="mt-0.5 h-4 w-4 shrink-0" />
+                <span>@lockMessage</span>
+            </p>
+        }
+
+        <div class="skeleton h-80 w-full rounded-xl" aria-hidden="true"></div>
+    </div>
+</div>

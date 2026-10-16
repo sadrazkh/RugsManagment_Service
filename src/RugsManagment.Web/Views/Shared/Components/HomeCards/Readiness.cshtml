@@ -1,0 +1,50 @@
+@using RugsManagment.Web.Home.Cards
+@using RugsManagment.Web.Navigation
+@model HomeReadinessModel
+@*
+    کارت «آمادگی» (A.4، C.6): تراشه‌های محمولهٔ هدف، بازدارنده‌ها اول، هر کدام با نماد + متن (هرگز فقط رنگ، H.7) و پیوند به
+    زبانهٔ نگله‌ها که همان‌جا درست می‌شوند. توکن‌ها: error-container برای بازدارنده، warning برای هشدار، success برای «آماده».
+*@
+@{
+    var fixHref = NavBuilder.Resolve(Context, Model.FixHref);
+}
+
+<section class="h-full rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm"
+         aria-labelledby="home-readiness-title" data-home-card="readiness">
+    <h2 id="home-readiness-title" class="flex items-center gap-2 text-base font-semibold text-primary" data-numeric>
+        <icon name="check" class="h-5 w-5" />
+        آمادگی @Model.ShipmentName
+    </h2>
+
+    @if (Model.Ready && Model.Chips.Count == 0)
+    {
+        <p class="mt-4 inline-flex min-h-9 items-center gap-1.5 rounded-full bg-success/12 px-3 py-1 text-sm font-medium text-success"
+           data-readiness-state="ready">
+            <icon name="check" class="h-4 w-4 shrink-0" />
+            آمادهٔ قطعی شدن
+        </p>
+    }
+    else
+    {
+        <ul class="mt-4 flex flex-col gap-2" data-numeric>
+            @if (Model.Ready)
+            {
+                <li class="inline-flex min-h-9 items-center gap-1.5 self-start rounded-full bg-success/12 px-3 py-1 text-sm font-medium text-success"
+                    data-readiness-state="ready">
+                    <icon name="check" class="h-4 w-4 shrink-0" />
+                    آمادهٔ قطعی شدن
+                </li>
+            }
+            @foreach (var chip in Model.Chips)
+            {
+                <li>
+                    <a href="@fixHref" data-readiness="@chip.Code"
+                       class="inline-flex min-h-11 items-start gap-2 rounded-xl px-3 py-2 text-sm hover:opacity-90 @(chip.Blocking ? "bg-error-container text-on-error-container" : "bg-warning/12 text-warning")">
+                        <icon name="@(chip.Blocking ? "error" : "warning")" class="mt-0.5 h-4 w-4 shrink-0" />
+                        <span>@chip.Message</span>
+                    </a>
+                </li>
+            }
+        </ul>
+    }
+</section>

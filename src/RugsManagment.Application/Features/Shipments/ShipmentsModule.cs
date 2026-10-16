@@ -56,6 +56,9 @@ public static class ShipmentsModule
         services.Replace(ServiceDescriptor.Scoped<IHomeShipmentSource, HomeShipmentSource>());
         services.Replace(ServiceDescriptor.Scoped<IHomeStockSource, ShipmentHomeStockSource>());
 
+        // جدول نگله‌ها (فاز ۴b) کنار جدول‌های ورود و انبار (درز IGridSource فاز ۳)
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<Intake.Grid.IGridSource, Grid.BalesGridSource>());
+
         return services;
     }
 }

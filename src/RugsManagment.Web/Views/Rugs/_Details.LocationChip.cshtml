@@ -1,0 +1,20 @@
+@using RugsManagment.Application.DTOs.Rugs
+@using RugsManagment.Domain.Enums
+@using RugsManagment.Web.Navigation
+@using RugsManagment.Web.RugDetails
+@model RugDto
+@*
+    چیپ «جا»ی فرش در سربرگ صفحهٔ فرش (C.10، H.1): «در انبار»، «در نگلهٔ ۳»، «صادر شده»، «فروخته‌شده». نمای ساده جز همین چیزی
+    دربارهٔ وضعیت نشان نمی‌دهد (A.3). نماد + متن، هرگز فقط رنگ (H.7). واژهٔ نگله/عدل از کارگاه.
+*@
+@{
+    var terms = await AppShell.TermsAsync(Context);
+    var text = Model.Location == RugLocation.InBale && Model.BaleNumber is { } bale
+        ? $"در {terms.BaleOf} {PersianFormat.Count(bale)}"
+        : RugDetailsFormat.LocationLabel(Model.Location, terms.Bale);
+}
+<span class="inline-flex items-center gap-1 rounded-full bg-surface-container px-2.5 py-1 text-xs" data-numeric
+      data-rug-location="@Model.Location">
+    <icon name="@RugDetailsFormat.LocationIcon(Model.Location)" class="h-3.5 w-3.5" />
+    @text
+</span>

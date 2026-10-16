@@ -23,15 +23,38 @@ interface Balance {
   inProgressStepCount: number
   lastPaymentAt?: string
 }
+/**
+ * یک سطر «کارهای انجام‌شده»: کار یک مرحله روی یک فرش، یا (از فاز هزینه‌ها، D.3) رسید یک ثبت هزینه که این طرف حساب
+ * دارد — مثلاً «رسید شمارهٔ ۴ · شستشو · برای ۳ فرش» با همان مبلغ ثابت‌شده؛ با حذف یا تغییر اندازهٔ فرش کم و زیاد نمی‌شود.
+ */
 interface WorkItem {
   stepId: string
   rugId: string
   rugSku: string
-  rugTitle?: string
+  rugTitle?: string | null
   stepNameFa: string
-  completedAt?: string
+  completedAt?: string | null
   status: number
   cost: number
+  /** ۰ مرحله، ۱ رسید (`ProviderWorkKind`) */
+  kind?: number
+  costEntryId?: string | null
+  costEntryNumber?: number | null
+  rugCount?: number | null
+}
+
+const RECEIPT = 1
+
+function isReceipt(item: WorkItem): boolean {
+  return item.kind === RECEIPT
+}
+
+/** باز کردن همان ثبت در پنل هزینه (ویرایش). */
+async function openReceipt(item: WorkItem) {
+  if (!item.costEntryId) return
+  const { openPanel } = await import('@/lib/ui')
+  const result = await openPanel('cost-entry', { entryId: item.costEntryId })
+  if (result) await load()
 }
 interface Payment { id: string; amount: number; paidAt: string; reference?: string; notes?: string }
 
@@ -213,8 +236,22 @@ onMounted(load)
           </p>
 
           <ul v-else class="divide-y divide-outline-variant">
-            <li v-for="item in work" :key="item.stepId" class="flex items-center justify-between gap-3 py-2.5">
-              <a :href="`/Rugs/Details/${item.rugId}`" class="min-w-0 flex-1">
+            <li v-for="item in work" :key="`${item.kind ?? 0}-${item.stepId}`" class="flex items-center justify-between gap-3 py-2.5"
+                :data-receipt="isReceipt(item) ? item.costEntryNumber : undefined">
+              <!-- رسید یک ثبت هزینه (D.3): یک سطر با مبلغ ثابت‌شده، نه سطری برای هر فرش -->
+              <button v-if="isReceipt(item)" type="button" class="min-h-11 min-w-0 flex-1 text-start"
+                      @click="openReceipt(item)">
+                <div class="flex items-center gap-1 truncate text-sm font-medium hover:text-primary">
+                  <AppIcon name="receipt" class="h-4 w-4" />
+                  <span data-numeric>رسید شمارهٔ {{ faNumber(item.costEntryNumber ?? null) }}</span>
+                  <span>· {{ item.stepNameFa }}</span>
+                </div>
+                <div class="truncate text-xs text-on-surface-variant" data-numeric>
+                  <span v-if="item.rugCount">برای {{ faNumber(item.rugCount) }} فرش</span>
+                  <span v-if="item.completedAt"> · {{ faDate(item.completedAt) }}</span>
+                </div>
+              </button>
+              <a v-else :href="`/Rugs/Details/${item.rugId}`" class="min-w-0 flex-1">
                 <div class="truncate text-sm font-medium hover:text-primary">
                   {{ item.stepNameFa }} — {{ item.rugTitle || 'بدون عنوان' }}
                 </div>

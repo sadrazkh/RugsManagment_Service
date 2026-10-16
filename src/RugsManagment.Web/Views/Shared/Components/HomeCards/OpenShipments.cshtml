@@ -1,0 +1,116 @@
+@using RugsManagment.Application.Common
+@using RugsManagment.Web.Home.Cards
+@using RugsManagment.Web.Navigation
+@model HomeOpenShipmentsModel
+@*
+    کارت «محموله‌های باز» (A.4): محمولهٔ هدف با تخته، متر، دلار و نگله‌ها و پیوند «نگله‌بندی»؛ با دو محمولهٔ باز یا بیشتر
+    بقیه زیرش، و «محمولهٔ دیگر» همان برگهٔ انتخاب کاشی‌ها را باز می‌کند (data-sheet-open در site.js؛ Esc و پس‌زمینه می‌بندند،
+    تازه‌ترین فوکوس می‌گیرد). بی‌پول، برای همه. واژهٔ نگله از Model.Terms.
+*@
+@{
+    var target = Model.Target;
+    var terms = Model.Terms;
+    const string SheetId = "home-sheet-open-shipments";
+
+    string PiecesText(int pieces, int lines) => lines != pieces
+        ? $"{Messages.FormatNumber(pieces)} ({Messages.FormatNumber(lines)} ردیف)"
+        : Messages.FormatNumber(pieces);
+}
+
+<section class="h-full rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm"
+         aria-labelledby="home-open-shipments-title" data-home-card="open-shipments">
+    <div class="flex flex-wrap items-start justify-between gap-2">
+        <h2 id="home-open-shipments-title" class="flex items-center gap-2 text-base font-semibold text-primary">
+            <icon name="truck" class="h-5 w-5" />
+            @(Model.Others.Count > 0 ? "محموله‌های باز" : "محمولهٔ باز")
+        </h2>
+        <span class="text-sm text-on-surface-variant" data-numeric>
+            <span class="font-semibold text-on-surface">@target.Name</span> · @target.Date
+        </span>
+    </div>
+
+    <dl class="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4" data-numeric>
+        <div>
+            <dt class="text-sm text-on-surface-variant">تخته</dt>
+            <dd class="text-2xl font-bold">@PiecesText(target.Pieces, target.Lines)</dd>
+        </div>
+        <div>
+            <dt class="text-sm text-on-surface-variant">متر</dt>
+            <dd class="text-2xl font-bold">@Messages.FormatNumber(target.AreaM2)</dd>
+        </div>
+        <div>
+            <dt class="text-sm text-on-surface-variant">دلار</dt>
+            <dd class="text-2xl font-bold">@Messages.FormatNumber(target.UsdTotal)</dd>
+        </div>
+        <div>
+            <dt class="text-sm text-on-surface-variant">@terms.Bale</dt>
+            <dd class="text-2xl font-bold">@Messages.FormatNumber(target.Bales)</dd>
+        </div>
+    </dl>
+
+    <div class="mt-5 flex flex-wrap gap-2">
+        <a href="@NavBuilder.Resolve(Context, target.BalesHref)" data-home-shipment="@target.Id"
+           class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 font-semibold text-on-primary hover:bg-primary-hover">
+            <icon name="bale" class="h-5 w-5" />
+            @(terms.Bale)‌بندی
+        </a>
+        @if (Model.Choices is { Count: > 1 } choices)
+        {
+            <button type="button" data-sheet-open="@SheetId" aria-haspopup="dialog" aria-controls="@SheetId"
+                    class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-4 font-medium hover:bg-surface-container">
+                <icon name="truck" class="h-5 w-5" />
+                محمولهٔ دیگر
+            </button>
+
+            @* برگهٔ انتخاب: پایین صفحه روی گوشی، وسط روی دسکتاپ (همان شکل کاشی‌ها) *@
+            <div id="@SheetId" class="fixed inset-0 z-[65]" role="dialog" aria-modal="true"
+                 aria-labelledby="@(SheetId)-title" data-sheet hidden>
+                <div class="absolute inset-0 bg-black/50" data-sheet-close></div>
+                <div class="pb-safe absolute inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto rounded-t-2xl border border-outline-variant bg-surface-container-lowest p-4 shadow-xl sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl">
+                    <div class="mb-3 flex items-center justify-between gap-3">
+                        <h2 id="@(SheetId)-title" class="text-lg font-bold">کدام محموله؟</h2>
+                        <button type="button" class="grid h-11 w-11 place-items-center rounded-lg hover:bg-surface-container" data-sheet-close>
+                            <icon name="close" label="بستن" />
+                        </button>
+                    </div>
+                    <ul class="space-y-2">
+                        @foreach (var choice in choices)
+                        {
+                            <li>
+                                <a href="@NavBuilder.Resolve(Context, choice.Href)"
+                                   class="flex min-h-14 items-center justify-between gap-3 rounded-xl border px-4 text-base font-semibold hover:bg-primary/5 @(choice.IsLatest ? "border-primary text-primary" : "border-outline-variant")"
+                                   data-sheet-autofocus="@(choice.IsLatest ? "true" : null)" data-numeric>
+                                    <span>@choice.Label</span>
+                                    @if (choice.IsLatest)
+                                    {
+                                        <span class="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium">تازه‌ترین</span>
+                                    }
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (Model.Others.Count > 0)
+    {
+        <ul class="mt-5 divide-y divide-outline-variant border-t border-outline-variant" aria-label="محموله‌های باز دیگر" data-numeric>
+            @foreach (var other in Model.Others)
+            {
+                <li>
+                    <a href="@NavBuilder.Resolve(Context, other.BalesHref)" data-home-shipment="@other.Id"
+                       class="flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2 hover:text-primary">
+                        <span class="font-medium">@other.Name <span class="text-sm font-normal text-on-surface-variant">· @other.Date</span></span>
+                        <span class="text-sm text-on-surface-variant">
+                            @Messages.FormatNumber(other.Bales) @terms.Bale ·
+                            @Messages.FormatNumber(other.Pieces) تخته ·
+                            @Messages.FormatNumber(other.AreaM2) متر
+                        </span>
+                    </a>
+                </li>
+            }
+        </ul>
+    }
+</section>
