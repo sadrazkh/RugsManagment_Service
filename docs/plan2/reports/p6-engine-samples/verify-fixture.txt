@@ -1,0 +1,2 @@
+sample cells rows 1-43: 516; fixture cells: 516; merges 41
+NO DIFFERENCES

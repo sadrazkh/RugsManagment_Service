@@ -1,0 +1,58 @@
+﻿tamper: K3 original cached <v> = 4.37
+excel version 16.0; calculation mode xlCalculationManual
+tampered K3 shown on open (manual calc) = 9.99  (9.99 => Excel shows the cached <v>, no recalculation on load)
+tampered K3 after CalculateFull = 4.37
+
+=== full-sample.xlsx
+lots=True usedRows=199
+  before recalc 3816area = 3.8
+  before recalc footer1 = 4 / 13.51 / 607.95
+  before recalc footer10 = 3 / 15.5 / 697.5
+  before recalc footer29 = 50 / 8 / 360
+  before recalc footer30 = 34 / 6.24 / 280.8
+  before recalc footer33 = 4 / 14.49 / 652.05
+  before recalc summaryRow3 = 1 / 4 / 13.51 / 607.95
+  before recalc summaryTotals = 242 / 464.74 / 20322.5
+  after CalculateFull: 0 differences among 39 checked values
+  PageSetup: Zoom=False FitToPagesWide=1 FitToPagesTall=False PrintTitleRows=$1:$2 PaperSize=9 Orientation=1 CenterHeader=''
+  Summary PrintTitleRows=''
+  A1 font colour (BGR long)=7434614 (0x767171 => 7434614); A1 fill=65535 (yellow => 65535); A1 font=B Nazanin 11
+  RTL=True B3 type=Double NumberFormat(K3)=General
+  HPageBreaks (5): row 44 (bale 11, type -4135); row 81 (bale 20, type -4135); row 113 (bale 23, type -4135); row 152 (bale 28, type -4135); row 192 (bale 35, type -4135)
+  Pages.Count=6
+  exported main sheet print to docs/plan2/reports\p6-engine-samples\full-sample.pdf
+
+=== golden-bales-1-10.xlsx
+lots=False usedRows=43
+  before recalc footer1 = 4 / 13.51 / 607.95
+  before recalc footer10 = 3 / 15.5 / 697.5
+  before recalc summaryRow3 = 1 / 4 / 13.51 / 607.95
+  before recalc summaryTotals = 31 / 135.12 / 6080.4
+  after CalculateFull: 0 differences among 12 checked values
+  PageSetup: Zoom=False FitToPagesWide=1 FitToPagesTall=False PrintTitleRows=$1:$2 PaperSize=9 Orientation=1 CenterHeader=''
+  Summary PrintTitleRows=''
+  A1 font colour (BGR long)=7434614 (0x767171 => 7434614); A1 fill=65535 (yellow => 65535); A1 font=B Nazanin 11
+  RTL=True B3 type=Double NumberFormat(K3)=General
+  HPageBreaks (0): 
+  Pages.Count=1
+  exported main sheet print to docs/plan2/reports\p6-engine-samples\golden-bales-1-10.pdf
+
+=== full-sample-draft.xlsx
+lots=True usedRows=199
+  before recalc 3816area = 3.8
+  before recalc footer1 = 4 / 13.51 / 607.95
+  before recalc footer10 = 3 / 15.5 / 697.5
+  before recalc footer29 = 50 / 8 / 360
+  before recalc footer30 = 34 / 6.24 / 280.8
+  before recalc footer33 = 4 / 14.49 / 652.05
+  before recalc summaryRow3 = 1 / 4 / 13.51 / 607.95
+  before recalc summaryTotals = 242 / 464.74 / 20322.5
+  after CalculateFull: 0 differences among 39 checked values
+  PageSetup: Zoom=False FitToPagesWide=1 FitToPagesTall=False PrintTitleRows=$1:$2 PaperSize=9 Orientation=1 CenterHeader='????????'
+  Summary PrintTitleRows=''
+  A1 font colour (BGR long)=7434614 (0x767171 => 7434614); A1 fill=65535 (yellow => 65535); A1 font=B Nazanin 11
+  RTL=True B3 type=Double NumberFormat(K3)=General
+  HPageBreaks (5): row 44 (bale 11, type -4135); row 81 (bale 20, type -4135); row 113 (bale 23, type -4135); row 152 (bale 28, type -4135); row 192 (bale 35, type -4135)
+  Pages.Count=6
+  exported main sheet print to docs/plan2/reports\p6-engine-samples\full-sample-draft.pdf
+summary pages=1
