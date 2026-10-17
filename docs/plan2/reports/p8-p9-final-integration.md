@@ -48,3 +48,10 @@ No credentials, database dumps, owner workbook or generated large binary artifac
 - Automatic approval review rejected the combined push command because explicit destination authorization was missing. The rejected command did not execute. Local fast-forward was then completed separately; no network write was attempted as a workaround. Explicit permission for `https://github.com/sadrazkh/RugsManagment_Service` push and draft PR to master was requested.
 - The owner backup confirmation required by HANDOFF before applying M7 to the real database remains pending. The original database is still at M3; the upgraded replica and zero-mismatch verification are evidence of readiness, not permission to alter production.
 - Disposable acceptance app: `http://localhost:5189`, copied Release runtime with `rugs_accept_review_1017`; retained for owner inspection. It is separate from the original database.
+
+## Owner-authorized real upgrade
+
+- Owner explicitly confirmed the backup and M7 upgrade, and separately authorized push to `sadrazkh/RugsManagment_Service` plus draft PR to master.
+- Fresh pre-upgrade custom backup: `work/backups/rugs_before_m7_owner_confirmed.dump`, 90,193 bytes, pg_restore listing valid; SHA256 `45F30EC4F46165CA1C76EE08996F2E74C63729C63B40E6DCD61C5E2F604B56D8`.
+- Exported committed snapshot `9eb0d18` with git archive, built Release warning/error-free, started once on port 5297 with Development, `Seed__Demo=false`, exact M7 confirmation and the real connection. Startup advisory lock acquired; M4/M5/M6/M7 succeeded, tenant defaults reported 0 errors, both tenant ledgers healthy (5 and 1 rugs).
+- Post-upgrade SQL: history includes M7; 6 totals / 344,937,269.00 unchanged; legacy PurchaseCost column absent. No tests were run against the real database.
