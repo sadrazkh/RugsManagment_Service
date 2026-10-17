@@ -117,10 +117,9 @@ public sealed class RugBatchService(
     {
         var batch = await batches.GetWithRugsAsync(id, tenantId, ct)
             ?? throw new KeyNotFoundException(Messages.IntakeBatchNotFound.Text);
-        foreach (var rug in batch.Rugs)
+        foreach (var rug in batch.Rugs.ToList())
         {
             rug.BatchId = null;
-            rugs.Update(rug);
         }
         batches.Remove(batch);
         await unitOfWork.SaveChangesAsync(ct);

@@ -8,5 +8,9 @@ namespace RugsManagment.Application.Features.Import;
 /// </summary>
 public static class ImportModule
 {
-    public static IServiceCollection AddImportModule(this IServiceCollection services) => services;
+    public static IServiceCollection AddImportModule(this IServiceCollection services)
+    {
+        services.AddScoped<ImportService>();
+        return services;
+    }
 }

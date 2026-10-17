@@ -202,7 +202,22 @@
     { "id": "compose-all-sources", "kind": "money", "scale": 0, "op": "compose", "purchaseLines": "1000", "purchaseAllocations": "500", "stepCost": "250.5", "expenseAllocations": "0", "totalAreaM2": "2.00", "qty": 2,
       "purchaseCost": "1500", "total": "1750.5", "costPerM2": "875", "costPerPiece": "875" },
     { "id": "compose-zero-area", "kind": "money", "scale": 0, "op": "compose", "purchaseLines": "100", "purchaseAllocations": "0", "stepCost": "0", "expenseAllocations": "0", "totalAreaM2": "0", "qty": 1,
-      "purchaseCost": "100", "total": "100", "costPerM2": null, "costPerPiece": "100" }
+      "purchaseCost": "100", "total": "100", "costPerM2": null, "costPerPiece": "100" },
+    { "id": "D7-washing-A", "kind": "money", "scale": 0, "op": "entryPiece", "basis": "PerM2", "rate": "85000", "pieceArea": "4.37", "qty": 1, "piece": "371450", "line": "371450" },
+    { "id": "D7-washing-B", "kind": "money", "scale": 0, "op": "entryPiece", "basis": "PerM2", "rate": "85000", "pieceArea": "0.16", "qty": 50, "piece": "13600", "line": "680000" },
+    { "id": "D7-washing-C", "kind": "money", "scale": 0, "op": "entryPiece", "basis": "PerM2", "rate": "85000", "pieceArea": "8.44", "qty": 1, "piece": "717400", "line": "717400" },
+    { "id": "D7-revenue-conversion", "kind": "money", "scale": 0, "op": "baseAmount", "amount": "1800", "fx": "105000", "expected": "189000000" }
+  ],
+
+  "costAllocationVectors": [
+    { "id": "D7-5-freight", "amount": "10000000", "weights": [437, 800, 844], "shares": ["2099952", "3844306", "4055742"] },
+    { "id": "D7-7-final-size", "amount": "10000000", "weights": [437, 800, 825], "shares": ["2119302", "3879728", "4000970"] },
+    { "id": "D7-8-trash-freight", "amount": "10000000", "weights": [437, 825], "shares": ["3462758", "6537242"] },
+    { "id": "D7-8-trash-frozen-receipt", "amount": "1768850", "weights": [437, 844], "shares": ["603425", "1165425"] },
+    { "id": "D7-10-customs", "amount": "3000000", "weights": [19665, 36000, 37125], "shares": ["635790", "1163919", "1200291"] },
+    { "id": "D7-11-revenue", "amount": "189000000", "weights": [19665, 36000, 37125], "shares": ["40054801", "73326867", "75618332"] },
+    { "id": "D7-12-late-cost", "amount": "600000", "weights": [437, 800, 825], "shares": ["127158", "232784", "240058"] },
+    { "id": "negative-equal", "amount": "-100", "weights": [1, 1, 1], "shares": ["-34", "-33", "-33"] }
   ],
 
   "serialAbout": "Typed serials (spec G.4): accepted forms, the normalised display (Latin digits, ' - ' between a range), numeric bounds (null for text serials such as A-12), the count of numbers, the next serial after it, and error codes. Consumed by xUnit (Domain SerialNumber); the grid parser (gridParse.ts) may adopt them.",

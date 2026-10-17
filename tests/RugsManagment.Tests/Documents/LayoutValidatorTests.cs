@@ -38,7 +38,7 @@ public class LayoutValidatorTests
         {
             var result = LayoutValidator.Validate(template.Json, SampleDocuments.Catalogue());
             Assert.True(result.Ok, $"{template.SeedKey}.v{template.Version}: {string.Join(" | ", result.Errors.Select(e => $"{e.Code} {e.Path} {e.Message}"))}");
-            Assert.False(result.UsesMoneyFields);
+            Assert.Equal(template.SeedKey == "shipment-cost", result.UsesMoneyFields);
         }
 
         Assert.Contains(LayoutJson.Defaults(), d => d is { SeedKey: "shipment-declaration", Version: 1 });

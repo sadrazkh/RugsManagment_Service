@@ -132,6 +132,9 @@ export function resolveField(rug: LabelRug, key: string): string {
 }
 
 /** جایگزینی {{key}} در یک متن با مقدار فیلدها (برای QR/بارکد و حالت HTML). */
-export function fillPlaceholders(rug: LabelRug, text: string): string {
-  return text.replace(/\{\{\s*([\w]+)\s*\}\}/g, (_, k: string) => resolveField(rug, k))
+export function fillPlaceholders(rug: LabelRug, text: string, html = false): string {
+  return text.replace(/\{\{\s*([\w]+)\s*\}\}/g, (_, k: string) => {
+    const value = resolveField(rug, k)
+    return html ? value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') : value
+  })
 }

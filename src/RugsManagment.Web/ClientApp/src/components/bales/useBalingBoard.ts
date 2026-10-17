@@ -21,6 +21,7 @@ import { draftKey, safeStorage } from '@/lib/gridDrafts'
 import { newId } from '@/lib/ids'
 import { coreMessages, message } from '@/lib/messages'
 import { blockReload, confirmDialog, toast } from '@/lib/ui'
+import { measurementQueue } from './measurementQueue'
 import {
   BALES_COMMAND_EVENT,
   SHIPMENT_CHANGED_EVENT,
@@ -130,6 +131,7 @@ interface SendOutcome {
 }
 
 export function useBalingBoard(options: BoardOptions) {
+  const measurements = measurementQueue<BaleRow | null>()
   const ctx = appContext()
   const shipmentId = computed(() => options.shipmentId())
 
@@ -652,7 +654,9 @@ export function useBalingBoard(options: BoardOptions) {
   // ── اندازهٔ نهایی ───────────────────────────────────────────────────
 
   /** ثبت اندازهٔ نهایی یک ردیف (C.4). نتیجه: ردیف تازه یا null. */
-  async function measure(row: BaleRow, size: FinalSizeInput, options2: { quiet?: boolean } = {}): Promise<BaleRow | null> {
+  function measure(row: BaleRow, size: FinalSizeInput, options2: { quiet?: boolean } = {}): Promise<BaleRow | null> {
+    return measurements.run(row.lineId, JSON.stringify(size), async () => {
+    row = findRow(row.lineId) ?? row
     lastError.value = ''
     const before = finalSizeOf(row)
     const op = measureOp(row, size, newId())
@@ -671,6 +675,7 @@ export function useBalingBoard(options: BoardOptions) {
       })
     }
     return r.row
+    })
   }
 
   /** «بقیه همان اندازهٔ اول»: یک تأیید و یک درخواست برای همه (C.4). */

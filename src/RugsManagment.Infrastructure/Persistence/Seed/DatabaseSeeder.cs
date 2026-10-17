@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 using RugsManagment.Application.Abstractions;
 using RugsManagment.Application.Services;
 using RugsManagment.Domain.Costing;
@@ -53,7 +54,8 @@ public static class DatabaseSeeder
             await db.SaveChangesAsync();
         }
 
-        if (!await db.Tenants.AnyAsync())
+        var seedDemo = !bool.TryParse(scope.ServiceProvider.GetService<IConfiguration>()?["Seed:Demo"], out var configuredDemo) || configuredDemo;
+        if (seedDemo && !await db.Tenants.AnyAsync())
         {
             var demoTenant = new Tenant
             {

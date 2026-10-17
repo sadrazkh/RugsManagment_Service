@@ -46,9 +46,13 @@ public sealed class CostCategoryService(
 
     private readonly TimeProvider _time = time ?? TimeProvider.System;
 
-    public Task<IReadOnlyList<CostCategoryDto>> ListAsync(
+    public async Task<IReadOnlyList<CostCategoryDto>> ListAsync(
         Guid tenantId, bool purchaseOnly, bool includeInactive, CancellationToken cancellationToken = default)
-        => entries.ListCategoriesAsync(tenantId, purchaseOnly ? CostGroup.Purchase : null, includeInactive, cancellationToken);
+    {
+        var rows = await entries.ListCategoriesAsync(tenantId, purchaseOnly ? CostGroup.Purchase : null, includeInactive, cancellationToken);
+        // انباردار سرستون‌های خرید را لازم دارد؛ نرخِ پیش‌فرض همچنان مبلغ محرمانهٔ بازرگان است.
+        return purchaseOnly ? rows.Select(c => c with { DefaultRate = null }).ToList() : rows;
+    }
 
     public async Task<CostCategoryDto> QuickCreateAsync(
         Guid tenantId, QuickCostCategoryRequest request, CancellationToken cancellationToken = default)
@@ -56,7 +60,7 @@ public sealed class CostCategoryService(
         ArgumentNullException.ThrowIfNull(request);
         var name = ValidName(request.Name);
         if (!Enum.IsDefined(request.Group))
-            throw AppValidationException.ForField("group", Messages.InvalidValue.Format(("label", "گروه")));
+            throw AppValidationException.ForField("group", Messages.InvalidValue.Format(("label", "دستهٔ هزینه")));
 
         var existing = (await entries.ListCategoriesAsync(tenantId, request.Group, includeInactive: true, cancellationToken))
             .FirstOrDefault(c => string.Equals(c.Name, name, StringComparison.Ordinal));
@@ -157,7 +161,7 @@ public sealed class CostCategoryService(
         else if (name.Length > CostCategory.NameMaxLength)
             errors["name"] = [Messages.TooLong.Format(("label", "نام"), ("n", CostCategory.NameMaxLength))];
         if (!Enum.IsDefined(request.Group))
-            errors["group"] = [Messages.InvalidValue.Format(("label", "گروه"))];
+            errors["group"] = [Messages.InvalidValue.Format(("label", "دستهٔ هزینه"))];
         if (!Enum.IsDefined(request.DefaultBasis) || (request.DefaultBasis == CostBasis.Percent && request.Group != CostGroup.Purchase))
             errors["defaultBasis"] = [Messages.CostPercentBasis.Text];
         if (!Enum.IsDefined(request.DefaultMethod)

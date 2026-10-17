@@ -5,6 +5,7 @@
  * مقادیر به‌صورت رشته نگه‌داری می‌شوند و سرور آن‌ها را بر اساس نوع فیلد
  * تبدیل و اعتبارسنجی می‌کند؛ اعتبارسنجی اینجا فقط برای بازخورد سریع است.
  */
+import JalaliDateField from '@/components/ui/JalaliDateField.vue'
 import { computed, ref, watch } from 'vue'
 
 export interface StepField {
@@ -95,7 +96,7 @@ defineExpose({ toPayload, missingRequired, hasFields: computed(() => fields.valu
         </select>
 
         <!-- تاریخ -->
-        <input v-else-if="f.type === 2" v-model="values[f.key]" type="date" dir="ltr" class="fld" />
+        <JalaliDateField v-else-if="f.type === 2"  :model-value="values[f.key]" @update:model-value="values[f.key] = $event ?? ''" />
 
         <!-- عدد -->
         <input v-else-if="f.type === 1" v-model="values[f.key]" type="text" inputmode="decimal" dir="ltr" class="fld" />

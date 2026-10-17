@@ -186,10 +186,9 @@ onMounted(async () => {
 <template>
   <div class="space-y-4 pb-24" data-pack-mode>
     <!--
-      سربرگ صفحه (بازگشت به نگله‌ها، شمارهٔ محموله) و پیام قفلِ بار اول بیرون از جزیره‌اند (Pack.cshtml)؛ این‌جا فقط وقتی
-      محموله همین حالا قطعی شد. بی آن صفحه (props.backUrl نیامده) جزیره سربرگ خودش را دارد.
+      سربرگ اولیهٔ Razor هنگام سوار شدن جزیره جایگزین می‌شود؛ عنوان و بازگشت باید در خود جزیره هم بمانند.
     -->
-    <header v-if="!props.backUrl" class="flex items-center gap-2">
+    <header class="flex items-center gap-2">
       <a :href="backHref" class="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-outline-variant hover:bg-surface-container">
         <AppIcon name="arrow-right" :label="`بازگشت به ${terms.bales}`" />
       </a>

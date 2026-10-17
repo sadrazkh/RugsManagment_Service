@@ -87,17 +87,8 @@
             </select>
         </label>
 
-        <label class="block">
-            <span class="mb-1 block text-sm">از تاریخ</span>
-            <input type="date" name="from" dir="ltr" value="@fromRaw?.ToString("yyyy-MM-dd")"
-                   class="min-h-11 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-sm outline-none focus:border-primary" />
-        </label>
-
-        <label class="block">
-            <span class="mb-1 block text-sm">تا تاریخ</span>
-            <input type="date" name="to" dir="ltr" value="@toRaw?.ToString("yyyy-MM-dd")"
-                   class="min-h-11 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-sm outline-none focus:border-primary" />
-        </label>
+        <island name="date-filter" props="@(new { name = "from", value = fromRaw?.ToString("yyyy-MM-dd"), label = "از تاریخ" })"></island>
+        <island name="date-filter" props="@(new { name = "to", value = toRaw?.ToString("yyyy-MM-dd"), label = "تا تاریخ" })"></island>
 
         <button type="submit"
                 class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-on-primary hover:bg-primary-hover">

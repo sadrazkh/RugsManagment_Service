@@ -93,7 +93,8 @@ public sealed class ShipmentLedgerRepository(AppDbContext db) : IShipmentLedgerR
                    r."IntakeLength", r."IntakeWidth", r."FinalLength", r."FinalWidth", r."LengthMeters", r."WidthMeters",
                    r."Quantity", r."SerialNo", r."SerialFrom", r."SerialTo", r."SerialSort",
                    r."Title", r."Origin", r."Pattern", r."Material", r."KnotDensity",
-                   r."Status", r."DeletedAt", r."WorkflowTemplateId", r."CurrentStepIndex", r."MetadataJson"::text
+                   r."Status", r."DeletedAt", r."WorkflowTemplateId", r."CurrentStepIndex", r."MetadataJson"::text,
+                   r."FinalMeasuredAt", r."FinalMeasuredBy"
             FROM "Rugs" r
             WHERE r."TenantId" = @tenant AND r."Id" = ANY(@ids)
             """;
@@ -121,7 +122,9 @@ public sealed class ShipmentLedgerRepository(AppDbContext db) : IShipmentLedgerR
                     [nameof(Rug.DeletedAt)] = r.IsDBNull(19) ? null : r.GetFieldValue<DateTimeOffset>(19),
                     [nameof(Rug.WorkflowTemplateId)] = r.IsDBNull(20) ? null : r.GetGuid(20),
                     [nameof(Rug.CurrentStepIndex)] = r.GetInt32(21),
-                    [nameof(Rug.MetadataJson)] = ShipmentSql.NullableString(r, 22)
+                    [nameof(Rug.MetadataJson)] = ShipmentSql.NullableString(r, 22),
+                    [nameof(Rug.FinalMeasuredAt)] = r.IsDBNull(23) ? null : r.GetFieldValue<DateTimeOffset>(23),
+                    [nameof(Rug.FinalMeasuredBy)] = r.IsDBNull(24) ? null : r.GetGuid(24)
                 }),
             cancellationToken, ShipmentSql.Uuid("tenant", tenantId), ShipmentSql.Uuids("ids", rugIds));
     }

@@ -97,6 +97,12 @@ export function useGridSave(options: GridSaveOptions) {
   let tickTimer: unknown = null
   let again = false
   let disposed = false
+  const sentRows = new WeakSet<GridRowState>()
+  const idleWaiters: (() => void)[] = []
+
+  function waitForIdle(): Promise<void> {
+    return state.inFlight ? new Promise((resolve) => idleWaiters.push(resolve)) : Promise.resolve()
+  }
 
   const unsavedCount = computed(() => options.rows().filter(hasUnsaved).length)
 
@@ -157,6 +163,7 @@ export function useGridSave(options: GridSaveOptions) {
   /** «الان دوباره بفرست». */
   function retryNow(): Promise<void> {
     stopRetry()
+    for (const row of options.rows()) if (row.status === 'invalid') row.status = 'dirty'
     return flush()
   }
 
@@ -170,7 +177,7 @@ export function useGridSave(options: GridSaveOptions) {
     const columns = options.columns()
     const list: Pending[] = []
     for (const row of options.rows()) {
-      if (!hasUnsaved(row) || row.saving || row.conflict || !options.ready(row)) continue
+      if (!hasUnsaved(row) || row.saving || row.conflict || row.status === 'invalid' || !options.ready(row)) continue
       const built = buildOp(row, columns)
       if (built) list.push({ row, op: built.op, sent: built.sent })
     }
@@ -193,6 +200,7 @@ export function useGridSave(options: GridSaveOptions) {
   }
 
   async function sendBatch(batch: Pending[]): Promise<void> {
+    for (const item of batch) sentRows.add(item.row)
     const response = await options.send(options.request(batch.map((b) => b.op)))
     applyAll(batch, resultsOf(response))
     options.onResponse?.(Array.isArray(response) || !response || typeof response !== 'object' ? null : (response as GridBatchResponse))
@@ -251,6 +259,7 @@ export function useGridSave(options: GridSaveOptions) {
       }
     } finally {
       state.inFlight = false
+      for (const resolve of idleWaiters.splice(0)) resolve()
     }
 
     if (halted) {
@@ -293,5 +302,5 @@ export function useGridSave(options: GridSaveOptions) {
     stopRetry()
   }
 
-  return { state, unsavedCount, schedule, flushSoon, flush, retryNow, dispose }
+  return { state, unsavedCount, schedule, flushSoon, flush, retryNow, dispose, waitForIdle, wasSent: (row: GridRowState) => sentRows.has(row) }
 }

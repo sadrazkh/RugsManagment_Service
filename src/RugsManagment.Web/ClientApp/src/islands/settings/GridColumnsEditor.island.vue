@@ -10,7 +10,7 @@
  * - نسخه همراه ذخیره می‌رود؛ اگر کس دیگری همین حالا عوضش کرده باشد سرور ۴۰۹ می‌دهد و صفحه پیشنهاد بار دوباره دارد.
  * - «برگرداندن پیش‌فرض» چیدمان کارگاه را پاک می‌کند (`DELETE …?version=`).
  */
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import Button from '@/components/ui/Button.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
@@ -79,6 +79,12 @@ function move(index: number, delta: -1 | 1) {
   const list = [...columns.value]
   ;[list[index], list[target]] = [list[target], list[index]]
   columns.value = list
+  void nextTick(() => {
+    const row = document.querySelector<HTMLElement>(`[data-column-key="${CSS.escape(list[target].key)}"]`)
+    const focusTarget = row?.querySelector<HTMLElement>(`[data-move="${delta}"]:not([disabled])`)
+      ?? row?.querySelector<HTMLElement>('button:not([disabled]), input')
+    focusTarget?.focus()
+  })
 }
 
 function hide(index: number) {
@@ -177,6 +183,7 @@ onMounted(() => void load())
           <li
             v-for="(column, index) in columns"
             :key="column.key"
+            :data-column-key="column.key"
             class="grid gap-3 rounded-lg border border-outline-variant p-3 sm:grid-cols-[auto_minmax(0,1fr)_7rem_auto] sm:items-center"
           >
             <div class="flex items-center gap-1">
@@ -187,6 +194,7 @@ onMounted(() => void load())
                 :disabled="index === 0"
                 :aria-label="`${column.label}: یکی جلوتر`"
                 @click="move(index, -1)"
+                data-move="-1"
               >
                 <AppIcon name="chevron-up" class="h-5 w-5" />
               </button>
@@ -196,6 +204,7 @@ onMounted(() => void load())
                 :disabled="index === columns.length - 1"
                 :aria-label="`${column.label}: یکی عقب‌تر`"
                 @click="move(index, 1)"
+                data-move="1"
               >
                 <AppIcon name="chevron-down" class="h-5 w-5" />
               </button>

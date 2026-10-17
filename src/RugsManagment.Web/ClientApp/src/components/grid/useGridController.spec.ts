@@ -572,6 +572,45 @@ describe('پیش‌نویس (G.7)', () => {
 })
 
 describe('حذف فرش (G.3، E6)', () => {
+  it('deletes a create whose response was lost using the original client row id', async () => {
+    let requestCount = 0
+    const sent: GridBatchRequest[] = []
+    const { ctrl } = make({ send: async (request) => {
+      sent.push(request)
+      requestCount++
+      if (requestCount === 1) throw new TypeError('lost response')
+      return { results: request.ops.map((op) => saved(op)) }
+    } })
+    ctrl.load(data([], null))
+    ctrl.activate(0, at('rug.intakeLength'))
+    enter(ctrl, '2')
+    enter(ctrl, '3')
+    await ctrl.flush()
+    const row = ctrl.rows[0]
+    expect(row.rugId).toBeNull()
+    const pending = ctrl.deleteRow(row.id)
+    settleConfirm(true)
+    await pending
+    expect(sent).toHaveLength(2)
+    expect(sent[1].ops[0]).toMatchObject({ clientRowId: row.id, rugId: null, delete: true })
+    await vi.advanceTimersByTimeAsync(60000)
+    expect(sent).toHaveLength(2)
+    expect(real(ctrl)).toHaveLength(0)
+    ctrl.dispose()
+  })
+
+  it('pasting price retains total and sticky per-piece units', () => {
+    const { ctrl } = make()
+    ctrl.load(data([serverRow({ 'purchase.price': { rate: 100, basis: CostBasis.Total } })], null))
+    ctrl.activate(0, at('purchase.price'))
+    ctrl.paste('200')
+    expect(ctrl.rows[0].values['purchase.price']).toMatchObject({ rate: 200, basis: CostBasis.Total })
+    ctrl.rows[0].values['purchase.price'] = { rate: 300, basis: CostBasis.PerPiece }
+    ctrl.activate(1, at('purchase.price'))
+    enter(ctrl, '400')
+    expect(ctrl.rows[1].values['purchase.price']).toMatchObject({ rate: 400, basis: CostBasis.PerPiece })
+    ctrl.dispose()
+  })
   it('تأیید، حذف، toast «حذف شد [برگردان]» و برگرداندن', async () => {
     const restoreRug = vi.fn(async () => serverRow({ 'rug.serial': '3778' }, { version: 12 }))
     const { ctrl, requests } = make({ restoreRug })

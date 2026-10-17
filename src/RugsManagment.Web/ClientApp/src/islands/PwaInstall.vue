@@ -57,7 +57,7 @@ async function install() {
             class="rounded-lg border border-outline-variant px-3 py-1.5 text-sm text-on-surface-variant hover:bg-surface-container">
       ⬇ نصب
     </button>
-    <div v-if="iosGuide" class="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border border-outline-variant bg-white p-3 text-xs shadow-lg">
+    <div v-if="iosGuide" class="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border border-outline-variant bg-surface-container-lowest p-3 text-xs shadow-lg">
       برای نصب روی iPhone/iPad: دکمهٔ <strong>اشتراک‌گذاری</strong> (مربع با فلش) → <strong>Add to Home Screen</strong> (افزودن به صفحهٔ اصلی).
     </div>
   </div>

@@ -12,7 +12,7 @@
  */
 import { message } from '@/lib/messages'
 import { looksLikeDimensionPair, parseDecimal, parseDimensionPair, type ParseDecimalOptions } from '@/lib/money'
-import { add, cmp, dec, mul, round, sub, toFixedString, tryDec, type Dec } from '@/lib/num'
+import { add, cmp, dec, mul, round, sub, toFixedString, toPlainString, tryDec, type Dec } from '@/lib/num'
 import { DeclaredRateSource, type Bale, type BaleRow, type BaleSummary, type LineOp, type LinesBatchResult } from '@/lib/types/shipments'
 import type { GridColumn } from '@/lib/types/grid'
 import type { AppTerms } from '@/lib/context'
@@ -717,8 +717,8 @@ export function parseSizeText(text: string, allowPair: boolean, options: ParseDe
         status: 'ask',
         message: message(pair.code, pair.tokens),
         choices: [
-          { label: pair.choices[0].label, value: null, values: pair.choices[0].values },
-          { label: pair.choices[1].label, value: null, values: pair.choices[1].values },
+          { label: pair.choices[0].label, value: null, values: normalizeSizePair(pair.choices[0].values) },
+          { label: pair.choices[1].label, value: null, values: normalizeSizePair(pair.choices[1].values) },
         ],
       }
     }
@@ -741,6 +741,10 @@ export function parseSizeText(text: string, allowPair: boolean, options: ParseDe
         ],
       }
   }
+}
+
+function normalizeSizePair(values: [string, string] | null): [string, string] | null {
+  return values ? [toPlainString(values[0]), toPlainString(values[1])] : null
 }
 
 /** پیام «نگلهٔ ۴ هنوز فرشی ندارد…» یا جمع نگلهٔ جاری. */

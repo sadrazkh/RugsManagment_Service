@@ -64,7 +64,8 @@ public sealed class PlatformServicesIntegrationTests(MigratedP1CoreDatabase data
         Assert.NotNull(sp.GetRequiredService<IHomeSummaryService>());
         // erratum E3: P4a جای منبع خالی P1 را با منبع واقعی محموله‌ها گرفت
         Assert.IsType<RugsManagment.Application.Features.Shipments.HomeShipmentSource>(sp.GetRequiredService<IHomeShipmentSource>());
-        Assert.IsType<UnknownHomeMoneySource>(sp.GetRequiredService<IHomeMoneySource>());
+        // P5 دفتر واقعی هزینه را جایگزین منبع خالی پلتفرم می‌کند.
+        Assert.IsType<RugsManagment.Application.Features.Costs.CostHomeMoneySource>(sp.GetRequiredService<IHomeMoneySource>());
         Assert.IsType<TenantSeedRunner>(sp.GetRequiredService<ITenantSeedRunner>());
         var task = Assert.Single(sp.GetServices<IStartupTask>().OfType<TenantSeedRunner>());
         Assert.Equal(100, task.Order);

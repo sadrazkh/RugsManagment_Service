@@ -27,7 +27,9 @@ public sealed record PageBreakInput(
     int FirstBodyRow,
     IReadOnlyList<PageBlock> Blocks,
     bool FallbackScale = false,
-    int MaxDigitWidthPx = PageBreakPlanner.CalibriMaxDigitWidthPx);
+    int MaxDigitWidthPx = PageBreakPlanner.CalibriMaxDigitWidthPx,
+    bool FitToWidth = true,
+    int ScalePercent = 100);
 
 /// <summary>نتیجهٔ صفحه‌بندی.</summary>
 /// <param name="SheetWidthPx">پهنای برگه به پیکسل (قاعدهٔ اکسل).</param>
@@ -96,6 +98,11 @@ public static class PageBreakPlanner
         var written = (int)Math.Floor(scale * 100m);
         if (input.FallbackScale)
             scale = written / 100m;
+        if (!input.FitToWidth)
+        {
+            written = Math.Clamp(input.ScalePercent, 10, 400);
+            scale = written / 100m;
+        }
 
         var capacity = Math.Max(input.PrintTitleRows + 1, Capacity(printableHeight, input.RowHeight, scale));
 

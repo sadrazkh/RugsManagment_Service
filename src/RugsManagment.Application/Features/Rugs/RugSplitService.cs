@@ -43,7 +43,8 @@ public sealed class RugSplitService(
     IRepository<RugWorkflowStep> steps,
     IRepository<RugPurchaseLine> purchaseLines,
     IRugSkuGenerator skus,
-    IAuditLog audit) : IRugSplitService
+    IAuditLog audit,
+    IShipmentRepository? shipments = null) : IRugSplitService
 {
     public async Task<Rug> SplitAsync(
         Rug original, SplitRugRequest request, RugSplitContext context, CancellationToken cancellationToken = default)
@@ -99,6 +100,19 @@ public sealed class RugSplitService(
 
         await SplitPurchaseLinesAsync(original, created, members, context, cancellationToken);
         await CopyStepsAsync(original, created, members, kept, taken, cancellationToken);
+
+        if (shipments is not null && await shipments.GetLineOfRugTrackedAsync(context.TenantId, original.Id, cancellationToken) is { } line)
+        {
+            if (line.Shipment.IsFinalized)
+                throw new DomainConflictException(Messages.ShipmentLockedOperator.Text);
+            var following = await shipments.ListLinesOfBaleTrackedAsync(context.TenantId, line.BaleId, cancellationToken);
+            foreach (var next in following.Where(x => x.Seq > line.Seq)) next.Seq++;
+            await shipments.AddLineAsync(new ShipmentLine
+            {
+                TenantId = context.TenantId, ShipmentId = line.ShipmentId, BaleId = line.BaleId,
+                RugId = created.Id, Seq = line.Seq + 1, UsdPerM2Override = line.UsdPerM2Override
+            }, cancellationToken);
+        }
 
         var takenText = SerialLabel(takenSerial?.Display, created.Sku);
         audit.Record(AuditAction.RugSplit, nameof(Rug), original.Id,

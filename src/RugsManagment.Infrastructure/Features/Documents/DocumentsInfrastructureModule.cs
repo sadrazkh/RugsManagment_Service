@@ -10,5 +10,11 @@ namespace RugsManagment.Infrastructure.Features.Documents;
 public static class DocumentsInfrastructureModule
 {
     public static IServiceCollection AddDocumentsModule(this IServiceCollection services, IConfiguration configuration)
-        => services;
+    {
+        services.AddScoped<RugsManagment.Application.Abstractions.Persistence.IDocumentTemplateRepository, RugsManagment.Infrastructure.Persistence.Repositories.DocumentTemplateRepository>();
+        services.AddScoped<RugsManagment.Application.Abstractions.Persistence.IDocumentDataRepository, RugsManagment.Infrastructure.Persistence.Repositories.DocumentDataRepository>();
+        services.AddScoped<RugsManagment.Application.Abstractions.Persistence.IExportSetupRepository, RugsManagment.Infrastructure.Persistence.Repositories.ExportSetupRepository>();
+        services.AddScoped<RugsManagment.Application.Abstractions.Services.IXlsxDocumentWriter, RugsManagment.Infrastructure.Documents.ClosedXmlDocumentWriter>();
+        return services;
+    }
 }

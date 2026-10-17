@@ -208,6 +208,21 @@ describe('موتور ذخیره', () => {
       status: 'dirty',
     })
 
+  it('does not resend rejected rows until explicit retry or editing', async () => {
+    const send = vi.fn(async (req: GridBatchRequest) => req.ops.map((op) => ({
+      clientRowId: op.clientRowId, rugId: null, version: null, sku: null,
+      status: GridRowStatus.Invalid, derived: null, errors: [{ field: 'rug.serial', message: 'invalid' }], current: null,
+    })))
+    const { rows, save } = setup(send)
+    rows.push(fresh('1'))
+    await save.flush()
+    await vi.advanceTimersByTimeAsync(60000)
+    expect(send).toHaveBeenCalledTimes(1)
+    await save.retryNow()
+    expect(send).toHaveBeenCalledTimes(2)
+    save.dispose()
+  })
+
   it('۱٫۵ ثانیه پس از آخرین تغییر، همه در یک درخواست', async () => {
     const send = vi.fn(async (req: GridBatchRequest) =>
       req.ops.map((op, i) => ({ clientRowId: op.clientRowId, rugId: `r${i}`, version: 1, sku: null, status: GridRowStatus.Saved, derived: null, errors: null, current: null })),

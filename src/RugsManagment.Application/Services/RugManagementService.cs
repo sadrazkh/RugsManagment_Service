@@ -350,6 +350,9 @@ public sealed class RugManagementService(
     public async Task<SplitRugResultDto> SplitAsync(
         Guid tenantId, Guid rugId, SplitRugRequest request, CancellationToken ct = default)
     {
+        return await unitOfWork.ExecuteInTransactionAsync(async ct =>
+        {
+        await ledgerLock.AcquireAsync(tenantId, ct);
         var rug = await rugs.GetWithWorkflowAsync(rugId, tenantId, ct)
             ?? throw new KeyNotFoundException("فرش یافت نشد.");
         concurrency.Expect(rug, request.Version);
@@ -365,6 +368,7 @@ public sealed class RugManagementService(
         var fresh = await rugs.GetWithWorkflowAsync(created.Id, tenantId, ct)
             ?? throw new InvalidOperationException("بارگذاری فرش تازه بعد از برش ناموفق بود.");
         return new SplitRugResultDto(await dtos.BuildAsync(original, ct), await dtos.BuildAsync(fresh, ct));
+        }, ct);
     }
 
     // ═════════════════════════════════════════════════════════════════════

@@ -100,7 +100,7 @@ public static partial class Messages
 
     /// <summary>تغییر گروه نوعی که به کار رفته (CostCategoryGuard، D.5 #25؛ ۴۰۹).</summary>
     public static readonly MessageTemplate CostCategoryGroupLocked =
-        new("E_COST_CATEGORY_GROUP_LOCKED", "گروه «{category}» عوض نمی‌شود، چون با آن هزینه یا قیمت خرید ثبت شده.");
+        new("E_COST_CATEGORY_GROUP_LOCKED", "دستهٔ هزینهٔ «{category}» عوض نمی‌شود، چون با آن هزینه یا قیمت خرید ثبت شده.");
 
     /// <summary>حذف نوعی که به کار رفته (۴۰۹؛ سرویس به‌جایش غیرفعال می‌کند).</summary>
     public static readonly MessageTemplate CostCategoryInUse =

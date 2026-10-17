@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RugsManagment.Application.Services;
+using RugsManagment.Application.Features.Intake;
 using RugsManagment.Web.Auth;
 using RugsManagment.Web.Filters;
 
@@ -11,7 +12,7 @@ namespace RugsManagment.Web.Controllers;
 /// قالب پیکربندی کارگاه است و فقط تنظیم‌کننده (Configure).
 /// </summary>
 [Authorize(Policy = Policies.Floor)]
-public class LabelsController(ILabelTemplateService labels) : Controller
+public class LabelsController(ILabelTemplateService labels, IIntakeGridRepository intake) : Controller
 {
     public async Task<IActionResult> Index(CancellationToken ct)
     {
@@ -34,9 +35,11 @@ public class LabelsController(ILabelTemplateService labels) : Controller
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> Print(
-        [FromQuery] Guid[] rugIds, [FromQuery] Guid? templateId, CancellationToken ct)
+        [FromQuery] Guid[] rugIds, [FromQuery] Guid? templateId, CancellationToken ct, [FromQuery] DateOnly? date = null)
     {
         var tenantId = User.RequireTenantId();
+        if (date is { } day)
+            rugIds = (await intake.ListIntakeDayAsync(tenantId, day, null, ct)).Select(r => r.Id).ToArray();
         var templates = await labels.ListAsync(tenantId, ct);
 
         if (templates.Count == 0)

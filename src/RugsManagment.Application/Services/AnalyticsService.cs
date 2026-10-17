@@ -15,7 +15,8 @@ public interface IAnalyticsService
     Task<AgingReportDto> GetAgingAsync(Guid tenantId, CancellationToken ct = default);
 }
 
-public sealed class AnalyticsService(IRugRepository rugs, IWorkflowEngine workflowEngine) : IAnalyticsService
+public sealed class AnalyticsService(IRugRepository rugs, IWorkflowEngine workflowEngine,
+    IAnalyticsReadRepository? reports = null) : IAnalyticsService
 {
     /// <summary>
     /// آستانه‌های پیش‌فرض کهنگی (روز) — وقتی نوع مرحله «مدت معمول» تعریف‌شده ندارد.
@@ -25,11 +26,12 @@ public sealed class AnalyticsService(IRugRepository rugs, IWorkflowEngine workfl
     private const int CriticalDays = 30;
 
     public async Task<AgingReportDto> GetAgingAsync(Guid tenantId, CancellationToken ct = default)
-        => BuildAging(await rugs.ListByTenantAsync(tenantId, null, ct));
+        => reports is not null ? await reports.AgingAsync(tenantId, ct) : BuildAging(await rugs.ListByTenantAsync(tenantId, null, ct));
 
     public async Task<AnalyticsReportDto> GetAsync(
         Guid tenantId, int trendMonths = 12, CancellationToken ct = default)
     {
+        if (reports is not null) return await reports.ReadAsync(tenantId, trendMonths, ct);
         var all = await rugs.ListByTenantAsync(tenantId, null, ct);
 
         return new AnalyticsReportDto(

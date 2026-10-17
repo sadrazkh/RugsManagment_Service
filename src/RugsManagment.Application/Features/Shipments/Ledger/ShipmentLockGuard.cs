@@ -33,6 +33,7 @@ public sealed class ShipmentLockGuard(
     public static readonly string[] RugLockedFields =
     [
         nameof(Rug.IntakeLength), nameof(Rug.IntakeWidth), nameof(Rug.FinalLength), nameof(Rug.FinalWidth),
+        nameof(Rug.FinalMeasuredAt), nameof(Rug.FinalMeasuredBy),
         nameof(Rug.LengthMeters), nameof(Rug.WidthMeters), nameof(Rug.Quantity),
         nameof(Rug.SerialNo), nameof(Rug.SerialFrom), nameof(Rug.SerialTo), nameof(Rug.SerialSort),
         nameof(Rug.Title), nameof(Rug.Origin), nameof(Rug.Pattern), nameof(Rug.Material), nameof(Rug.KnotDensity),
@@ -343,6 +344,8 @@ public sealed class ShipmentLockGuard(
         [nameof(Rug.IntakeWidth)] = rug.IntakeWidth,
         [nameof(Rug.FinalLength)] = rug.FinalLength,
         [nameof(Rug.FinalWidth)] = rug.FinalWidth,
+        [nameof(Rug.FinalMeasuredAt)] = rug.FinalMeasuredAt,
+        [nameof(Rug.FinalMeasuredBy)] = rug.FinalMeasuredBy,
         [nameof(Rug.LengthMeters)] = rug.LengthMeters,
         [nameof(Rug.WidthMeters)] = rug.WidthMeters,
         [nameof(Rug.Quantity)] = rug.Quantity,

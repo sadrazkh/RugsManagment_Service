@@ -36,6 +36,10 @@ export type HelpPage =
   | 'batches'
   | 'intake'
   | 'shipments'
+  | 'pack'
+  | 'output'
+  | 'import'
+  | 'setup'
   | 'costs'
   | 'settings'
   | 'default'
@@ -108,9 +112,42 @@ const TOPICS: Record<HelpPage, HelpTopic> = {
   costs: {
     title: 'هزینه‌ها',
     steps: [
-      { text: 'نوع هزینه را انتخاب کنید، مثل کرایه یا شستشو.', icon: 'receipt' },
-      { text: 'مبلغ را «هر متر»، «هر تخته» یا «کل» بنویسید.', icon: 'coins' },
-      { text: 'بگویید برای کدام فرش‌هاست؛ خودش بین آن‌ها تقسیم می‌کند.', icon: 'check' },
+      { text: 'نوع هزینه را انتخاب کنید، مثل کرایه یا شستشو.', icon: 'receipt', business: true },
+      { text: 'مبلغ را «هر متر»، «هر تخته» یا «کل» بنویسید.', icon: 'coins', business: true },
+      { text: 'بگویید برای کدام فرش‌هاست؛ خودش بین آن‌ها تقسیم می‌کند.', icon: 'check', business: true },
+    ],
+  },
+  pack: {
+    title: 'حالت اسکن',
+    steps: [
+      { text: 'شماره را تایپ یا اسکن کنید؛ فرش به {baleOf} جاری می‌رود.', icon: 'scan' },
+      { text: 'اندازهٔ نهایی را بنویسید یا «همان اندازهٔ اول» را بزنید.', icon: 'ruler' },
+      { text: 'جمع متراژ را ببینید؛ برای ادامه «{baleOf} بعد» را بزنید.', icon: 'bale' },
+      { text: 'برای انتقال یا بیرون آوردن فرش، منوی همان فرش را باز کنید.', icon: 'menu' },
+    ],
+  },
+  output: {
+    title: 'اکسل و چاپ',
+    steps: [
+      { text: 'قالب خروجی را انتخاب کنید و پیش‌نمایش را ببینید.', icon: 'spreadsheet' },
+      { text: 'اگر اندازه یا نرخ ناقص بود، از پیام همان فرش برگردید و درستش کنید.', icon: 'ruler' },
+      { text: 'اکسل را بگیرید یا چاپ را باز کنید؛ خروجی پیش از قطعی شدن «پیش‌نویس» است.', icon: 'printer' },
+    ],
+  },
+  import: {
+    title: 'ورود از اکسل',
+    steps: [
+      { text: 'فایل اکسل را انتخاب کنید و ستون‌ها را به شماره، اندازه و مشخصات وصل کنید.', icon: 'upload', business: true },
+      { text: 'پیش‌نمایش و خطاهای هر ردیف را بررسی کنید؛ تا تأیید شما چیزی ثبت نمی‌شود.', icon: 'check', business: true },
+      { text: 'پس از ثبت، نتیجه را ببینید؛ اگر لازم شد از همان کار «برگردان» استفاده کنید.', icon: 'undo', business: true },
+    ],
+  },
+  setup: {
+    title: 'آماده‌سازی کارگاه',
+    steps: [
+      { text: 'بستهٔ صادرات فرش را اعمال کنید و کارهای انجام‌شده را در فهرست ببینید.', icon: 'check', business: true },
+      { text: 'جدول ارزش گمرکی، نوع هزینه‌ها و قالب خروجی را یک بار تنظیم کنید.', icon: 'settings', business: true },
+      { text: 'برای کار روزانه از خانه به «ثبت فرش تازه» بروید.', icon: 'home' },
     ],
   },
   settings: {
@@ -143,7 +180,8 @@ export interface HelpViewer {
 export function helpFor(page: string | null | undefined, viewer?: HelpViewer): HelpTopic {
   const topic = isHelpPage(page) ? TOPICS[page] : TOPICS.default
   if (!viewer || viewer.business) return topic
-  return { ...topic, steps: topic.steps.filter((s) => !s.business) }
+  const steps = topic.steps.filter((s) => !s.business)
+  return { ...topic, steps: steps.length >= 3 ? steps : TOPICS.default.steps }
 }
 
 /** آیا این کلید یک صفحهٔ راهنماست؟ (کلیدهای پیش‌نمونهٔ شیء مثل «constructor» نه) */
@@ -165,6 +203,10 @@ export function helpPageFor(pathname: string): HelpPage {
   if (path.startsWith('/rugs')) return 'rugs'
   if (path.startsWith('/groups')) return 'batches'
   if (path.startsWith('/intake')) return 'intake'
+  if (path.startsWith('/shipments') && path.endsWith('/pack')) return 'pack'
+  if (path.startsWith('/documents') || path.includes('/output')) return 'output'
+  if (path.startsWith('/import')) return 'import'
+  if (path.startsWith('/settings/setup')) return 'setup'
   if (path.startsWith('/shipments')) return 'shipments'
   if (path.startsWith('/costs')) return 'costs'
   if (path.startsWith('/settings') || path.startsWith('/users')) return 'settings'

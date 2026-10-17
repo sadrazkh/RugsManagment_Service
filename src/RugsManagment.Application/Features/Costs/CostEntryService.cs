@@ -8,6 +8,7 @@ using RugsManagment.Application.DTOs.Costs;
 using RugsManagment.Application.DTOs.Rugs;
 using RugsManagment.Application.Features.Costs.Ledger;
 using RugsManagment.Application.Features.Intake;
+using RugsManagment.Application.Ledger;
 using RugsManagment.Domain.Common;
 using RugsManagment.Domain.Costing;
 using RugsManagment.Domain.Entities;
@@ -69,7 +70,8 @@ public sealed class CostEntryService(
     IConcurrencyGuard concurrency,
     IUnitOfWork unitOfWork,
     IAuditLog audit,
-    TimeProvider? time = null) : ICostEntryService
+    TimeProvider? time = null,
+    ILedgerLock? ledgerLock = null) : ICostEntryService
 {
     /// <summary>بزرگ‌ترین مبلغ numeric(18,2).</summary>
     public const decimal MaxAmount = 9_999_999_999_999_999.99m;
@@ -153,7 +155,10 @@ public sealed class CostEntryService(
     // نوشتن
     // ═════════════════════════════════════════════════════════════════════
 
-    public async Task<CostEntryDto> CreateAsync(Guid tenantId, SaveCostEntryRequest request, CancellationToken cancellationToken = default)
+    public Task<CostEntryDto> CreateAsync(Guid tenantId, SaveCostEntryRequest request, CancellationToken cancellationToken = default)
+        => LockedAsync(tenantId, ct => CreateCoreAsync(tenantId, request, ct), cancellationToken);
+
+    private async Task<CostEntryDto> CreateCoreAsync(Guid tenantId, SaveCostEntryRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         if (request.ClientKey is { } key && await entries.FindByClientKeyAsync(tenantId, key, cancellationToken) is { } existingId)
@@ -195,7 +200,10 @@ public sealed class CostEntryService(
         return await GetAsync(tenantId, entry.Id, cancellationToken);
     }
 
-    public async Task<CostEntryDto> UpdateAsync(
+    public Task<CostEntryDto> UpdateAsync(Guid tenantId, Guid entryId, SaveCostEntryRequest request, CancellationToken cancellationToken = default)
+        => LockedAsync(tenantId, ct => UpdateCoreAsync(tenantId, entryId, request, ct), cancellationToken);
+
+    private async Task<CostEntryDto> UpdateCoreAsync(
         Guid tenantId, Guid entryId, SaveCostEntryRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -255,7 +263,10 @@ public sealed class CostEntryService(
         return await GetAsync(tenantId, entry.Id, cancellationToken);
     }
 
-    public async Task<CostEntryDto> RefreezeAsync(Guid tenantId, Guid entryId, uint version, CancellationToken cancellationToken = default)
+    public Task<CostEntryDto> RefreezeAsync(Guid tenantId, Guid entryId, uint version, CancellationToken cancellationToken = default)
+        => LockedAsync(tenantId, ct => RefreezeCoreAsync(tenantId, entryId, version, ct), cancellationToken);
+
+    private async Task<CostEntryDto> RefreezeCoreAsync(Guid tenantId, Guid entryId, uint version, CancellationToken cancellationToken)
     {
         var entry = await RequireTrackedAsync(tenantId, entryId, cancellationToken);
         if (entry.DeletedAt is not null)
@@ -286,7 +297,10 @@ public sealed class CostEntryService(
         return await GetAsync(tenantId, entry.Id, cancellationToken);
     }
 
-    public async Task<CostEntryDto> ResnapshotAsync(Guid tenantId, Guid entryId, uint version, CancellationToken cancellationToken = default)
+    public Task<CostEntryDto> ResnapshotAsync(Guid tenantId, Guid entryId, uint version, CancellationToken cancellationToken = default)
+        => LockedAsync(tenantId, ct => ResnapshotCoreAsync(tenantId, entryId, version, ct), cancellationToken);
+
+    private async Task<CostEntryDto> ResnapshotCoreAsync(Guid tenantId, Guid entryId, uint version, CancellationToken cancellationToken)
     {
         var entry = await RequireTrackedAsync(tenantId, entryId, cancellationToken);
         if (entry.DeletedAt is not null)
@@ -348,7 +362,11 @@ public sealed class CostEntryService(
         CancellationToken cancellationToken)
     {
         var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
-        void Fail(string field, string message) => errors.TryAdd(field, [message]);
+        string? code = null;
+        void Fail(string field, string message, string? errorCode = null)
+        {
+            if (errors.TryAdd(field, [message])) code ??= errorCode;
+        }
 
         var category = await entries.GetCategoryAsync(tenantId, request.CategoryId, cancellationToken)
                        ?? throw new KeyNotFoundException("نوع هزینه یافت نشد.");
@@ -367,15 +385,15 @@ public sealed class CostEntryService(
         if (!Enum.IsDefined(request.Scope))
             Fail("scope", Messages.InvalidValue.Format(("label", "برای")));
         if (category.Group == CostGroup.Purchase && request.Method == AllocationMethod.ByPurchaseCost)
-            Fail("method", Messages.CostCircular.Text);
+            Fail("method", Messages.CostCircular.Text, Messages.CostCircular.Code);
         if (errors.Count > 0)
-            throw new AppValidationException(Messages.ValidationFailed.Text, errors);
+            throw new AppValidationException(Messages.ValidationFailed.Text, errors, code);
 
         decimal? fx = null;
         if (request.Currency == CurrencyUnit.Usd)
         {
             if (request.FxRate is not { } usdFx || usdFx <= 0)
-                Fail("fxRate", Messages.CostFxRequired.Text);
+                Fail("fxRate", Messages.CostFxRequired.Text, Messages.CostFxRequired.Code);
             else if (usdFx > MaxFx || !Num.HasAtMostDecimals(usdFx, 6))
                 Fail("fxRate", Messages.CostTooLarge.Text);
             else
@@ -425,7 +443,7 @@ public sealed class CostEntryService(
             case CostScope.Selection:
                 rugIds = (request.RugIds ?? []).Distinct().ToList();
                 if (rugIds.Count == 0 && !preview)
-                    Fail("rugIds", Messages.CostEmptySelection.Text);
+                    Fail("rugIds", Messages.CostEmptySelection.Text, Messages.CostEmptySelection.Code);
                 if (rugIds.Count > 0)
                 {
                     var found = await entries.GetRugsAsync(tenantId, rugIds, cancellationToken);
@@ -539,10 +557,10 @@ public sealed class CostEntryService(
 
         // مبلغ ثابت فقط روی «کل» یا رسید منجمد (E9)
         if (pins.Count > 0 && plan.Basis != CostBasis.Total && !plan.IsReceipt)
-            Fail("pins", Messages.CostPinsBasis.Text);
+            Fail("pins", Messages.CostPinsBasis.Text, Messages.CostPinsBasis.Code);
 
         if (errors.Count > 0)
-            throw new AppValidationException(Messages.ValidationFailed.Text, errors);
+            throw new AppValidationException(Messages.ValidationFailed.Text, errors, code);
         return plan;
     }
 
@@ -669,7 +687,7 @@ public sealed class CostEntryService(
         {
             var message = Messages.CostPinsExceed.Format(
                 ("pins", Money(sum, settings.Currency)), ("total", Money(baseAmount, settings.Currency)));
-            throw AppValidationException.ForField("pins", message);
+            throw AppValidationException.ForField("pins", message, Messages.CostPinsExceed.Code);
         }
     }
 
@@ -863,6 +881,14 @@ public sealed class CostEntryService(
             .Normalize(System.Text.NormalizationForm.FormC);
         return text.Length == 0 ? null : text;
     }
+
+    /// <summary>انجماد رسید و عکس خرید باید اعضای همان تراکنش را ببینند؛ قفلِ دیرهنگامِ Save جلوی عکس کهنه را نمی‌گیرد.</summary>
+    private Task<CostEntryDto> LockedAsync(Guid tenantId, Func<CancellationToken, Task<CostEntryDto>> work, CancellationToken ct)
+        => ledgerLock is null ? work(ct) : unitOfWork.ExecuteInTransactionAsync(async token =>
+        {
+            await ledgerLock.AcquireAsync(tenantId, token);
+            return await work(token);
+        }, ct);
 
     private static string Persian(int number) => PersianText.ToPersianDigits(number.ToString(CultureInfo.InvariantCulture));
 }

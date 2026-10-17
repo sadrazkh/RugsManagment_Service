@@ -36,7 +36,7 @@ export const messages: Record<string, string> = {
   E_COST_DELETED: 'این هزینه حذف شده؛ اول آن را برگردانید.',
   E_COST_DECIMALS: 'مبلغ {currency} بیش از {n} رقم اعشار ندارد.',
   E_COST_TOO_LARGE: 'این مبلغ از حد بیشتر است.',
-  E_COST_CATEGORY_GROUP_LOCKED: 'گروه «{category}» عوض نمی‌شود، چون با آن هزینه یا قیمت خرید ثبت شده.',
+  E_COST_CATEGORY_GROUP_LOCKED: 'دستهٔ هزینهٔ «{category}» عوض نمی‌شود، چون با آن هزینه یا قیمت خرید ثبت شده.',
   E_COST_CATEGORY_IN_USE: '«{category}» به کار رفته و حذف نمی‌شود؛ غیرفعالش کنید.',
   E_COST_CATEGORY_NAME_TAKEN: 'نوع «{category}» از قبل هست.',
   E_REVENUE_NEGATIVE: 'فروش محموله منفی نمی‌شود.',

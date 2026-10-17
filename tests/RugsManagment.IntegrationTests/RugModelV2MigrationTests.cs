@@ -22,6 +22,7 @@ public sealed class RugModelV2MigrationTests
 {
     private const string M1 = "20261003234036_PlatformPreferences";
     private const string M2Suffix = "_RugModelV2AndCosting";
+    private const string M2 = "20261004063353_RugModelV2AndCosting";
 
     private static readonly Guid TenantA = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly Guid TenantB = Guid.Parse("22222222-2222-2222-2222-222222222222");
@@ -40,8 +41,9 @@ public sealed class RugModelV2MigrationTests
             Assert.Contains(await db.Database.GetPendingMigrationsAsync(), id => id.EndsWith(M2Suffix, StringComparison.Ordinal));
             await SeedLegacyRowsAsync(db);
 
-            await migrator.MigrateAsync();
-            Assert.Empty(await db.Database.GetPendingMigrationsAsync());
+            // آزمون خود M2 است؛ M7 عمداً پشتیبان ابعاد قدیمی را پس از تأیید بکاپ حذف می‌کند.
+            await migrator.MigrateAsync(M2);
+            Assert.Equal(M2, (await db.Database.GetAppliedMigrationsAsync()).Last());
             Assert.False(db.Database.HasPendingModelChanges());
 
             var rugs = await db.Rugs.IgnoreQueryFilters().AsNoTracking().OrderBy(r => r.Sku).ToListAsync();
@@ -146,7 +148,7 @@ public sealed class RugModelV2MigrationTests
             var migrator = db.GetService<IMigrator>();
             await migrator.MigrateAsync(M1);
             await SeedLegacyRowsAsync(db);
-            await migrator.MigrateAsync();
+            await migrator.MigrateAsync(M2);
 
             // بعد از M2: اندازهٔ نهایی برای یک فرش و یک سطر خرید تازه برای دیگری
             await db.Database.ExecuteSqlAsync($"""
@@ -176,8 +178,8 @@ public sealed class RugModelV2MigrationTests
             Assert.Null(after.Single(r => r.Id == RugTrashed).PurchaseCost);
             Assert.Null(after.Single(r => r.Id == RugScale2).PurchaseCost);       // سطرهایش پاک شد → NULL، نه ۱۲۳۴٫۵۶ پیش از M2
 
-            await migrator.MigrateAsync();
-            Assert.Empty(await db.Database.GetPendingMigrationsAsync());
+            await migrator.MigrateAsync(M2);
+            Assert.Equal(M2, (await db.Database.GetAppliedMigrationsAsync()).Last());
             var odd = await db.Rugs.IgnoreQueryFilters().AsNoTracking().SingleAsync(r => r.Id == RugOdd);
             Assert.Equal((2.68m, 1.01m), (odd.IntakeLength, odd.IntakeWidth));
             var oddLine = await db.Set<RugPurchaseLine>().AsNoTracking().SingleAsync(l => l.RugId == RugOdd);

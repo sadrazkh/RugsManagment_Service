@@ -2,6 +2,7 @@ using RugsManagment.Application.Abstractions;
 using RugsManagment.Application.Abstractions.Persistence;
 using RugsManagment.Application.Abstractions.Services;
 using RugsManagment.Application.Common;
+using RugsManagment.Application.Ledger;
 using RugsManagment.Application.DTOs.Shipments;
 using RugsManagment.Domain.Common;
 using RugsManagment.Domain.Entities;
@@ -41,7 +42,8 @@ public sealed class BaleService(
     IUnitOfWork unitOfWork,
     IAuditLog audit,
     IMoneyVisibility money,
-    TimeProvider? time = null) : IBaleService
+    TimeProvider? time = null,
+    ILedgerLock? ledgerLock = null) : IBaleService
 {
     /// <summary>بزرگ‌ترین وزن (numeric(8,2)).</summary>
     public const decimal MaxWeightKg = 999_999.99m;
@@ -55,6 +57,9 @@ public sealed class BaleService(
         Guid tenantId, Guid shipmentId, CreateBaleRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        return await unitOfWork.ExecuteInTransactionAsync(async cancellationToken =>
+        {
+        if (ledgerLock is not null) await ledgerLock.AcquireAsync(tenantId, cancellationToken);
         var shipment = await shipments.GetTrackedAsync(tenantId, shipmentId, cancellationToken)
                        ?? throw new KeyNotFoundException("محموله یافت نشد.");
         var terms = (await settingsReader.GetAsync(tenantId, cancellationToken)).Terms;
@@ -80,11 +85,15 @@ public sealed class BaleService(
             new { shipmentId = shipment.Id, number });
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return (await dtos.BalesAsync(tenantId, shipment.Id, bale.Id, cancellationToken)).Single();
+        }, cancellationToken);
     }
 
     public async Task<BaleDto> UpdateAsync(Guid tenantId, Guid baleId, UpdateBaleRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        return await unitOfWork.ExecuteInTransactionAsync(async cancellationToken =>
+        {
+        if (ledgerLock is not null) await ledgerLock.AcquireAsync(tenantId, cancellationToken);
         var bale = await shipments.GetBaleTrackedAsync(tenantId, baleId, cancellationToken)
                    ?? throw new KeyNotFoundException("نگله یافت نشد.");
         var terms = (await settingsReader.GetAsync(tenantId, cancellationToken)).Terms;
@@ -117,6 +126,7 @@ public sealed class BaleService(
             null, new { shipmentId = bale.ShipmentId, from = before, to = bale.Number, weightKg = bale.WeightKg });
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return (await dtos.BalesAsync(tenantId, bale.ShipmentId, bale.Id, cancellationToken)).Single();
+        }, cancellationToken);
     }
 
     public async Task DeleteAsync(Guid tenantId, Guid baleId, uint version, CancellationToken cancellationToken = default)
@@ -143,6 +153,7 @@ public sealed class BaleService(
         ArgumentNullException.ThrowIfNull(request);
         await unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
+            if (ledgerLock is not null) await ledgerLock.AcquireAsync(tenantId, ct);
             var shipment = await shipments.GetTrackedAsync(tenantId, shipmentId, ct)
                            ?? throw new KeyNotFoundException("محموله یافت نشد.");
             concurrency.Expect(shipment, request.Version);

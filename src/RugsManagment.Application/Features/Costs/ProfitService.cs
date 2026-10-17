@@ -79,6 +79,7 @@ public sealed class ProfitService(
         if (request.Amount is { } amount)
         {
             var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
+            string? code = null;
             if (!Enum.IsDefined(request.Currency))
                 errors["currency"] = [Messages.CostCurrencyInvalid.Text];
             var scale = request.Currency == CurrencyUnit.Usd ? AreaMath.UsdDecimals : settings.MoneyScale;
@@ -93,7 +94,10 @@ public sealed class ProfitService(
             if (request.Currency == CurrencyUnit.Usd)
             {
                 if (request.Fx is not { } rate || rate <= 0)
+                {
                     errors["fx"] = [Messages.CostFxRequired.Text];
+                    code = Messages.CostFxRequired.Code;
+                }
                 else if (rate > CostEntryService.MaxFx || !Num.HasAtMostDecimals(rate, 6))
                     errors["fx"] = [Messages.CostTooLarge.Text];
                 else
@@ -101,7 +105,7 @@ public sealed class ProfitService(
             }
 
             if (errors.Count > 0)
-                throw new AppValidationException(Messages.ValidationFailed.Text, errors);
+                throw new AppValidationException(Messages.ValidationFailed.Text, errors, code);
 
             var baseAmount = CostAllocator.BaseOfTotal(amount, request.Currency, settings.Currency, fx, settings.MoneyScale);
             if (baseAmount > CostEntryService.MaxAmount)

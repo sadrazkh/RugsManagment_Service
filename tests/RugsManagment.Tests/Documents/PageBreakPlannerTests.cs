@@ -9,6 +9,17 @@ namespace RugsManagment.Tests.Documents;
 /// </summary>
 public class PageBreakPlannerTests
 {
+    [Fact]
+    public void Wave2_ExplicitScale_ControlsCapacity_WhenFitToWidthIsOff()
+    {
+        var input = new PageBreakInput([50m, 50m], 8.27m, 11.69m,
+            new RenderMargins(0.2m, 0.2m, 0.5m, 0.5m, 0.3m, 0.3m), 16.8m, 2, 3, [],
+            FitToWidth: false, ScalePercent: 75);
+        var plan = PageBreakPlanner.Plan(input);
+        Assert.Equal(0.75m, plan.Scale);
+        Assert.Equal(75, plan.WrittenScale);
+        Assert.Equal(PageBreakPlanner.Capacity(769.68m, 16.8m, 0.75m), plan.Capacity);
+    }
     private static readonly decimal[] NoLotWidths = [3.88671875m, 6.5546875m, 7.88671875m, 8.6640625m, 9.109375m, 8m, 10.109375m, 6.109375m, 6.44140625m, 7.109375m, 14.88671875m, 16m];
 
     private static readonly decimal[] LotWidths = [3.88671875m, 6.5546875m, 7.88671875m, 8.6640625m, 9.109375m, 8m, 10.109375m, 5.5m, 6.109375m, 6.44140625m, 7.109375m, 14.88671875m, 16m];

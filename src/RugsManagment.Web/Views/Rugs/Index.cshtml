@@ -279,17 +279,7 @@
                     <input type="hidden" name="stepTypeId" value="@q.StepTypeId" />
                 }
 
-                <label class="block">
-                    <span class="mb-1 block text-sm">ثبت از تاریخ</span>
-                    <input type="date" name="createdFrom" dir="ltr" value="@Model.CreatedFromText"
-                           class="min-h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 outline-none focus:border-primary" />
-                </label>
-
-                <label class="block">
-                    <span class="mb-1 block text-sm">تا تاریخ</span>
-                    <input type="date" name="createdTo" dir="ltr" value="@Model.CreatedToText"
-                           class="min-h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 outline-none focus:border-primary" />
-                </label>
+                <partial name="_DateFilters" model="Model" />
 
                 <div class="sm:col-span-2 lg:col-span-4">
                     <button type="submit"

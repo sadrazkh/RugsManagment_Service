@@ -127,15 +127,6 @@ public class Rug : BaseEntity, ITenantScoped
     /// <summary>مساحت یک تخته در اندازهٔ اول: ROUND(L×W, 2). ستون تولیدشده <c>IntakeAreaM2</c>.</summary>
     public decimal IntakeAreaM2 => AreaMath.PieceArea(IntakeLength, IntakeWidth);
 
-    /// <summary>
-    /// قیمت خرید قدیمی (پیش از M2). M2 هر مقدار غیرخالی را به یک سطر خرید «کل» («قیمت خرید») برد؛ از آن پس
-    /// هیچ‌کس در این ستون نمی‌نویسد و M7 آن را حذف می‌کند. قیمت خرید = جمع <see cref="PurchaseLines"/>.
-    /// <para>نگاشت EF با قرارداد است (هیچ کدی به این ستون اشاره نمی‌کند)، پس برخلاف B.4 به <c>#pragma</c> در
-    /// <c>EntityConfigurations.cs</c> نیازی نیست؛ CI با <c>-warnaserror</c> هر استفادهٔ تازه را خطا می‌کند.</para>
-    /// </summary>
-    [Obsolete("از M2 قیمت خرید = جمع سطرهای خرید (RugPurchaseLine)؛ این ستون فقط برای M2/Down مانده و M7 حذفش می‌کند.")]
-    public decimal? PurchaseCost { get; set; }
-
     public decimal? TargetSalePrice { get; set; }
 
     public RugStatus Status { get; set; } = RugStatus.Draft;

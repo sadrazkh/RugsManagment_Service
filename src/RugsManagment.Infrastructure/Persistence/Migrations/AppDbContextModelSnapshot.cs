@@ -121,6 +121,36 @@ namespace RugsManagment.Infrastructure.Persistence.Migrations
                     b.ToTable("Bales", (string)null);
                 });
 
+            modelBuilder.Entity("RugsManagment.Domain.Entities.CostAllocation", b =>
+                {
+                    b.Property<Guid>("EntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("RugId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<bool>("IsPinned")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("WeightUnits")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("EntryId", "RugId");
+
+                    b.HasIndex("RugId");
+
+                    b.HasIndex("TenantId", "RugId");
+
+                    b.ToTable("CostAllocations", (string)null);
+                });
+
             modelBuilder.Entity("RugsManagment.Domain.Entities.CostCategory", b =>
                 {
                     b.Property<Guid>("Id")
@@ -200,6 +230,252 @@ namespace RugsManagment.Infrastructure.Persistence.Migrations
                     b.HasIndex("TenantId", "Group", "SortOrder");
 
                     b.ToTable("CostCategories", (string)null);
+                });
+
+            modelBuilder.Entity("RugsManagment.Domain.Entities.CostEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("AreaBasis")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("BaseAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("Basis")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("BatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ClientKey")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Currency")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTimeOffset?>("FrozenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("FxRate")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<int>("Method")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("Rate")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("ReceiptNo")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<int>("Scope")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ScopeNote")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid?>("ServiceProviderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ShipmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BatchId");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("ServiceProviderId");
+
+                    b.HasIndex("ShipmentId");
+
+                    b.HasIndex("TenantId", "ClientKey")
+                        .IsUnique()
+                        .HasFilter("\"ClientKey\" IS NOT NULL");
+
+                    b.HasIndex("TenantId", "Date");
+
+                    b.HasIndex("TenantId", "Number")
+                        .IsUnique();
+
+                    b.ToTable("CostEntries", (string)null);
+                });
+
+            modelBuilder.Entity("RugsManagment.Domain.Entities.CostEntryPin", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("EntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("RugId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RugId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("EntryId", "RugId")
+                        .IsUnique();
+
+                    b.ToTable("CostEntryPins", (string)null);
+                });
+
+            modelBuilder.Entity("RugsManagment.Domain.Entities.CostEntryResult", b =>
+                {
+                    b.Property<Guid>("EntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Allocated")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("AreaM2")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<decimal>("BaseAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset>("ComputedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Lines")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Pieces")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("State")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("TotalWeightUnits")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal>("Unallocated")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("WarningsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.HasKey("EntryId");
+
+                    b.HasIndex("TenantId", "State");
+
+                    b.ToTable("CostEntryResults", (string)null);
+                });
+
+            modelBuilder.Entity("RugsManagment.Domain.Entities.CostEntryTarget", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("BaleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("EntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("RugId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BaleId");
+
+                    b.HasIndex("RugId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("EntryId", "BaleId")
+                        .IsUnique()
+                        .HasFilter("\"BaleId\" IS NOT NULL");
+
+                    b.HasIndex("EntryId", "RugId")
+                        .IsUnique()
+                        .HasFilter("\"RugId\" IS NOT NULL");
+
+                    b.ToTable("CostEntryTargets", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CostEntryTargets_OneTarget", "(\"RugId\" IS NOT NULL) <> (\"BaleId\" IS NOT NULL)");
+                        });
                 });
 
             modelBuilder.Entity("RugsManagment.Domain.Entities.CustomFieldDefinition", b =>
@@ -299,6 +575,282 @@ namespace RugsManagment.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("DeclaredValueRates", (string)null);
+                });
+
+            modelBuilder.Entity("RugsManagment.Domain.Entities.DocumentTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("LayoutJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("Revision")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SeedKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("UsesMoneyFields")
+                        .HasColumnType("boolean");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "Kind")
+                        .IsUnique()
+                        .HasFilter("\"IsDefault\"");
+
+                    b.HasIndex("TenantId", "SeedKey")
+                        .IsUnique()
+                        .HasFilter("\"SeedKey\" IS NOT NULL");
+
+                    b.ToTable("DocumentTemplates", (string)null);
+                });
+
+            modelBuilder.Entity("RugsManagment.Domain.Entities.DocumentTemplateRevision", b =>
+                {
+                    b.Property<Guid>("TemplateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Revision")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("LayoutJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTimeOffset>("SavedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("SavedBy")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("TemplateId", "Revision");
+
+                    b.ToTable("DocumentTemplateRevisions", (string)null);
+                });
+
+            modelBuilder.Entity("RugsManagment.Domain.Entities.ExportRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DataHash")
+                        .IsRequired()
+                        .HasColumnType("character(64)");
+
+                    b.Property<string>("FileSha256")
+                        .HasColumnType("character(64)");
+
+                    b.Property<int>("Format")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDraft")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("RugCount")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("ShipmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TemplateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("TemplateRevision")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ShipmentId");
+
+                    b.HasIndex("TemplateId");
+
+                    b.HasIndex("TenantId", "ShipmentId", "At");
+
+                    b.ToTable("ExportRuns", (string)null);
+                });
+
+            modelBuilder.Entity("RugsManagment.Domain.Entities.ImportJob", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("BatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("CommittedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ExistingSerialPolicy")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("FileSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int?>("HeaderRow")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("MappingJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("Mode")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("OptionsJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("PreviewJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("ResultJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Sheet")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid?>("ShipmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("StoredPath")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly?>("TitleDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("TitleText")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BatchId");
+
+                    b.HasIndex("ShipmentId");
+
+                    b.HasIndex("TenantId", "FileSha256");
+
+                    b.HasIndex("TenantId", "Number")
+                        .IsUnique();
+
+                    b.ToTable("ImportJobs", (string)null);
+                });
+
+            modelBuilder.Entity("RugsManagment.Domain.Entities.ImportMappingPreset", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("HeaderSignature")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("MappingJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "HeaderSignature")
+                        .IsUnique();
+
+                    b.ToTable("ImportMappingPresets", (string)null);
                 });
 
             modelBuilder.Entity("RugsManagment.Domain.Entities.LabelTemplate", b =>
@@ -526,9 +1078,6 @@ namespace RugsManagment.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Pattern")
                         .HasColumnType("text");
-
-                    b.Property<decimal?>("PurchaseCost")
-                        .HasColumnType("numeric");
 
                     b.Property<int>("Quantity")
                         .ValueGeneratedOnAdd()
@@ -1457,6 +2006,8 @@ namespace RugsManagment.Infrastructure.Persistence.Migrations
 
                     b.HasKey("TenantId");
 
+                    b.HasIndex("DefaultDeclarationTemplateId");
+
                     b.ToTable("TenantPreferences", (string)null);
                 });
 
@@ -1636,6 +2187,31 @@ namespace RugsManagment.Infrastructure.Persistence.Migrations
                     b.Navigation("Shipment");
                 });
 
+            modelBuilder.Entity("RugsManagment.Domain.Entities.CostAllocation", b =>
+                {
+                    b.HasOne("RugsManagment.Domain.Entities.CostEntry", "Entry")
+                        .WithMany()
+                        .HasForeignKey("EntryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RugsManagment.Domain.Entities.Rug", "Rug")
+                        .WithMany()
+                        .HasForeignKey("RugId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RugsManagment.Domain.Entities.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Entry");
+
+                    b.Navigation("Rug");
+                });
+
             modelBuilder.Entity("RugsManagment.Domain.Entities.CostCategory", b =>
                 {
                     b.HasOne("RugsManagment.Domain.Entities.ProcessStepType", null)
@@ -1650,6 +2226,105 @@ namespace RugsManagment.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("RugsManagment.Domain.Entities.CostEntry", b =>
+                {
+                    b.HasOne("RugsManagment.Domain.Entities.RugBatch", null)
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("RugsManagment.Domain.Entities.CostCategory", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.ClientNoAction)
+                        .IsRequired();
+
+                    b.HasOne("RugsManagment.Domain.Entities.ServiceProvider", null)
+                        .WithMany()
+                        .HasForeignKey("ServiceProviderId")
+                        .OnDelete(DeleteBehavior.ClientNoAction);
+
+                    b.HasOne("RugsManagment.Domain.Entities.Shipment", null)
+                        .WithMany()
+                        .HasForeignKey("ShipmentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("RugsManagment.Domain.Entities.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+                });
+
+            modelBuilder.Entity("RugsManagment.Domain.Entities.CostEntryPin", b =>
+                {
+                    b.HasOne("RugsManagment.Domain.Entities.CostEntry", "Entry")
+                        .WithMany("Pins")
+                        .HasForeignKey("EntryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RugsManagment.Domain.Entities.Rug", null)
+                        .WithMany()
+                        .HasForeignKey("RugId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RugsManagment.Domain.Entities.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Entry");
+                });
+
+            modelBuilder.Entity("RugsManagment.Domain.Entities.CostEntryResult", b =>
+                {
+                    b.HasOne("RugsManagment.Domain.Entities.CostEntry", "Entry")
+                        .WithOne()
+                        .HasForeignKey("RugsManagment.Domain.Entities.CostEntryResult", "EntryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RugsManagment.Domain.Entities.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Entry");
+                });
+
+            modelBuilder.Entity("RugsManagment.Domain.Entities.CostEntryTarget", b =>
+                {
+                    b.HasOne("RugsManagment.Domain.Entities.Bale", null)
+                        .WithMany()
+                        .HasForeignKey("BaleId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("RugsManagment.Domain.Entities.CostEntry", "Entry")
+                        .WithMany("Targets")
+                        .HasForeignKey("EntryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RugsManagment.Domain.Entities.Rug", null)
+                        .WithMany()
+                        .HasForeignKey("RugId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("RugsManagment.Domain.Entities.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Entry");
+                });
+
             modelBuilder.Entity("RugsManagment.Domain.Entities.CustomFieldDefinition", b =>
                 {
                     b.HasOne("RugsManagment.Domain.Entities.Tenant", "Tenant")
@@ -1662,6 +2337,71 @@ namespace RugsManagment.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("RugsManagment.Domain.Entities.DeclaredValueRate", b =>
+                {
+                    b.HasOne("RugsManagment.Domain.Entities.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RugsManagment.Domain.Entities.DocumentTemplate", b =>
+                {
+                    b.HasOne("RugsManagment.Domain.Entities.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RugsManagment.Domain.Entities.DocumentTemplateRevision", b =>
+                {
+                    b.HasOne("RugsManagment.Domain.Entities.DocumentTemplate", null)
+                        .WithMany()
+                        .HasForeignKey("TemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RugsManagment.Domain.Entities.ExportRun", b =>
+                {
+                    b.HasOne("RugsManagment.Domain.Entities.Shipment", null)
+                        .WithMany()
+                        .HasForeignKey("ShipmentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("RugsManagment.Domain.Entities.DocumentTemplate", null)
+                        .WithMany()
+                        .HasForeignKey("TemplateId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("RugsManagment.Domain.Entities.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RugsManagment.Domain.Entities.ImportJob", b =>
+                {
+                    b.HasOne("RugsManagment.Domain.Entities.RugBatch", null)
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("RugsManagment.Domain.Entities.Shipment", null)
+                        .WithMany()
+                        .HasForeignKey("ShipmentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("RugsManagment.Domain.Entities.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RugsManagment.Domain.Entities.ImportMappingPreset", b =>
                 {
                     b.HasOne("RugsManagment.Domain.Entities.Tenant", null)
                         .WithMany()
@@ -1948,6 +2688,11 @@ namespace RugsManagment.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("RugsManagment.Domain.Entities.TenantPreferences", b =>
                 {
+                    b.HasOne("RugsManagment.Domain.Entities.DocumentTemplate", null)
+                        .WithMany()
+                        .HasForeignKey("DefaultDeclarationTemplateId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("RugsManagment.Domain.Entities.Tenant", null)
                         .WithOne()
                         .HasForeignKey("RugsManagment.Domain.Entities.TenantPreferences", "TenantId")
@@ -2003,6 +2748,13 @@ namespace RugsManagment.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("RugsManagment.Domain.Entities.Bale", b =>
                 {
                     b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("RugsManagment.Domain.Entities.CostEntry", b =>
+                {
+                    b.Navigation("Pins");
+
+                    b.Navigation("Targets");
                 });
 
             modelBuilder.Entity("RugsManagment.Domain.Entities.ProcessStepType", b =>

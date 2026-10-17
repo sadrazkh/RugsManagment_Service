@@ -10,9 +10,11 @@ import { api } from '@/lib/api'
 import { moneyVisible } from '@/lib/context'
 import { faDate, faMoney, faNumber } from '@/lib/format'
 import { stepStatus } from '@/lib/labels'
+import JalaliDateField from '@/components/ui/JalaliDateField.vue'
 import AppIcon from '@/components/AppIcon.vue'
 import CostRuleEditor from '@/components/CostRuleEditor.vue'
 import StepFieldsForm from '@/components/StepFieldsForm.vue'
+import Modal from '@/components/ui/Modal.vue'
 import type { RugWorkflowStep } from '@/lib/types'
 import type { Rug } from '@/lib/types/rugs'
 
@@ -382,8 +384,7 @@ onMounted(load)
   </div>
 
   <!-- مودال حرکت -->
-  <div v-if="modal.open" class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" @click.self="modal.open = false">
-    <div class="w-full max-w-md rounded-2xl bg-surface-container-lowest p-5 shadow-lg">
+  <Modal v-model:open="modal.open" :title="modal.kind === 'forward' ? 'تکمیل مرحله' : 'بازگشت به مرحلهٔ قبل'">
       <template v-if="modal.kind === 'forward'">
         <h3 class="mb-1 text-lg font-bold">تکمیل مرحله: {{ currentStep?.stepNameFa }}</h3>
         <p class="mb-4 text-sm text-on-surface-variant">جزئیات این مرحله را وارد کنید سپس به مرحلهٔ بعد بروید.</p>
@@ -396,7 +397,7 @@ onMounted(load)
             <label v-if="providers.length" class="block"><span class="mb-1 block text-sm">انجام‌دهنده</span>
               <select v-model="modal.providerId" class="fld"><option value="">—</option><option v-for="p in providers" :key="p.id" :value="p.id">{{ p.name }}</option></select>
             </label>
-            <label class="block"><span class="mb-1 block text-sm">تاریخ</span><input v-model="modal.date" type="date" dir="ltr" class="fld" /></label>
+            <label class="block"><span class="mb-1 block text-sm">تاریخ</span><JalaliDateField  :model-value="modal.date" @update:model-value="modal.date = $event ?? ''" /></label>
           </div>
           <label class="block"><span class="mb-1 block text-sm">توضیح</span><input v-model="modal.notes" class="fld" /></label>
         </div>
@@ -416,8 +417,7 @@ onMounted(load)
           <button :disabled="busy" @click="doBack" class="flex-1 rounded-lg bg-primary px-4 py-2.5 font-semibold text-on-primary disabled:opacity-60">بله، بازگشت</button>
         </div>
       </template>
-    </div>
-  </div>
+  </Modal>
 </template>
 
 <style scoped>

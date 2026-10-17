@@ -69,7 +69,7 @@ function tone(row: GridRowState): string {
       ردیف‌های قبلی
     </button>
 
-    <article
+    <div
       v-for="i in indices"
       :key="ctrl.rows[i].id"
       role="listitem"
@@ -115,7 +115,7 @@ function tone(row: GridRowState): string {
           <GridCell :ctrl="ctrl" :row="ctrl.rows[i]" :row-index="i" :column="column" :col-index="c" variant="card" />
         </div>
       </div>
-    </article>
+    </div>
 
     <button
       v-if="end < count"

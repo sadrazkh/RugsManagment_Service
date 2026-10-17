@@ -1,0 +1,3 @@
+@model Guid
+@{ ViewData["Title"] = "طراحی اکسل و چاپ"; }
+<div data-island="document-designer" data-props='@Json.Serialize(new { templateId = Model })'></div>

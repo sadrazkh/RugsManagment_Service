@@ -32,7 +32,8 @@ public sealed class SheetColumnMap
                 _all.TryAdd(key, c);
         }
 
-        QtyKey = sheet.Columns.FirstOrDefault(c => c.Field == RugFieldKeys.Quantity)?.Key;
+        QtyKey = (Visible.FirstOrDefault(c => c.Field == RugFieldKeys.Quantity)
+            ?? sheet.Columns.FirstOrDefault(c => c.Field == RugFieldKeys.Quantity))?.Key;
         QtyVisible = QtyKey is not null && _visibleIndex.ContainsKey(QtyKey);
         Weighted = lotRow == LotRowModes.PerPiece && QtyVisible;
         var keyColumn = sheet.Group?.KeyColumn;

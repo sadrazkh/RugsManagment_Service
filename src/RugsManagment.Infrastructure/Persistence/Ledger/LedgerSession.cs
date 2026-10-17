@@ -241,7 +241,10 @@ public sealed class LedgerSession(
 
         public async Task CommitAsync(CancellationToken cancellationToken)
         {
-            await transaction.CommitAsync(cancellationToken);
+            // قید شمارهٔ نگله تعویق‌پذیر است؛ خطای یکتایی ممکن است تازه در commit برسد.
+            try { await transaction.CommitAsync(cancellationToken); }
+            catch (PostgresException ex) when (ex.SqlState == UniqueViolation)
+            { throw new DuplicateKeyException(); }
             _completed = true;
             session.ForgetLocks();
         }

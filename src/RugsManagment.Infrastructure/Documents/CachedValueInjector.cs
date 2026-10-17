@@ -194,7 +194,7 @@ public static class CachedValueInjector
             default:
                 // متن، یا خالی (تقسیم بر صفر → "")
                 cell.DataType = CellValues.String;
-                cell.CellValue = new CellValue(value.AsText());
+                cell.CellValue = new CellValue(DocumentText.XmlSafe(value.AsText()));
                 break;
         }
     }

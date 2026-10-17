@@ -21,6 +21,7 @@ namespace RugsManagment.IntegrationTests.P4a;
 /// شمارش از راه ActivitySource «Npgsql» است (هر دستور یک activity)، فقط برای دیتابیس دورریختنیِ همین کلاس، پس
 /// آزمون‌های موازی کلاس‌های دیگر در شمارش نمی‌آیند.
 /// </summary>
+[Collection(ShipmentPerformanceCollection.Name)]
 public sealed class P4aPerformanceTests(RugsWebFactory factory, ITestOutputHelper output) : IClassFixture<RugsWebFactory>
 {
     private const int Lines = 300;
@@ -77,17 +78,19 @@ public sealed class P4aPerformanceTests(RugsWebFactory factory, ITestOutputHelpe
             $"باز کردن دوباره {reopenCommands.Count} دستور SQL زد:\n{string.Join("\n", reopenCommands)}");
         Assert.Equal(Lines * 270m, Dec(reopened.GetProperty("totals"), "usdTotal"));
 
-        // یک «اندازه» روی محمولهٔ ۳۰۰ خطی زیر ۲۰۰ میلی‌ثانیه (D.4). بار اول گرم کردن است؛ از پنج بار بعدی سریع‌ترین سنجیده
-        // می‌شود، چون کلاس‌های دیگرِ آزمون هم‌زمان روی همان پستگرس کار می‌کنند و یک بارِ تنها اندازهٔ صف را می‌گیرد، نه کارِ خودش
+        // یک «اندازه» روی محمولهٔ ۳۰۰ خطی زیر ۲۰۰ میلی‌ثانیه (D.4). مجموعهٔ کارایی جدا اجرا می‌شود تا این عدد هزینهٔ
+        // خودِ درخواست باشد، نه رقابت با ساخت/حذف دیتابیس و migration صدها آزمون دیگر. بار اول گرم کردن است.
         var rows = (await RowsAsync(op, shipmentId)).Take(6).ToList();
         Result(await OpsAsync(op, shipmentId, Measure(rows[0], 2.10m)));
         var timings = new List<long>();
         foreach (var row in rows.Skip(1))
         {
             var watch = Stopwatch.StartNew();
-            var measured = Result(await OpsAsync(op, shipmentId, Measure(row, 2.10m))).GetProperty("row");
+            var (response, commands) = await CountAsync(() => OpsAsync(op, shipmentId, Measure(row, 2.10m)));
+            var measured = Result(response).GetProperty("row");
             watch.Stop();
             timings.Add(watch.ElapsedMilliseconds);
+            output.WriteLine($"measure {watch.ElapsedMilliseconds}ms, {commands.Count} SQL commands:\n{string.Join("\n", commands)}");
             Assert.Equal(6.30m, Dec(measured, "areaM2"));
             Assert.Equal(283.50m, Dec(measured, "lineUsd")); // 6.30 × 45
         }
@@ -122,7 +125,7 @@ public sealed class P4aPerformanceTests(RugsWebFactory factory, ITestOutputHelpe
                     return;
                 var statement = activity.TagObjects
                     .FirstOrDefault(tag => tag.Key is "db.statement" or "db.query.text").Value as string ?? activity.DisplayName;
-                commands.Enqueue(statement.Length > 160 ? statement[..160] : statement);
+                commands.Enqueue($"{activity.Duration.TotalMilliseconds:F1}ms " + (statement.Length > 160 ? statement[..160] : statement));
             }
         };
         ActivitySource.AddActivityListener(listener);
@@ -130,4 +133,11 @@ public sealed class P4aPerformanceTests(RugsWebFactory factory, ITestOutputHelpe
         var result = await work();
         return (result, commands.ToList());
     }
+}
+
+/// <summary>سنجش زمان در کنار migration و فشار هم‌زمانِ آزمون‌های دیگر، عملکرد خودِ عمل اندازه را اندازه نمی‌گیرد.</summary>
+[CollectionDefinition(Name, DisableParallelization = true)]
+public sealed class ShipmentPerformanceCollection
+{
+    public const string Name = "Shipment performance";
 }

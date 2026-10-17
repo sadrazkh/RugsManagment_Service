@@ -5,6 +5,7 @@
  * همهٔ اعداد اینجا «واقعی» هستند (از رکوردهای فروش)، نه تخمینی.
  */
 import { computed, onMounted, reactive, ref } from 'vue'
+import JalaliDateField from '@/components/ui/JalaliDateField.vue'
 import AppIcon from '@/components/AppIcon.vue'
 import { api, errorMessage } from '@/lib/api'
 import { faDate, faMoney, faNumber } from '@/lib/format'
@@ -97,11 +98,11 @@ onMounted(load)
           data-no-print @submit.prevent="load">
       <label class="block">
         <span class="mb-1 block text-sm">از تاریخ</span>
-        <input v-model="filters.from" type="date" dir="ltr" class="fld" />
+        <JalaliDateField  :model-value="filters.from" @update:model-value="filters.from = $event ?? ''" />
       </label>
       <label class="block">
         <span class="mb-1 block text-sm">تا تاریخ</span>
-        <input v-model="filters.to" type="date" dir="ltr" class="fld" />
+        <JalaliDateField  :model-value="filters.to" @update:model-value="filters.to = $event ?? ''" />
       </label>
       <label class="flex min-h-11 items-center gap-2 text-sm">
         <input v-model="filters.onlyOutstanding" type="checkbox"

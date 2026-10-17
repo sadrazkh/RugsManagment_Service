@@ -1,6 +1,8 @@
 using RugsManagment.Application.Abstractions;
 using RugsManagment.Application.Ledger;
 using RugsManagment.Infrastructure.Persistence.Ledger;
+using Npgsql;
+using RugsManagment.Application.Abstractions.Persistence;
 
 namespace RugsManagment.Infrastructure.Persistence;
 
@@ -46,7 +48,9 @@ public class UnitOfWork(AppDbContext db, ILedgerPass pass, ILedgerSession sessio
         try
         {
             var result = await work(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
+            try { await transaction.CommitAsync(cancellationToken); }
+            catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
+            { throw new DuplicateKeyException(); }
             return result;
         }
         catch

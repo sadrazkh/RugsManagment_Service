@@ -44,6 +44,7 @@ public static class DependencyInjection
         services.AddScoped<IWorkflowTemplateRepository, WorkflowTemplateRepository>();
         services.AddScoped<IProcessStepTypeRepository, ProcessStepTypeRepository>();
         services.AddScoped<IServiceProviderRepository, ServiceProviderRepository>();
+        services.AddScoped<IAnalyticsReadRepository, AnalyticsReadRepository>();
         // scoped: فقط نوع مرحلهٔ سیستمی یا مال کارگاه کاربر جاری را برمی‌گرداند
         services.AddScoped<IProcessStepTypeLookup, ProcessStepTypeLookup>();
 

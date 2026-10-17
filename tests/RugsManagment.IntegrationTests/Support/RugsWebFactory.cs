@@ -93,8 +93,10 @@ public sealed class RugsWebFactory : WebApplicationFactory<Program>, IAsyncLifet
 
         builder.UseSetting("ConnectionStrings:DefaultConnection", connectionString);
         builder.UseSetting("Database:MigrateOnStartup", "true");
+        builder.UseSetting("Seed:Demo", "true");
         builder.UseSetting("DataProtection:KeyPath", Path.Combine(_scratchDirectory, "keys"));
         builder.UseSetting("Storage:ImagePath", Path.Combine(_scratchDirectory, "images"));
+        builder.UseSetting("Storage:DataRoot", Path.Combine(_scratchDirectory, "data"));
 
         builder.ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning));
 

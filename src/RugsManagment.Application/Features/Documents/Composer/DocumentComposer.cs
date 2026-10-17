@@ -250,7 +250,9 @@ public static class DocumentComposer
                     paperW, paperH, Margins(), height, printTitleRows,
                     firstBodyRow,
                     blocks,
-                    _options.FallbackScale));
+                    _options.FallbackScale,
+                    FitToWidth: _layout.Page.FitToWidth,
+                    ScalePercent: _layout.Page.Scale));
                 if (_layout.Page.KeepGroupTogether)
                 {
                     breaks.AddRange(plan.RowBreaksAfter);

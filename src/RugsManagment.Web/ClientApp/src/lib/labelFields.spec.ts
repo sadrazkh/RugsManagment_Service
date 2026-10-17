@@ -13,6 +13,11 @@ const legacy: LabelRug = {
 }
 
 describe('فیلدهای برچسب (فاز ۲)', () => {
+  it('escapes user data in HTML while retaining raw QR values', () => {
+    const rug = { ...legacy, title: '<img src=x onerror="alert(1)">' }
+    expect(fillPlaceholders(rug, '{{title}}', true)).toBe('&lt;img src=x onerror=&quot;alert(1)&quot;&gt;')
+    expect(fillPlaceholders(rug, '{{title}}')).toBe(rug.title)
+  })
   it('شماره با ارقام لاتین می‌ماند تا QR و بارکد همان را بخوانند که سرور دارد', () => {
     const rug: LabelRug = { ...legacy, serialNo: '3911 - 3960', quantity: 50 }
     expect(resolveField(rug, 'serial')).toBe('3911 - 3960')

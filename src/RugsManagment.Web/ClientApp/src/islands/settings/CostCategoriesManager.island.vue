@@ -345,7 +345,7 @@ onMounted(load)
               />
             </Field>
             <fieldset>
-              <legend class="mb-1 text-sm font-medium">گروه</legend>
+              <legend class="mb-1 text-sm font-medium">دستهٔ هزینه</legend>
               <div class="flex gap-2">
                 <label v-for="opt in GROUPS" :key="opt.group" class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-3 text-sm">
                   <input v-model="draft.group" type="radio" :value="opt.group" class="h-5 w-5" />

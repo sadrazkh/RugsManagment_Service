@@ -6,6 +6,7 @@
  * بعد از ثبت، سود واقعی جای آن را می‌گیرد.
  */
 import { computed, onMounted, reactive, ref } from 'vue'
+import JalaliDateField from '@/components/ui/JalaliDateField.vue'
 import AppIcon from '@/components/AppIcon.vue'
 import MoneyInput from '@/components/MoneyInput.vue'
 import { api, errorMessage } from '@/lib/api'
@@ -262,7 +263,7 @@ onMounted(() => {
         </label>
         <label class="block">
           <span class="mb-1 block text-sm">تاریخ فروش</span>
-          <input v-model="form.soldAt" type="date" dir="ltr" class="fld" />
+          <JalaliDateField  :model-value="form.soldAt" @update:model-value="form.soldAt = $event ?? ''" />
         </label>
         <label class="block">
           <span class="mb-1 block text-sm">شمارهٔ فاکتور</span>

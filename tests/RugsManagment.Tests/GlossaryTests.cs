@@ -37,6 +37,14 @@ public class GlossaryTests
         "ClientApp/src/islands/platform/",
         "ClientApp/src/panels/",
         "ClientApp/src/components/scan/",
+        "ClientApp/src/components/bales/",
+        "ClientApp/src/components/costs/",
+        "ClientApp/src/islands/settings/SetupChecklist.island.vue",
+        "ClientApp/src/islands/settings/DocumentDesigner.island.vue",
+        // محل واقعی فرش از فاز ۴ب، شناسهٔ محمولهٔ صادراتی را کنار نگله نشان می‌دهد.
+        "Views/Rugs/Index.cshtml",
+        "Views/Rugs/_Details.Location.cshtml",
+        "Views/Rugs/_Details.LocationChip.cshtml",
         // ترجیحات کارگاه: بخش «نگله و محموله» (هدف نگله، نرخ دلار محمولهٔ تازه، اندازهٔ نهایی پیش از قطعی)
         "Views/Settings/Preferences.cshtml",
         "ClientApp/src/islands/settings/PreferencesForm.island.vue"
@@ -49,6 +57,7 @@ public class GlossaryTests
         "Views/Documents/",
         "ClientApp/src/islands/shipments/",
         "ClientApp/src/islands/documents/"
+        ,"ClientApp/src/components/documents/"
     ];
 
     [Fact]

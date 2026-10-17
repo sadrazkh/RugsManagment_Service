@@ -519,7 +519,7 @@ export function useGridController(options: GridControllerOptions) {
       moneyScale: ctx.moneyScale,
       currencyLabel: ctx.currency.label,
       maxPlausibleSideM: options.maxPlausibleSideM(),
-      current: row && key ? row.values[key] : undefined,
+      current: row && key ? row.values[key] ?? (row.placeholder && colMap.value.get(key) ? stickyValue(rows.value.indexOf(row), colMap.value.get(key)!) : undefined) : undefined,
     }
   }
 
@@ -952,7 +952,7 @@ export function useGridController(options: GridControllerOptions) {
         const row = rows.value[index]
         if (!row) return
         const column = colMap.value.get(cell.key)
-        if (!isEditable(column, row)) continue
+        if (!column || !isEditable(column, row)) continue
         // اولین خانهٔ ردیف خالیِ ته جدول آن را فرش می‌کند و ردیف خالی تازه‌ای پایینش می‌آید
         if (row.placeholder) materialize(index, group, cell.key)
         if (cell.error) {
@@ -962,7 +962,9 @@ export function useGridController(options: GridControllerOptions) {
         } else if (cell.cm) {
           cmCells.push({ index, cell })
         } else {
-          setValue(index, cell.key, cell.value ?? null, group)
+          const parsed = column.type === 'money+unit' && cell.raw !== undefined
+            ? parseCellInput(column, cell.raw, parseContext(row, cell.key)) : null
+          setValue(index, cell.key, parsed?.status === 'ok' ? parsed.value : cell.value ?? null, group)
         }
       }
     })
@@ -1084,7 +1086,7 @@ export function useGridController(options: GridControllerOptions) {
     })
     if (!ok) return
 
-    if (row.rugId === null) {
+    if (row.rugId === null && !save.wasSent(row)) {
       // هنوز ذخیره نشده: فقط از جدول (و پیش‌نویس) برداشته می‌شود
       removeRow(row.id)
       drafts.schedule()
@@ -1098,19 +1100,25 @@ export function useGridController(options: GridControllerOptions) {
       return
     }
 
+    await save.waitForIdle()
+    const pendingDirty = [...row.dirty]
+    row.dirty = []
     try {
       const response = await send(buildRequest([deleteOp(row)]))
       const results = Array.isArray(response) ? (response as GridOpResult[]) : ((response as { results?: GridOpResult[] })?.results ?? [])
       const result = results.find((r) => r.clientRowId === row.id)
       if (!result || result.status === GridRowStatus.Deleted) {
+        if (result?.rugId) row.rugId = result.rugId
         removeRow(row.id)
         drafts.schedule()
         notify(message('I_DELETED'), 'info', { label: 'برگردان', run: () => restoreRow(row, index) })
         return
       }
       const reason = result.errors?.[0]?.message ?? message('E_RUG_DELETE_FORBIDDEN')
+      row.dirty = pendingDirty
       notify(reason, 'error')
     } catch (error) {
+      row.dirty = pendingDirty
       notify(errorMessage(error), 'error')
     }
   }
@@ -1395,6 +1403,7 @@ export function useGridController(options: GridControllerOptions) {
     dismissNotice,
     showProblem,
     flush: () => save.flush(),
+    waitForIdle: () => save.waitForIdle(),
     retryNow: () => save.retryNow(),
     flushDrafts: () => drafts.flush(),
     checkDrafts: () => drafts.check(new Set(rows.value.map((r) => r.id))),

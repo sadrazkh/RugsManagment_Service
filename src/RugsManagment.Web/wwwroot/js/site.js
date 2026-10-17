@@ -133,6 +133,7 @@
 
         function open() {
             isOpen = true;
+            sidebar.classList.remove('hidden');
             sidebar.classList.remove('translate-x-full');
             backdrop.hidden = false;
             openBtn.setAttribute('aria-expanded', 'true');
@@ -145,6 +146,7 @@
         function close() {
             isOpen = false;
             sidebar.classList.add('translate-x-full');
+            sidebar.classList.add('hidden');
             backdrop.hidden = true;
             openBtn.setAttribute('aria-expanded', 'false');
             document.body.style.overflow = '';

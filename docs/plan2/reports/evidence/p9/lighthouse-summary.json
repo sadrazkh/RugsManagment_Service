@@ -1,0 +1,26 @@
+{
+  "costs": {
+    "fetchTime": "2026-10-17T09:48:25.271Z",
+    "version": "13.5.0",
+    "url": "http://localhost:5189/Shipments/30882887-99f8-4b20-85ed-0e812fc285da?tab=costs",
+    "score": 1
+  },
+  "home": {
+    "fetchTime": "2026-10-17T09:19:22.059Z",
+    "version": "13.5.0",
+    "url": "http://localhost:5189/",
+    "score": 1
+  },
+  "intake": {
+    "fetchTime": "2026-10-17T09:21:40.055Z",
+    "version": "13.5.0",
+    "url": "http://localhost:5189/Intake",
+    "score": 1
+  },
+  "shipment": {
+    "fetchTime": "2026-10-17T09:22:26.519Z",
+    "version": "13.5.0",
+    "url": "http://localhost:5189/Shipments/30882887-99f8-4b20-85ed-0e812fc285da?tab=bales",
+    "score": 1
+  }
+}

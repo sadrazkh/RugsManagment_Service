@@ -10,6 +10,50 @@ namespace RugsManagment.Tests.Documents;
 /// </summary>
 public class ExpressionTests
 {
+    [Fact]
+    public void Wave2_BlankConstants_AndNestedDivision_MatchCachedSemantics()
+    {
+        var columns = new Dictionary<string, ColumnBinding> { ["a"] = ColumnBinding.At("H"), ["b"] = ColumnBinding.At("I") };
+        Assert.Equal("H3", Compile("coalesce(rug.missing, col.a)", columns).Formula);
+        Assert.Equal("IF(H3>0, \"\", I3)", Compile("if(col.a>0, rug.missing, col.b)", columns).Formula);
+        Assert.Equal("H3+IF(I3=0,0,H3/I3)", Compile("col.a + col.a/col.b", columns).Formula);
+        Assert.Equal("IF(I3=0,\"\",H3/I3)", Compile("col.a/col.b", columns).Formula);
+    }
+
+    [Fact]
+    public void Wave2_FormulaGrowth_IsBounded_AndControlCharactersAreRemoved()
+    {
+        var columns = new Dictionary<string, ColumnBinding> { ["a"] = ColumnBinding.At("H") };
+        var text = "col.a";
+        for (var i = 0; i < 25; i++) text = "coalesce(" + text + ", col.a)";
+        var compiled = Compile(text, columns);
+        Assert.True(compiled.ValueOnly);
+        var fields = new Dictionary<string, DocValue> { ["rug.origin"] = DocValue.FromText("bad\u0001text") };
+        Assert.Equal("\"badtext\"&H3", Compile("rug.origin & col.a", columns, fields).Formula);
+        Assert.Equal("a😀b\t", DocumentText.XmlSafe("a\u0001😀\ud800b\ufffe\t"));
+    }
+
+    [Fact]
+    public void Wave2_MinMax_IgnoreBlankAndTextReferences_ButKeepLiteralZero()
+    {
+        var values = new Values(new() { ["a"] = DocValue.FromNumber(5m), ["b"] = DocValue.Blank, ["name"] = DocValue.FromText("text") });
+        Assert.Equal(5m, Num("min(col.a, col.b, col.name)", values));
+        Assert.Equal(0m, Num("min(col.a, 0)", values));
+        Assert.Equal(0m, Num("max(col.b, col.name)", values));
+    }
+
+    [Fact]
+    public void Wave2_WeightedFooter_UsesVisibleQuantity_WhenAnotherQtyColumnIsHidden()
+    {
+        var sheet = SampleDocuments.Declaration().Main!;
+        var qty = sheet.Columns.Single(c => c.Field == "rug.qty");
+        sheet = sheet with { Columns = [qty with { Key = "hiddenQty", VisibleWhen = Visibility.Never }, .. sheet.Columns] };
+        var map = new SheetColumnMap(sheet, true, LotRowModes.PerPiece);
+        Assert.Equal("qty", map.QtyKey);
+        Assert.True(map.Weighted);
+        Assert.Contains("SUMPRODUCT", FormulaResolver.Aggregate(ExpressionFunctions.Sum, ["area"], [new RowSpan(3, 6)], map));
+    }
+
     // ── بافت‌های آزمون ──────────────────────────────────────────────────
 
     private sealed class Values(Dictionary<string, DocValue>? columns = null, Dictionary<string, DocValue>? fields = null) : IEvaluationContext

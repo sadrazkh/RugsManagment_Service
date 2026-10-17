@@ -82,8 +82,8 @@ async function load() {
   try {
     // سه کوئری هدفمند به‌جای «همهٔ فرش‌های کارگاه و فیلتر در مرورگر»
     const [mine, free, gs] = await Promise.all([
-      api.get<PagedResult<RugListItem>>(`/api/rugs?batchId=${props.groupId}&pageSize=${PAGE_LIMIT}`),
-      api.get<PagedResult<RugListItem>>(`/api/rugs?withoutBatch=true&pageSize=${PAGE_LIMIT}`),
+      allPages(`/api/rugs?batchId=${props.groupId}`),
+      allPages('/api/rugs?withoutBatch=true'),
       api.get<Batch[]>('/api/batches'),
     ])
     inGroup.value = mine.items
@@ -92,6 +92,17 @@ async function load() {
     unassignedTotal.value = free.totalCount
     batches.value = gs
   } catch (e) { error.value = errorMessage(e) } finally { loading.value = false }
+}
+
+async function allPages(url: string): Promise<PagedResult<RugListItem>> {
+  const first = await api.get<PagedResult<RugListItem>>(`${url}&pageSize=${PAGE_LIMIT}&page=1`)
+  const items = [...first.items]
+  for (let page = 2; items.length < first.totalCount; page++) {
+    const next = await api.get<PagedResult<RugListItem>>(`${url}&pageSize=${PAGE_LIMIT}&page=${page}`)
+    if (next.items.length === 0) break
+    items.push(...next.items)
+  }
+  return { ...first, items }
 }
 
 async function run(fn: () => Promise<void>) {

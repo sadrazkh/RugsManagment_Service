@@ -2,6 +2,7 @@ using RugsManagment.Application.Abstractions;
 using RugsManagment.Application.Abstractions.Persistence;
 using RugsManagment.Application.Abstractions.Services;
 using RugsManagment.Application.Common;
+using RugsManagment.Application.Ledger;
 using RugsManagment.Application.DTOs.Rugs;
 using RugsManagment.Application.DTOs.Shipments;
 using RugsManagment.Domain.Common;
@@ -46,7 +47,8 @@ public sealed class LineService(
     IAuditLog audit,
     ICurrentUser currentUser,
     IMoneyVisibility money,
-    TimeProvider? time = null) : ILineService
+    TimeProvider? time = null,
+    ILedgerLock? ledgerLock = null) : ILineService
 {
     /// <summary>بزرگ‌ترین نرخ دستی (numeric(14,2)).</summary>
     public const decimal MaxUsdPerM2 = 999_999_999_999.99m;
@@ -65,6 +67,7 @@ public sealed class LineService(
 
         await unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
+            if (ledgerLock is not null) await ledgerLock.AcquireAsync(tenantId, ct);
             foreach (var op in request.Ops ?? [])
             {
                 LineOpResultDto result;

@@ -204,9 +204,13 @@ public static class Evaluator
             case ExpressionFunctions.Abs:
                 return DocValue.FromNumber(Math.Abs(Evaluate(args[0], context).AsNumber()));
             case ExpressionFunctions.Min:
-                return DocValue.FromNumber(args.Select(a => Evaluate(a, context).AsNumber()).Min());
             case ExpressionFunctions.Max:
-                return DocValue.FromNumber(args.Select(a => Evaluate(a, context).AsNumber()).Max());
+            {
+                var numbers = args.Select(a => (Expr: a, Value: Evaluate(a, context)))
+                    .Where(x => x.Expr is not ColumnRef || x.Value.Kind == DocValueKind.Number)
+                    .Select(x => x.Value.AsNumber()).DefaultIfEmpty(0m);
+                return DocValue.FromNumber(call.Name == ExpressionFunctions.Min ? numbers.Min() : numbers.Max());
+            }
             case ExpressionFunctions.Jdot:
             {
                 var value = Evaluate(args[0], context);
@@ -224,7 +228,7 @@ public static class Evaluator
     /// <summary>ROUND اکسل با ارقام منفی (گرد به ده و صد) هم؛ نصفه دور از صفر.</summary>
     public static decimal Round(decimal value, decimal digits)
     {
-        var n = (int)Math.Truncate(digits);
+        var n = (int)Math.Clamp(Math.Truncate(digits), -28m, 28m);
         if (n >= 0)
             return Num.Round(value, Math.Min(n, 28));
 

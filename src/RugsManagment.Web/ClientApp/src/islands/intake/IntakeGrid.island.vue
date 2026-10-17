@@ -28,7 +28,7 @@ import { appContext } from '@/lib/context'
 import { addIsoDays, faJalali } from '@/lib/jalali'
 import { message } from '@/lib/messages'
 import { add, dec, type Dec } from '@/lib/num'
-import { hasPanel, openPanel } from '@/lib/ui'
+import { hasPanel, openPanel, toast } from '@/lib/ui'
 import type { GridData, IntakeBatch, JsonValue } from '@/lib/types/grid'
 import { SerialMode } from '@/lib/types/platform'
 
@@ -49,6 +49,7 @@ const dateField = ref<string | null>(day.value)
 const loading = ref(true)
 const loadError = ref('')
 const recent = ref<IntakeBatch[]>([])
+const defaultSeller = ref(props.defaultSeller)
 const business = ctx.policies.business && ctx.moneyVisible
 
 const ctrl = useGridController({
@@ -59,7 +60,7 @@ const ctrl = useGridController({
   maxPlausibleSideM: () => props.maxPlausibleSideM,
   draftScope: () => ({ tenantId: ctx.tenantId, userId: ctx.userId, gridId: 'intake', contextId: day.value }),
   batchContext: () => ({ id: null, sellerName: null, receivedAt: day.value }),
-  stickyDefaults: (): Record<string, JsonValue> => (props.defaultSeller ? { [KEY_SELLER]: props.defaultSeller } : {}),
+  stickyDefaults: (): Record<string, JsonValue> => (defaultSeller.value ? { [KEY_SELLER]: defaultSeller.value } : {}),
   onSaved: () => scheduleRecent(),
   onRestored: () => void reload(),
 })
@@ -115,12 +116,28 @@ function scheduleRecent() {
 async function switchDay(iso: string | null) {
   if (!iso || iso === day.value) return
   ctrl.flushDrafts()
+  await ctrl.waitForIdle()
   await ctrl.flush()
   ctrl.flushDrafts()
-  day.value = iso
-  dateField.value = iso
-  syncUrl()
-  await load()
+  if (ctrl.unsavedCount > 0 || ctrl.saveState.inFlight) {
+    dateField.value = day.value
+    toast.warning('اول ردیف‌های این روز را ذخیره یا درست کنید.')
+    return
+  }
+  loading.value = true
+  try {
+    const data = await api.get<GridData>(`/api/grid/intake?date=${encodeURIComponent(iso)}`)
+    day.value = iso
+    dateField.value = iso
+    defaultSeller.value = null
+    ctrl.load(data)
+    syncUrl()
+  } catch (error) {
+    dateField.value = day.value
+    loadError.value = errorMessage(error)
+  } finally {
+    loading.value = false
+  }
 }
 
 function onDateChange(iso: string | null) {
@@ -223,9 +240,7 @@ function openCost(group: FooterGroup) {
 const savedRugIds = computed(() => ctrl.rows.filter((r) => !r.placeholder && r.rugId).map((r) => r.rugId as string))
 const labelsHref = computed(() => {
   if (savedRugIds.value.length === 0) return null
-  const query = new URLSearchParams()
-  for (const id of savedRugIds.value) query.append('rugIds', id)
-  return `/Labels/Print?${query.toString()}`
+  return `/Labels/Print?date=${encodeURIComponent(day.value)}`
 })
 
 onMounted(() => {

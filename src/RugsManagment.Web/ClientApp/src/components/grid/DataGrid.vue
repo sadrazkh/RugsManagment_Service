@@ -152,7 +152,8 @@ function keep() {
 function onRootKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape' && !event.defaultPrevented && (event.target as HTMLElement).matches('[data-active-input]')) {
     event.preventDefault()
-    toolbarStart.value?.querySelector<HTMLElement>('button:not([disabled]), a')?.focus()
+    const target = toolbarStart.value?.querySelector<HTMLElement>('button:not([disabled]), a')
+    ;(target ?? root.value)?.focus()
   }
 }
 
@@ -180,6 +181,15 @@ function closeKeyboard() {
 
 const menuStyle = ref<Record<string, string>>({})
 const menuRow = computed(() => (ctrl.menuRowId ? ctrl.rows.find((r) => r.id === ctrl.menuRowId) ?? null : null))
+watch(() => ctrl.menuRowId, (id) => {
+  if (!id) return
+  void nextTick(() => {
+    const button = root.value?.querySelector<HTMLElement>('[data-active-input]')
+    const rect = button?.getBoundingClientRect()
+    if (rect) menuStyle.value = { top: `${rect.bottom + 4}px`, right: `${window.innerWidth - rect.right}px` }
+    document.getElementById(`${uid}-menu`)?.querySelector<HTMLElement>('[role="menuitem"]')?.focus()
+  })
+})
 
 function openMenu(row: GridRowState, event: MouseEvent | KeyboardEvent) {
   const button = event.currentTarget as HTMLElement
@@ -199,6 +209,7 @@ function onMenuKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape') {
     event.preventDefault()
     closeMenu()
+    focusGrid()
   } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
     event.preventDefault()
     const next = (at + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length
@@ -300,6 +311,7 @@ onBeforeUnmount(() => {
 <template>
   <section
     ref="root"
+    tabindex="-1"
     data-grid-root
     data-hotkeys-off
     class="flex flex-col gap-2"

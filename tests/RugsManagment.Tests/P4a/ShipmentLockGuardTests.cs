@@ -49,6 +49,8 @@ public class ShipmentLockGuardTests
         { nameof(Rug.IntakeWidth), 2.10m, 2.00m },
         { nameof(Rug.FinalLength), null, 2.05m },
         { nameof(Rug.FinalWidth), 2.10m, 2.00m },
+        { nameof(Rug.FinalMeasuredAt), null, DateTimeOffset.UtcNow },
+        { nameof(Rug.FinalMeasuredBy), null, Guid.NewGuid() },
         { nameof(Rug.Quantity), 1, 2 },
         { nameof(Rug.SerialNo), "3778", "3779" },
         { nameof(Rug.SerialFrom), 3778, 3779 },

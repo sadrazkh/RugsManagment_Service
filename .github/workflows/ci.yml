@@ -36,6 +36,11 @@ jobs:
           dotnet test tests/RugsManagment.Tests/RugsManagment.Tests.csproj
           --no-build -c Release --logger "console;verbosity=normal"
 
+      - name: تست‌های معماری و پاس سازگاری
+        run: >
+          dotnet test tests/RugsManagment.ArchitectureTests/RugsManagment.ArchitectureTests.csproj
+          --no-build -c Release --logger "console;verbosity=normal"
+
   database:
     name: دیتابیس — زنجیرهٔ migration و تست‌های یکپارچه
     runs-on: ubuntu-latest

@@ -860,6 +860,19 @@ const keysHint = computed(() => message('I_BOARD_KEYS_HINT', { enter: 'Enter', t
 
 <template>
   <div class="space-y-4" data-baling-board @keydown="onRootKeydown">
+    <nav :aria-label="`نمای ${terms.bales}`" class="flex flex-wrap items-center gap-2">
+      <a :href="`/Shipments/${props.shipmentId}?tab=bales&view=table`" :aria-current="view === 'table' ? 'page' : undefined"
+        class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-3 text-sm hover:bg-surface-container">
+        <AppIcon name="spreadsheet" class="h-5 w-5" />جدول
+      </a>
+      <a :href="`/Shipments/${props.shipmentId}?tab=bales&view=cards`" :aria-current="view === 'cards' ? 'page' : undefined"
+        class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-3 text-sm hover:bg-surface-container">
+        <AppIcon name="bale" class="h-5 w-5" />کارت‌ها
+      </a>
+      <a :href="packHref" class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-3 text-sm hover:bg-surface-container">
+        <AppIcon name="scan" class="h-5 w-5" />حالت اسکن (گوشی)
+      </a>
+    </nav>
     <!--
       محمولهٔ قطعی: فقط‌خواندنی (C.8). پیام قفلِ بار اول را سربرگ محموله نشان می‌دهد؛ این‌جا فقط وقتی که همین حالا (از
       دستگاه دیگر) قطعی شد و کار بعدی ۴۰۹ گرفت.
@@ -1103,7 +1116,7 @@ const keysHint = computed(() => message('I_BOARD_KEYS_HINT', { enter: 'Enter', t
     <!-- جدول -->
     <div
       v-else-if="board.loaded.value && view === 'table'"
-      class="overflow-x-auto rounded-xl border border-outline-variant bg-surface-container-lowest"
+      class="relative overflow-x-auto rounded-xl border border-outline-variant bg-surface-container-lowest"
       data-hotkeys-off
     >
       <table

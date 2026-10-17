@@ -6,6 +6,7 @@
  * محاسبه می‌کند، پس هیچ‌وقت با واقعیت اختلاف پیدا نمی‌کند.
  */
 import { onMounted, reactive, ref } from 'vue'
+import JalaliDateField from '@/components/ui/JalaliDateField.vue'
 import AppIcon from '@/components/AppIcon.vue'
 import MoneyInput from '@/components/MoneyInput.vue'
 import { api } from '@/lib/api'
@@ -198,7 +199,7 @@ onMounted(load)
           </label>
           <label class="block">
             <span class="mb-1 block text-sm">تاریخ پرداخت</span>
-            <input v-model="payment.paidAt" type="date" dir="ltr" class="fld" />
+            <JalaliDateField  :model-value="payment.paidAt" @update:model-value="payment.paidAt = $event ?? ''" />
           </label>
           <label class="block">
             <span class="mb-1 block text-sm">شمارهٔ فیش / چک</span>

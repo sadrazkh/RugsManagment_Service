@@ -619,9 +619,10 @@ export interface RowArea {
 }
 
 /** مساحت یک تخته در اندازهٔ اول (ROUND(L×W, 2)) و × تعداد؛ null اگر طول یا عرض نیست. */
-export function rowArea(values: RowValues): RowArea | null {
-  const l = tryDec(values[KEY_LENGTH] as never)
-  const w = tryDec(values[KEY_WIDTH] as never)
+export function rowArea(values: RowValues, basis: 'effective' | 'intake' = 'effective'): RowArea | null {
+  const final = basis === 'effective' && values['rug.finalLength'] != null && values['rug.finalWidth'] != null
+  const l = tryDec(values[final ? 'rug.finalLength' : KEY_LENGTH] as never)
+  const w = tryDec(values[final ? 'rug.finalWidth' : KEY_WIDTH] as never)
   if (!l || !w) return null
   const piece = pieceArea(l, w)
   const qty = rowQty(values)
@@ -655,7 +656,7 @@ export function rowPurchase(values: RowValues, columns: readonly GridColumn[], m
   }
   if (lines.length === 0) return null
 
-  const area = rowArea(values)
+  const area = rowArea(values, 'intake')
   // نرخ «هر متر» بی طول و عرض هنوز حساب‌شدنی نیست («… = ۰» گمراه می‌کند)
   if (!area && lines.some((l) => l.basis === CostBasis.PerM2)) return null
   const piece = area?.piece ?? dec(0)
@@ -808,6 +809,7 @@ export function isFooterLine(cells: readonly string[], baleFooter = 'نگله ش
 }
 
 export interface PasteCell {
+  raw?: string
   /** چندمین سطر دادهٔ چسبانده‌شده (از ۰) */
   row: number
   key: string
@@ -881,7 +883,7 @@ export function planPaste(
       touched.add(key)
       if (parsed.status === 'ok') {
         for (const target of dimensionTargets(key, parsed.value, parsed.pair, writable)) {
-          cells.push({ row: r, key: target.key, value: target.value })
+          cells.push({ row: r, key: target.key, value: target.value, raw })
           touched.add(target.key)
         }
       } else if (parsed.status === 'error') {

@@ -1,5 +1,16 @@
 # Plan 2 handoff: «بستهٔ صادرات فرش» (export rug workflow)
 
+> **2026-10-17 continuation — this status supersedes the historical WIP status below.**
+> P4b/P5/P6-wiring/P7/P8/P9 implementation is complete in `codex/finish-export-workflow`, based on `da29500`.
+> All 25 confirmed wave-2 findings and the previously unverified concurrency finding were addressed; six further import-review findings and a browser measurement race were fixed.
+> Release `-warnaserror`: 0 warnings/errors; unit **944/944**, architecture **15/15**, PostgreSQL integration **387/387** (no skips), frontend **554/554**, production frontend build successful. Pending-model check clean, no xmin DDL. Performance threshold unchanged: measure best **178 ms**, finalize/reopen **16/17 SQL commands**.
+> M4 `20261017044805_CostLedger`, M5 `20261017045100_Documents`, M6 `20261017045204_Import`, M7 `20261017091136_DropRugPurchaseCost` are generated and verified up/down/up. Applied M0–M3 were not modified.
+> Real owner XLSX parsed with zero errors: **36 / 161 / 242 / 464.74 / USD 20,322.50**, all reconciliation rows OK. Synthetic sample imports into DB, exports to XLSX and re-import previews with the same exact totals.
+> Real DB backup `work/backups/rugs_20261017_131516.dump` (outside Git, **90,193 bytes**, SHA256 `E091389BA2AF255D819258269EC929A9F3C0A4D4B1D2A849A1D37B3119F623C1`) restored into a disposable replica and upgraded through M7: **6 totals / 344,937,269.00**, unchanged. Original DB still at M3 at this checkpoint; explicit owner backup confirmation requested before applying M7.
+> Browser scripted workflow reached print with 10 intake rows (including a 50-piece lot), two bales and freight. Home/Intake/Shipment/Costs Lighthouse accessibility **100** each. Final axe audit: **32/32 cases, zero violations and no document overflow**, eight screens × light/dark × 375/1024 px. Actual father acceptance and unavailable Excel/LibreOffice UI verification remain human checks.
+> Current evidence: `reports/p5-resumed.md`, `reports/p6-p7-resumed.md`, `reports/p4b-review-p9-resumed.md`, `reports/p8-adversarial-costs.md`, **`reports/p8-p9-final-integration.md`**. Read these before the historical sections. Git/production-upgrade final state will be appended after completion.
+
+
 **Start here.** This file describes:
 - the state of the plan-2 work on branch `feature/export-workflow`;
 - what is done and what is left;

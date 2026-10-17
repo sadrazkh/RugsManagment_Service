@@ -468,7 +468,10 @@ public sealed class RugGridService(
                 }
                 else if (loaded.TryGetValue(target.Value, out var rug))
                 {
-                    await UpdateAsync(index, op, rug, ct);
+                    if (op.RugId is null)
+                        _saved[index] = rug.Id;
+                    else
+                        await UpdateAsync(index, op, rug, ct);
                 }
                 else
                 {
@@ -501,8 +504,6 @@ public sealed class RugGridService(
 
             try
             {
-                var written = await service.Writer.ApplyAsync(rug, values, Context(isNew: true), ct);
-
                 RugBatch batch;
                 if (sellerGiven)
                     batch = await service.Batches.ResolveForDayAsync(plan.TenantId, plan.Day, SellerText(sellerValue), ct);
@@ -512,6 +513,7 @@ public sealed class RugGridService(
                 else
                     batch = await service.Batches.ResolveForDayAsync(plan.TenantId, plan.Day, plan.Batch?.SellerName, ct);
 
+                var written = await service.Writer.ApplyAsync(rug, values, Context(isNew: true), ct);
                 rug.BatchId = batch.Id;
                 rug.Batch = batch;
 
@@ -552,14 +554,17 @@ public sealed class RugGridService(
             var sellerGiven = toWrite.Remove(GridKeys.Seller, out var sellerValue);
             try
             {
-                var written = await service.Writer.ApplyAsync(rug, toWrite, Context(isNew: false), ct);
-
-                var moved = false;
+                RugBatch? resolvedBatch = null;
                 if (sellerGiven)
                 {
-                    // روز ورودیِ تازه: روز سربرگ جدول ورود، وگرنه روز ورودی فعلی همین فرش
                     var day = plan.Batch?.ReceivedAt ?? rug.Batch?.ReceivedOn ?? IranDay.Of(rug.CreatedAt);
-                    var batch = await service.Batches.ResolveForDayAsync(plan.TenantId, day, SellerText(sellerValue), ct);
+                    resolvedBatch = await service.Batches.ResolveForDayAsync(plan.TenantId, day, SellerText(sellerValue), ct);
+                }
+                var written = await service.Writer.ApplyAsync(rug, toWrite, Context(isNew: false), ct);
+                var moved = false;
+                if (resolvedBatch is { } batch)
+                {
+                    // روز ورودیِ تازه: روز سربرگ جدول ورود، وگرنه روز ورودی فعلی همین فرش
                     if (rug.BatchId != batch.Id)
                     {
                         rug.BatchId = batch.Id;

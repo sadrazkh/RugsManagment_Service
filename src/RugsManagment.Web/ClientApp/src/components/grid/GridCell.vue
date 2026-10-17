@@ -359,7 +359,7 @@ const cellClasses = computed(() => {
     :role="variant === 'table' ? 'gridcell' : undefined"
     :aria-colindex="variant === 'table' ? colIndex + 2 : undefined"
     :aria-selected="variant === 'table' ? selected : undefined"
-    :aria-readonly="!editable || undefined"
+    :aria-readonly="variant === 'table' && !editable || undefined"
     :aria-invalid="variant === 'table' && !active && error ? true : undefined"
     :aria-describedby="variant === 'table' && !active && error ? errorId : undefined"
     :class="cellClasses"
@@ -405,7 +405,7 @@ const cellClasses = computed(() => {
       :aria-controls="isCombo && listOpen ? listId : undefined"
       :aria-expanded="isCombo ? listOpen : undefined"
       :role="isCombo ? 'combobox' : undefined"
-      class="h-full min-w-0 flex-1 bg-transparent text-on-surface outline-none placeholder:text-on-surface-variant/70"
+      class="h-full min-w-0 flex-1 bg-transparent text-on-surface outline-none placeholder:text-on-surface-variant"
       :class="[numeric ? 'text-left tabular-nums' : 'text-start', variant === 'card' ? 'min-h-11' : '']"
       @keydown="onKeydown"
       @input="onInput"
@@ -416,7 +416,7 @@ const cellClasses = computed(() => {
     <span
       v-else
       class="min-w-0 flex-1 truncate"
-      :class="[numeric || key === KEY_AREA || key === KEY_PURCHASE_TOTAL ? 'text-left tabular-nums' : 'text-start', isBlank && hint ? 'text-on-surface-variant/70' : '']"
+      :class="[numeric || key === KEY_AREA || key === KEY_PURCHASE_TOTAL ? 'text-left tabular-nums' : 'text-start', isBlank && hint ? 'text-on-surface-variant' : '']"
       :title="shown || undefined"
     >
       <bdi v-if="column.type === 'serial' && !isBlank" dir="ltr">{{ shown }}</bdi>

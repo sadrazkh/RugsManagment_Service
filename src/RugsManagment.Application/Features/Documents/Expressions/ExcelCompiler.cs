@@ -59,6 +59,7 @@ public static class ExcelCompiler
 {
     /// <summary>بیشترین طول متن ثابت در فرمول اکسل.</summary>
     public const int MaxFormulaTextLiteral = 255;
+    public const int MaxFormulaLength = 8000;
 
     public static CompiledFormula Compile(Expr expr, ICompileContext context)
     {
@@ -67,7 +68,7 @@ public static class ExcelCompiler
             return CompiledFormula.Value;
 
         var emitter = new Emitter(context);
-        var text = emitter.Emit(folded, textContext: false);
+        var text = emitter.Emit(folded, textContext: true);
         return emitter.ValueOnly ? CompiledFormula.Value : new CompiledFormula(text, false);
     }
 
@@ -111,7 +112,18 @@ public static class ExcelCompiler
                 return c;
 
             case CallExpr c:
-                return new CallExpr(c.Name, c.Args.Select(a => Fold(a, context)).ToList(), c.Position);
+            {
+                var args = c.Args.Select(a => Fold(a, context)).ToList();
+                if (c.Name == ExpressionFunctions.Coalesce && IsLiteral(args[0]))
+                    return args[0] is BlankLiteral or TextLiteral { Value.Length: 0 } ? args[1] : args[0];
+                if (c.Name is ExpressionFunctions.Min or ExpressionFunctions.Max)
+                {
+                    args = c.Args.Where(a => a is not ColumnRef column || context.Column(column.Key).IsVisible
+                        || context.Column(column.Key).Value.Kind == DocValueKind.Number).Select(a => Fold(a, context)).ToList();
+                    if (args.Count == 0) return new NumberLiteral(0m, c.Position);
+                }
+                return new CallExpr(c.Name, args, c.Position);
+            }
 
             default:
                 return expr;
@@ -141,6 +153,7 @@ public static class ExcelCompiler
     private sealed class Emitter(ICompileContext context)
     {
         public bool ValueOnly { get; private set; }
+        private int _emittedCharacters;
 
         // اولویت‌ها مثل اکسل
         private const int CompareLevel = 1;
@@ -151,6 +164,19 @@ public static class ExcelCompiler
         private const int AtomLevel = 6;
 
         public string Emit(Expr expr, bool textContext)
+        {
+            if (ValueOnly) return "";
+            var value = EmitCore(expr, textContext);
+            _emittedCharacters += value.Length;
+            if (_emittedCharacters > MaxFormulaLength || value.Length > MaxFormulaLength)
+            {
+                ValueOnly = true;
+                return "";
+            }
+            return value;
+        }
+
+        private string EmitCore(Expr expr, bool textContext)
         {
             switch (expr)
             {
@@ -174,16 +200,16 @@ public static class ExcelCompiler
                 case NegateExpr neg:
                     return "-" + Wrap(neg.Operand, UnaryLevel, strict: false, textContext: false);
                 case BinaryExpr bin:
-                    return EmitBinary(bin);
+                    return EmitBinary(bin, textContext);
                 case CallExpr call:
-                    return EmitCall(call);
+                    return EmitCall(call, textContext);
                 default:
                     ValueOnly = true;
                     return "";
             }
         }
 
-        private string EmitBinary(BinaryExpr bin)
+        private string EmitBinary(BinaryExpr bin, bool textContext)
         {
             if (bin.Op == BinaryOp.Divide)
             {
@@ -192,7 +218,7 @@ public static class ExcelCompiler
                 if (bin.Right is NumberLiteral { Value: not 0m })
                     return a + "/" + b;
                 // تقسیم بر صفر در اکسل #DIV/0! است؛ سند خانهٔ خالی می‌خواهد (E.4)
-                return "IF(" + Emit(bin.Right, false) + "=0,\"\"," + a + "/" + b + ")";
+                return "IF(" + Emit(bin.Right, false) + "=0," + (textContext ? "\"\"" : "0") + "," + a + "/" + b + ")";
             }
 
             var (symbol, level, strictRight, text) = bin.Op switch
@@ -201,8 +227,8 @@ public static class ExcelCompiler
                 BinaryOp.Subtract => ("-", AddLevel, true, false),
                 BinaryOp.Multiply => ("*", MultiplyLevel, false, false),
                 BinaryOp.Concat => ("&", ConcatLevel, false, true),
-                BinaryOp.Equal => ("=", CompareLevel, true, false),
-                BinaryOp.NotEqual => ("<>", CompareLevel, true, false),
+                BinaryOp.Equal => ("=", CompareLevel, true, true),
+                BinaryOp.NotEqual => ("<>", CompareLevel, true, true),
                 BinaryOp.Less => ("<", CompareLevel, true, false),
                 BinaryOp.LessOrEqual => ("<=", CompareLevel, true, false),
                 BinaryOp.Greater => (">", CompareLevel, true, false),
@@ -212,7 +238,7 @@ public static class ExcelCompiler
             return Wrap(bin.Left, level, strict: false, textContext: text) + symbol + Wrap(bin.Right, level, strictRight, textContext: text);
         }
 
-        private string EmitCall(CallExpr call)
+        private string EmitCall(CallExpr call, bool textContext)
         {
             var args = call.Args;
             switch (call.Name)
@@ -220,11 +246,11 @@ public static class ExcelCompiler
                 case ExpressionFunctions.Round:
                     return "ROUND(" + Emit(args[0], false) + ", " + Emit(args[1], false) + ")";
                 case ExpressionFunctions.If:
-                    return "IF(" + Emit(args[0], false) + ", " + Emit(args[1], false) + ", " + Emit(args[2], false) + ")";
+                    return "IF(" + Emit(args[0], false) + ", " + Emit(args[1], textContext) + ", " + Emit(args[2], textContext) + ")";
                 case ExpressionFunctions.Coalesce:
                 {
-                    var a = Emit(args[0], false);
-                    return "IF(" + a + "=\"\", " + Emit(args[1], false) + ", " + a + ")";
+                    var a = Emit(args[0], true);
+                    return "IF(" + a + "=\"\", " + Emit(args[1], textContext) + ", " + a + ")";
                 }
                 case ExpressionFunctions.And:
                 case ExpressionFunctions.Or:
@@ -279,6 +305,7 @@ public static class ExcelCompiler
 
         private string Quote(string text)
         {
+            text = DocumentText.XmlSafe(text);
             if (text.Length > MaxFormulaTextLiteral)
                 ValueOnly = true;
             var sb = new StringBuilder(text.Length + 2);

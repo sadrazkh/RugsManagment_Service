@@ -43,7 +43,7 @@ public sealed class ApiExceptionFilter : IExceptionFilter
         {
             KeyNotFoundException e => Body(StatusCodes.Status404NotFound, e.Message),
             UnauthorizedAccessException e => Body(StatusCodes.Status403Forbidden, e.Message),
-            AppValidationException e => Validation(e.Message, e.Errors),
+            AppValidationException e => Validation(e.Message, e.Errors, e.Code),
             DomainValidationException e => Validation(e.Message, e.Errors),
             DomainConflictException e => Conflict(e),
             ConcurrencyConflictException e => Body(StatusCodes.Status409Conflict, e.Message),
@@ -62,8 +62,8 @@ public sealed class ApiExceptionFilter : IExceptionFilter
     private static ObjectResult Body(int status, string message)
         => new(new { message }) { StatusCode = status };
 
-    private static ObjectResult Validation(string message, IReadOnlyDictionary<string, string[]> errors)
-        => new(new { message, errors }) { StatusCode = StatusCodes.Status400BadRequest };
+    private static ObjectResult Validation(string message, IReadOnlyDictionary<string, string[]> errors, string? code = null)
+        => new(new { message, errors, code }) { StatusCode = StatusCodes.Status400BadRequest };
 
     private static ObjectResult Conflict(DomainConflictException e)
     {

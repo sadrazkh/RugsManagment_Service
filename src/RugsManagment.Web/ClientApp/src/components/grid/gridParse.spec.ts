@@ -230,6 +230,11 @@ describe('خواندن خانه بر اساس نوع ستون', () => {
 })
 
 describe('نمایش', () => {
+  it('prefers final dimensions for display while purchase uses intake dimensions', () => {
+    const values = { 'rug.intakeLength': 3.35, 'rug.intakeWidth': 2.52, 'rug.finalLength': 3.3, 'rug.finalWidth': 2.5 }
+    expect(areaText(rowArea(values))).toBe('۸٫۲۵')
+    expect(areaText(rowArea(values, 'intake'))).toBe('۸٫۴۴')
+  })
   it('ارقام فارسی با «٬» و «٫»', () => {
     expect(faNum(10_000_000, 0)).toBe('۱۰٬۰۰۰٬۰۰۰')
     expect(faNum('2.5', 2, 2)).toBe('۲٫۵۰')
