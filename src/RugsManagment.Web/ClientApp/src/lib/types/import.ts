@@ -2,8 +2,14 @@ export interface ImportJob {
   id: string; number: number; fileName: string; status: number; sheets: string[]; headerRow: number | null
   mapping: Record<string, number> | null; mode: number; titleText: string | null; titleDate: string | null
   duplicateOf: { id: string; number: number } | null; createdAt: string; version: number
+  lastPreview?: ImportPreviewInput | null
 }
-export interface ImportIssue { code: string; severity: string; message: string; field: string | null }
+export interface ImportPreviewInput {
+  sheet: string; headerRow: number | null; mapping: Record<string, number>
+  options: { mode: number; existingSerialPolicy: number; convertCentimeters: boolean }
+  overrides?: Record<number, Record<string, string | null>> | null; skippedRows?: number[] | null
+}
+export interface ImportIssue { code: string; severity: string; message: string; field: string | null; relatedRows?: number[] }
 export interface ImportRow { sheetRow: number; action: string; bale: number | null; values: Record<string, string | null>; issues: ImportIssue[] }
 export interface ReconciliationRow {
   bale: number | null; pieces: number; footerPieces: number | null; summaryPieces: number | null

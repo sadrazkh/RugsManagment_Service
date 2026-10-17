@@ -36,6 +36,7 @@ public static class ImportMessages
         "I_REPEATED_HEADER" => "عنوان یا سرستون تکراری کنار گذاشته شد.",
         "I_SUMMARY_DETECTED" => "جدول خلاصه برای کنترل جمع‌ها شناسایی شد.",
         "I_TITLE_DATE" => "تاریخ اظهار از عنوان فایل خوانده شد.",
+        "I_ROW_SKIPPED" => "این ردیف را کنار گذاشته‌اید؛ وارد نمی‌شود و در جمع‌ها حساب نمی‌شود.",
         _ => "این ردیف را بررسی کنید."
     };
     public static ImportIssueDto Issue(string code, string? field = null)

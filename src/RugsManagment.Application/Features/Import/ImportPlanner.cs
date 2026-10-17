@@ -34,7 +34,8 @@ public static partial class ImportPlanner
     }
     public static ImportPreviewDto Plan(SheetGrid sheet, int header, IReadOnlyDictionary<string, int> mapping,
         ImportOptions options, IReadOnlyDictionary<int, Dictionary<string, string?>>? overrides = null,
-        IReadOnlyDictionary<string, decimal>? rateTable = null, string rateKeyField = "rug.origin", decimal? fallbackRate = null)
+        IReadOnlyDictionary<string, decimal>? rateTable = null, string rateKeyField = "rug.origin", decimal? fallbackRate = null,
+        IReadOnlyList<int>? skippedRows = null)
     {
         if (!mapping.ContainsKey("serial") || !mapping.ContainsKey("length") || !mapping.ContainsKey("width"))
             throw new DomainValidationException(ImportMessages.Text("E_NO_HEADER"), "mapping");
@@ -42,6 +43,7 @@ public static partial class ImportPlanner
         if (mapping.Values.Any(c => c < 1 || c > sheet.LastColumn) || mapping.Values.Distinct().Count() != mapping.Count)
             throw new DomainValidationException("برای هر مشخصه یک ستون جدا انتخاب کنید.", "mapping");
         var rows = new List<ImportRowDto>();
+        var skipped = skippedRows?.ToHashSet() ?? [];
         var serials = new List<(SerialNumber Serial, ImportRowDto Row)>();
         var global = new List<ImportIssueDto>();
         var rates = new Dictionary<string, decimal>();
@@ -61,10 +63,24 @@ public static partial class ImportPlanner
                 continue;
             }
             if (kind != SheetRowKind.Data && !(kind == SheetRowKind.Unknown
-                && (Number(sheet.Text(r, mapping["length"])) != null || Number(sheet.Text(r, mapping["width"])) != null))) continue;
+                && new[] { "length", "width", "qty", "origin", "material", "pattern", "bg_color", "border_color", "usdPerM2" }
+                    .Any(field => mapping.TryGetValue(field, out var column) && !string.IsNullOrWhiteSpace(sheet.Text(r, column))))) continue;
             var values = mapping.ToDictionary(k => k.Key, k => (string?)sheet.Text(r, k.Value));
             if (overrides?.TryGetValue(r, out var changes) == true)
                 foreach (var (key, value) in changes) values[key] = value;
+            if (skipped.Contains(r))
+            {
+                // انتخاب کاربر صریح می‌ماند؛ حتی دادهٔ نامعتبر را برای تشخیص و برگرداندن همان ردیف دست‌نخورده نگه می‌داریم.
+                int? skippedBale = null;
+                if (options.Mode == ImportMode.Declaration && mapping.TryGetValue("bale", out var skippedBaleColumn))
+                {
+                    skippedBale = BaleResolver.Resolve(sheet, r, skippedBaleColumn).Number;
+                    if (Number(values.GetValueOrDefault("bale")) is { } b && b is >= 1 and <= 9999 && b == decimal.Truncate(b)) skippedBale = (int)b;
+                }
+                rows.Add(new(r, "skip", skippedBale, values, [ImportMessages.Issue("I_ROW_SKIPPED")]));
+                currentBale = skippedBale;
+                continue;
+            }
             var issues = new List<ImportIssueDto>();
             SerialNumber? serial = null;
             try { serial = SerialNumber.Parse(values.GetValueOrDefault("serial")); }
@@ -140,8 +156,8 @@ public static partial class ImportPlanner
                 var overlap = serial.From is { } from && other.Serial.From is { } of && from <= other.Serial.To && of <= serial.To;
                 if (!equal && !overlap) continue;
                 var code = equal ? "E_SERIAL_DUP_IN_FILE" : "E_SERIAL_OVERLAP_IN_FILE";
-                issues.Add(ImportMessages.Issue(code, "serial"));
-                if (other.Row.Issues is List<ImportIssueDto> oi && !oi.Any(i => i.Code == code)) oi.Add(ImportMessages.Issue(code, "serial"));
+                AddSerialConflict(row, code, other.Row.SheetRow);
+                AddSerialConflict(other.Row, code, row.SheetRow);
             }
             serials.Add((serial, row));
         }
@@ -151,6 +167,20 @@ public static partial class ImportPlanner
         var summaryIssues = rows.SelectMany(r => r.Issues).Concat(global).GroupBy(i => i.Code)
             .Select(g => new IssueSummaryDto(g.Key, g.First().Severity, g.First().Message, g.Count())).ToArray();
         return Build(rows, reconciliation, summaryIssues, rates, 0);
+    }
+
+    /// <summary>هر علت یک بار روی ردیف می‌آید و شمارهٔ تمام ردیف‌های متعارض را برای تصمیم کاربر همراه دارد.</summary>
+    private static void AddSerialConflict(ImportRowDto row, string code, int otherRow)
+    {
+        var issues = (List<ImportIssueDto>)row.Issues;
+        var index = issues.FindIndex(i => i.Code == code);
+        if (index < 0)
+        {
+            issues.Add(ImportMessages.Issue(code, "serial") with { RelatedRows = [otherRow] });
+            return;
+        }
+        var issue = issues[index];
+        issues[index] = issue with { RelatedRows = (issue.RelatedRows ?? []).Append(otherRow).Distinct().Order().ToArray() };
     }
     public static ImportPreviewDto Build(IReadOnlyList<ImportRowDto> rows, IReadOnlyList<ReconciliationRowDto> reconciliation,
         IReadOnlyList<IssueSummaryDto> issues, IReadOnlyDictionary<string, decimal> rates, uint version)

@@ -1,5 +1,7 @@
 # Plan 2 handoff: «بستهٔ صادرات فرش» (export rug workflow)
 
+> **2026-10-18 import UX follow-up:** blockers now appear automatically with exact Excel/related row numbers, inline correction and explicit reversible row skipping. Decisions survive reopen/refresh, stay isolated by sheet and require a fresh preview before commit. Reconciliation uses included rows. No new migration. Release build clean; P8 API16/16, planner20/20, frontend566/566. CUA tested160-row duplicate case through skip, reload, unskip, correction and successful commit. See `reports/import-decisions-integration-20261018.md`.
+
 > **2026-10-17 continuation — this status supersedes the historical WIP status below.**
 > P4b/P5/P6-wiring/P7/P8/P9 implementation is complete in `codex/finish-export-workflow`, based on `da29500`.
 > All 25 confirmed wave-2 findings and the previously unverified concurrency finding were addressed; six further import-review findings and a browser measurement race were fixed.

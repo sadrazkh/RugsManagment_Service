@@ -70,6 +70,69 @@ public sealed class ImportApiTests(RugsWebFactory factory) : IClassFixture<RugsW
         Assert.Equal(0, await db.Set<ShipmentLine>().IgnoreQueryFilters().CountAsync(r => r.TenantId == tenant.TenantId));
     }
     [PostgresFact]
+    public async Task DuplicateRowsExposeExactLocations_AndExplicitSkipAllowsOnlyRemainingRowsToCommit()
+    {
+        var tenant = await P2Tenant.CreateAsync(factory);
+        using var merchant = P1Client.As(factory, tenant.Merchant);
+        var job = await Upload(merchant); var id = Id(job);
+        var baseline = await SendAsync(merchant, HttpMethod.Post, $"/api/imports/{id}/preview", new { sheet = "Sheet1" });
+        var source = baseline.GetProperty("rows").EnumerateArray()
+            .Where(r => r.GetProperty("action").GetString() == "create" && r.GetProperty("values").GetProperty("qty").GetString() == "1")
+            .Take(2).ToArray();
+        var firstRow = source[0].GetProperty("sheetRow").GetInt32();
+        var secondRow = source[1].GetProperty("sheetRow").GetInt32();
+        var serial = source[0].GetProperty("values").GetProperty("serial").GetString();
+        var overrides = new Dictionary<int, Dictionary<string, string?>> { [secondRow] = new() { ["serial"] = serial } };
+        var blocked = await SendAsync(merchant, HttpMethod.Post, $"/api/imports/{id}/preview", new { sheet = "Sheet1", overrides });
+        Assert.Equal(2, blocked.GetProperty("counts").GetProperty("errors").GetInt32());
+        foreach (var (row, related) in new[] { (firstRow, secondRow), (secondRow, firstRow) })
+        {
+            var issue = blocked.GetProperty("rows").EnumerateArray().Single(r => r.GetProperty("sheetRow").GetInt32() == row)
+                .GetProperty("issues").EnumerateArray().Single(i => i.GetProperty("code").GetString() == "E_SERIAL_DUP_IN_FILE");
+            Assert.Equal(new[] { related }, issue.GetProperty("relatedRows").EnumerateArray().Select(v => v.GetInt32()));
+        }
+        await SendAsync(merchant, HttpMethod.Post, $"/api/imports/{id}/commit", new { saveMapping = false, version = Version(blocked) }, HttpStatusCode.BadRequest);
+        var accepted = await SendAsync(merchant, HttpMethod.Post, $"/api/imports/{id}/preview", new { sheet = "Sheet1", overrides, skippedRows = new[] { secondRow } });
+        var counts = accepted.GetProperty("counts");
+        Assert.Equal(0, counts.GetProperty("errors").GetInt32());
+        Assert.Equal(160, counts.GetProperty("lines").GetInt32());
+        Assert.Equal(1, counts.GetProperty("skip").GetInt32());
+        Assert.Equal("skip", accepted.GetProperty("rows").EnumerateArray().Single(r => r.GetProperty("sheetRow").GetInt32() == secondRow).GetProperty("action").GetString());
+        Assert.Equal(counts.GetProperty("pieces").GetInt32(), accepted.GetProperty("reconciliation").EnumerateArray().Sum(r => r.GetProperty("pieces").GetInt32()));
+        Assert.Equal(counts.GetProperty("areaM2").GetDecimal(), accepted.GetProperty("reconciliation").EnumerateArray().Sum(r => r.GetProperty("area").GetDecimal()));
+        var reopened = await GetJsonAsync(merchant, $"/api/imports/{id}");
+        var saved = reopened.GetProperty("lastPreview");
+        Assert.Equal(secondRow, Assert.Single(saved.GetProperty("skippedRows").EnumerateArray()).GetInt32());
+        Assert.Equal(serial, saved.GetProperty("overrides").GetProperty(secondRow.ToString(System.Globalization.CultureInfo.InvariantCulture)).GetProperty("serial").GetString());
+        accepted = await SendAsync(merchant, HttpMethod.Post, $"/api/imports/{id}/preview", saved);
+        Assert.Equal(0, accepted.GetProperty("counts").GetProperty("errors").GetInt32());
+        Assert.Equal(1, accepted.GetProperty("counts").GetProperty("skip").GetInt32());
+        await SendAsync(merchant, HttpMethod.Post, $"/api/imports/{id}/commit", new { saveMapping = false, version = Version(blocked) }, HttpStatusCode.Conflict);
+        var result = await SendAsync(merchant, HttpMethod.Post, $"/api/imports/{id}/commit", new { saveMapping = false, version = Version(accepted) });
+        Assert.Equal(160, result.GetProperty("createdRugs").GetInt32());
+        Assert.Equal(1, result.GetProperty("skippedRows").GetInt32());
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal(160, await db.Rugs.CountAsync(r => r.TenantId == tenant.TenantId));
+        Assert.Equal(1, await db.Rugs.CountAsync(r => r.TenantId == tenant.TenantId && r.SerialNo == serial));
+    }
+
+    [PostgresFact]
+    public async Task ExistingSerialSkip_ReconcilesOnlyIncludedRugs()
+    {
+        var tenant = await P2Tenant.CreateAsync(factory);
+        using var merchant = P1Client.As(factory, tenant.Merchant);
+        await CreateRugAsync(merchant, Values(("rug.serial", "3778"), ("rug.intakeLength", 3m), ("rug.intakeWidth", 2m)));
+        var job = await Upload(merchant); var id = Id(job);
+        var preview = await SendAsync(merchant, HttpMethod.Post, $"/api/imports/{id}/preview", new { sheet = "Sheet1", options = new { existingSerialPolicy = 1 } });
+        var counts = preview.GetProperty("counts");
+        Assert.Equal(160, counts.GetProperty("lines").GetInt32());
+        Assert.Equal(1, counts.GetProperty("skip").GetInt32());
+        Assert.Equal(counts.GetProperty("pieces").GetInt32(), preview.GetProperty("reconciliation").EnumerateArray().Sum(r => r.GetProperty("pieces").GetInt32()));
+        Assert.Equal(counts.GetProperty("usdTotal").GetDecimal(), preview.GetProperty("reconciliation").EnumerateArray().Sum(r => r.GetProperty("usd").GetDecimal()));
+    }
+
+    [PostgresFact]
     public async Task ImportEndpointsRequireBusiness_AndForeignIdsAre404()
     {
         var t = await P2Tenant.CreateAsync(factory);

@@ -83,21 +83,29 @@ public sealed class ImportService(IImportJobRepository repository, IWorkbookRead
             if (!Enum.IsDefined(options.Mode) || !Enum.IsDefined(options.ExistingSerialPolicy)) throw new DomainValidationException("روش ورود را انتخاب کنید.", "options");
             var settings = await settingsReader.GetAsync(tenantId, token);
             var rates = (await shipments.ListRatesAsync(tenantId, token)).ToDictionary(r => r.KeyNormalized, r => r.UsdPerM2);
-            var preview = ImportPlanner.Plan(sheet, header, mapping, options, request.Overrides, rates, settings.KeyField, settings.FallbackUsd);
+            var preview = ImportPlanner.Plan(sheet, header, mapping, options, request.Overrides, rates, settings.KeyField, settings.FallbackUsd, request.SkippedRows);
             var rugs = await repository.RugsAsync(tenantId, token);
             var lines = await repository.LinesAsync(tenantId, rugs.Select(r => r.Id).ToArray(), token);
             var rows = preview.Rows.Select(row => Existing(row, rugs, lines, options)).ToArray();
             var originalRowIssues = preview.Rows.SelectMany(r => r.Issues).GroupBy(i => i.Code).ToDictionary(g => g.Key, g => g.Count());
-            var issues = rows.SelectMany(r => r.Issues).Concat(preview.IssuesByCode.SelectMany(i => Enumerable.Repeat(
+            // تصمیم‌های کنارگذاری و اتصال باید در جمع قابل ورود هم دیده شوند، نه جمعِ قبل از تصمیم.
+            var reconciliationIssues = new List<ImportIssueDto>();
+            var reconciliation = Reconciler.Reconcile(sheet, rows, options.Mode, reconciliationIssues, mapping);
+            var issues = rows.SelectMany(r => r.Issues).Concat(preview.IssuesByCode
+                .Where(i => i.Code is not ("W_FOOTER_MISMATCH" or "W_SUMMARY_MISMATCH" or "I_VALUE_SNAPPED"))
+                .SelectMany(i => Enumerable.Repeat(
                     new ImportIssueDto(i.Code, i.Severity, i.Message), Math.Max(0, i.Count - originalRowIssues.GetValueOrDefault(i.Code)))))
+                .Concat(reconciliationIssues)
                 .GroupBy(i => i.Code).Select(g => new IssueSummaryDto(g.Key, g.First().Severity, g.First().Message, g.Count())).ToList();
             if (await repository.DuplicateAsync(tenantId, job.FileSha256, job.Id, token) != null)
                 issues.Add(new("W_DUPLICATE_FILE", "warning", ImportMessages.Text("W_DUPLICATE_FILE"), 1));
             var title = ImportPlanner.Title(sheet, header);
             job.Sheet = sheet.Name; job.HeaderRow = header; job.MappingJson = Serialize(mapping);
-            job.OptionsJson = Serialize(options); job.Mode = options.Mode; job.ExistingSerialPolicy = options.ExistingSerialPolicy;
+            job.OptionsJson = Serialize(new SavedPreviewOptions(options.Mode, options.ExistingSerialPolicy,
+                options.ConvertCentimeters, request.Overrides, request.SkippedRows));
+            job.Mode = options.Mode; job.ExistingSerialPolicy = options.ExistingSerialPolicy;
             job.TitleText = title.Title; job.TitleDate = title.Date; job.Status = ImportStatus.Previewed;
-            preview = ImportPlanner.Build(rows, preview.Reconciliation, issues, preview.SuggestedRates, 0);
+            preview = ImportPlanner.Build(rows, reconciliation, issues, preview.SuggestedRates, 0);
             job.PreviewJson = Serialize(preview); job.UpdatedAt = DateTimeOffset.UtcNow;
             await uow.SaveChangesAsync(token);
             return preview with { Version = concurrency.VersionOf(job) };
@@ -262,7 +270,16 @@ public sealed class ImportService(IImportJobRepository repository, IWorkbookRead
     private ImportJobDto Dto(ImportJob j, IReadOnlyList<string> sheets, ImportJob? duplicate)
         => new(j.Id, j.Number, j.FileName, j.Status, sheets, j.HeaderRow,
             j.MappingJson is null ? null : Read<Dictionary<string, int>>(j.MappingJson), j.Mode, j.TitleText, j.TitleDate,
-            duplicate is null ? null : new(duplicate.Id, duplicate.Number), j.CreatedAt, concurrency.VersionOf(j));
+            duplicate is null ? null : new(duplicate.Id, duplicate.Number), j.CreatedAt, concurrency.VersionOf(j), SavedRequest(j));
+    private static PreviewImportRequest? SavedRequest(ImportJob job)
+    {
+        if (job.Status != ImportStatus.Previewed || job.OptionsJson is null || job.Sheet is null) return null;
+        var saved = Read<SavedPreviewOptions>(job.OptionsJson);
+        return new(job.Sheet, job.MappingJson is null ? null : Read<Dictionary<string, int>>(job.MappingJson),
+            new(saved.Mode, saved.ExistingSerialPolicy, saved.ConvertCentimeters), saved.Overrides, job.HeaderRow, saved.SkippedRows);
+    }
+    private sealed record SavedPreviewOptions(ImportMode Mode, ExistingSerialPolicy ExistingSerialPolicy, bool ConvertCentimeters,
+        IReadOnlyDictionary<int, Dictionary<string, string?>>? Overrides = null, IReadOnlyList<int>? SkippedRows = null);
     private static string Serialize<T>(T value) => JsonSerializer.Serialize(value, Json);
     private static T Read<T>(string? value) => JsonSerializer.Deserialize<T>(value ?? "null", Json) ?? throw new InvalidOperationException("Import state missing");
     private static DomainValidationException Error(string code) => new(ImportMessages.Text(code), "file");

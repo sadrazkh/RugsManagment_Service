@@ -4,13 +4,16 @@ namespace RugsManagment.Application.DTOs.Import;
 public sealed record ImportDuplicateDto(Guid Id, int Number);
 public sealed record ImportJobDto(Guid Id, int Number, string FileName, ImportStatus Status,
     IReadOnlyList<string> Sheets, int? HeaderRow, IReadOnlyDictionary<string, int>? Mapping, ImportMode Mode,
-    string? TitleText, DateOnly? TitleDate, ImportDuplicateDto? DuplicateOf, DateTimeOffset CreatedAt, uint Version);
+    string? TitleText, DateOnly? TitleDate, ImportDuplicateDto? DuplicateOf, DateTimeOffset CreatedAt, uint Version,
+    PreviewImportRequest? LastPreview = null);
 public sealed record ImportOptions(ImportMode Mode = ImportMode.Declaration,
     ExistingSerialPolicy ExistingSerialPolicy = ExistingSerialPolicy.Attach, bool ConvertCentimeters = false);
 public sealed record PreviewImportRequest(string Sheet, IReadOnlyDictionary<string, int>? Mapping = null,
-    ImportOptions? Options = null, IReadOnlyDictionary<int, Dictionary<string, string?>>? Overrides = null, int? HeaderRow = null);
+    ImportOptions? Options = null, IReadOnlyDictionary<int, Dictionary<string, string?>>? Overrides = null, int? HeaderRow = null,
+    IReadOnlyList<int>? SkippedRows = null);
 public sealed record CommitImportRequest(bool SaveMapping, uint Version);
-public sealed record ImportIssueDto(string Code, string Severity, string Message, string? Field = null);
+public sealed record ImportIssueDto(string Code, string Severity, string Message, string? Field = null,
+    IReadOnlyList<int>? RelatedRows = null);
 public sealed record ImportCountsDto(int Lines, int Pieces, int Bales, decimal AreaM2, decimal UsdTotal,
     int Errors, int Warnings, int Attach, int Skip);
 public sealed record ImportRowDto(int SheetRow, string Action, int? Bale, Dictionary<string, string?> Values,
