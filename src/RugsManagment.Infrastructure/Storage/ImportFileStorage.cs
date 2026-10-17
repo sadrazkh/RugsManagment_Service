@@ -5,8 +5,13 @@ namespace RugsManagment.Infrastructure.Storage;
 /// <summary>نام و مسیر فایل صرفاً از شناسه‌های سرور ساخته می‌شود، نه نامی که مرورگر فرستاده است.</summary>
 public sealed class ImportFileStorage(IConfiguration configuration) : IImportFileStorage
 {
-    private string PathFor(Guid tenantId, Guid id) => Path.Combine(Path.GetFullPath(configuration["Storage:DataRoot"]
-        ?? Path.Combine(AppContext.BaseDirectory, "App_Data")), "imports", tenantId.ToString("N"), id.ToString("N") + ".xlsx");
+    private string PathFor(Guid tenantId, Guid id)
+    {
+        var configuredRoot = configuration["Storage:DataRoot"];
+        var root = string.IsNullOrWhiteSpace(configuredRoot)
+            ? Path.Combine(AppContext.BaseDirectory, "App_Data") : configuredRoot;
+        return Path.Combine(Path.GetFullPath(root), "imports", tenantId.ToString("N"), id.ToString("N") + ".xlsx");
+    }
     public async Task<string> SaveAsync(Guid tenantId, Guid jobId, Stream input, CancellationToken ct = default)
     {
         var path = PathFor(tenantId, jobId);

@@ -61,3 +61,9 @@ No credentials, database dumps, owner workbook or generated large binary artifac
 
 - Owner-authorized push to `sadrazkh/RugsManagment_Service`, branch `feature/export-workflow`, succeeded. Draft PR [#1](https://github.com/sadrazkh/RugsManagment_Service/pull/1) created and attached to the task; no direct master changes. GitHub reports it mergeable without conflicts.
 - [Remote CI](https://github.com/sadrazkh/RugsManagment_Service/actions/workflows/ci.yml) runs on the PR. Its live outcome is separate from the recorded local tests above.
+
+## Deployment storage follow-up
+
+- Final deployment review found that the shipped empty `Storage:DataRoot` value reached `Path.GetFullPath("")`. Treat null/empty/whitespace as the application App_Data default; three new file round-trip cases verify the actual default configuration.
+- Docker sets `Storage__DataRoot=/data`, so uploaded import workbooks use the existing durable volume rather than the disposable container filesystem.
+- Post-fix Release build: zero warnings/errors; import safety/storage suite **8/8** passed. This change has no schema effect and does not repeat the real migration.

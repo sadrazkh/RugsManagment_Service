@@ -32,6 +32,7 @@ ENV ASPNETCORE_URLS=http://+:80
 # اینجا (و نه در appsettings) تنظیم می‌شوند چون مسیر مطلقِ لینوکسی فقط داخل کانتینر معنا دارد؛
 # روی ویندوزِ توسعه‌دهنده به C:\data تبدیل می‌شد. در CapRover قابل بازنویسی‌اند.
 ENV Storage__ImagePath=/data/uploads
+ENV Storage__DataRoot=/data
 ENV DataProtection__KeyPath=/data/protection-keys
 
 EXPOSE 80

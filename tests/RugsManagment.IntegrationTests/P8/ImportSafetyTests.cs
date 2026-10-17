@@ -3,9 +3,41 @@ using System.Text;
 using RugsManagment.Application.Common;
 using RugsManagment.Domain.Common;
 using RugsManagment.Infrastructure.Features.Import;
+using Microsoft.Extensions.Configuration;
+using RugsManagment.Infrastructure.Storage;
 namespace RugsManagment.IntegrationTests.P8;
 public sealed class ImportSafetyTests
 {
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task UnconfiguredStorageRoot_RoundTripsFileUnderApplicationData(string? root)
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(
+            new Dictionary<string, string?> { ["Storage:DataRoot"] = root }).Build();
+        var storage = new ImportFileStorage(configuration);
+        var tenantId = Guid.NewGuid();
+        var jobId = Guid.NewGuid();
+        var payload = Encoding.UTF8.GetBytes("storage round trip");
+        string? path = null;
+        try
+        {
+            path = await storage.SaveAsync(tenantId, jobId, new MemoryStream(payload));
+            Assert.Equal(Path.Combine(AppContext.BaseDirectory, "App_Data", "imports",
+                tenantId.ToString("N"), jobId.ToString("N") + ".xlsx"), path);
+            await using var opened = await storage.OpenAsync(tenantId, jobId);
+            using var result = new MemoryStream();
+            await opened.CopyToAsync(result);
+            Assert.Equal(payload, result.ToArray());
+        }
+        finally
+        {
+            await storage.DeleteAsync(tenantId, jobId);
+            if (path is not null) Directory.Delete(Path.GetDirectoryName(path)!);
+        }
+        Assert.False(File.Exists(path));
+    }
     [Fact]
     public async Task NonZip_IsRejectedBeforeXml()
     {
