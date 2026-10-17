@@ -60,7 +60,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#6b0008" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#14100f" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#121a20" media="(prefers-color-scheme: dark)" />
     <meta name="csrf-token" content="@csrf" />
     <title>@ViewData["Title"] — سامانه مدیریت فرش</title>
 
@@ -138,6 +138,9 @@ else
                 </button>
             </div>
 
+            <div class="loom-sidebar-rule" aria-hidden="true">
+                <icon name="persian-border" />
+            </div>
             <nav class="space-y-1 p-3 text-sm simple:text-base">
                 @{
                     string? lastGroup = null;
