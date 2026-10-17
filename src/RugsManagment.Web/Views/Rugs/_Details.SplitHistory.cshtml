@@ -1,0 +1,13 @@
+@model IReadOnlyList<string>
+@*
+    چیپ‌های برش دسته (SplitHistoryPanel): «جداشده از ۳۹۱۱ - ۳۹۶۰» یا «۲۰ تخته از این دسته جدا شد (۳۹۴۱ - ۳۹۶۰، RUG-202610-0007)».
+    متن همان خلاصهٔ تاریخچه است که RugSplitService با ارقام فارسی برای شماره و تعداد نوشته؛ کد انبار عمداً لاتین می‌ماند
+    (همان که روی برچسب و در اسکنر است)، پس این‌جا رقمی تبدیل نمی‌شود.
+*@
+@foreach (var summary in Model)
+{
+    <span class="inline-flex items-center gap-1 rounded-full bg-surface-container px-2.5 py-1 text-xs text-on-surface-variant">
+        <icon name="split" class="h-3.5 w-3.5" />
+        <bdi data-numeric>@summary</bdi>
+    </span>
+}

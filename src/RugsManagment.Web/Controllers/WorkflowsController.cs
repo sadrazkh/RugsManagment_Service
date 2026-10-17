@@ -6,8 +6,8 @@ using RugsManagment.Web.Auth;
 
 namespace RugsManagment.Web.Controllers;
 
-/// <summary>قالب‌های گردش کار کارگاه. مشاهده برای همه؛ ویرایش فقط مدیر کارگاه.</summary>
-[Authorize(Roles = $"{nameof(UserRole.TenantAdmin)},{nameof(UserRole.Operator)}")]
+/// <summary>قالب‌های گردش کار کارگاه. مشاهده برای هر کاربر کارگاه؛ ساخت و ویرایش فقط تنظیم‌کننده (Configure).</summary>
+[Authorize(Policy = Policies.Floor)]
 public class WorkflowsController(IWorkflowManagementService workflows) : Controller
 {
     public async Task<IActionResult> Index(CancellationToken ct)
@@ -16,10 +16,10 @@ public class WorkflowsController(IWorkflowManagementService workflows) : Control
         return View(list);
     }
 
-    [Authorize(Roles = nameof(UserRole.TenantAdmin))]
+    [Authorize(Policy = Policies.Configure)]
     public IActionResult Create() => View("Editor");
 
-    [Authorize(Roles = nameof(UserRole.TenantAdmin))]
+    [Authorize(Policy = Policies.Configure)]
     public IActionResult Edit(Guid id)
     {
         ViewData["TemplateId"] = id;

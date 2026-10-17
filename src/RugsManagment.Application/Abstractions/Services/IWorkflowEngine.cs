@@ -42,14 +42,24 @@ public interface IWorkflowEngine
         IReadOnlyList<CustomWorkflowStepRequest> pendingSteps,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// بهای تمام‌شدهٔ فرش برای نمایش (جای ۱ از هفت جای «سرمایهٔ کل»، spec D.4): از ردیف <c>RugCostTotal</c> که پاس سازگاری
+    /// نوشته (بعد از ذخیره همان عدد تازه)؛ اگر ردیف هنوز ساخته نشده، همان قاعده‌ها (<c>RugCostMath</c>) روی گراف درون‌حافظه
+    /// (سطرهای خرید و مراحل، بی سهم ثبت‌ها) و <see cref="RugCostSummary.Computed"/> = false.
+    /// </summary>
     RugCostSummary CalculateRugCosts(Rug rug);
 
     /// <summary>
-    /// وضعیت فرش را از روی مراحلش بازمحاسبه می‌کند (بدون تغییر خود مراحل).
-    /// جایی لازم است که وضعیت از بیرونِ گردش کار عوض شده و باید برگردد —
-    /// مثلاً وقتی فروش یک فرش لغو می‌شود.
+    /// وضعیتی که فقط از مراحل می‌آید (بدون تغییر خود مراحل): بی‌مرحله → ثبت‌شده، همه بسته → آمادهٔ فروش، وگرنه در جریان.
+    /// جایی لازم است که وضعیت از بیرونِ گردش کار عوض شده و باید برگردد — مثلاً وقتی فروش یک فرش لغو می‌شود. تقدم
+    /// «فروخته‌شده» و «صادر شده» در <c>RugStatusResolver</c> است.
     /// </summary>
     Domain.Enums.RugStatus ResolveStatusFromWorkflow(Rug rug);
+
+    /// <summary>
+    /// نسخهٔ فعلی فرش (xmin) برای DTO؛ بعد از ذخیره همان نسخهٔ تازه. فرش ردیابی‌نشده یا تازه → ۰.
+    /// </summary>
+    uint RowVersion(Rug rug);
 }
 
 /// <summary>یک مرحله در مسیر سفارشی هنگام ثبت فرش</summary>
@@ -64,7 +74,10 @@ public record StepPricingOverride(
     Domain.Enums.StepPricingModel? Model,
     decimal? UnitRate);
 
-/// <summary>دادهٔ ارسالی هنگام تکمیل مرحله از UI</summary>
+/// <summary>
+/// دادهٔ ارسالی هنگام تکمیل مرحله از UI. هر فیلد null یعنی «دست نزن».
+/// دو پرچم آخر تنها راهِ صریحِ «پاک کن» هستند، چون null برای مبلغ دستی و انجام‌دهنده معنای «نگه دار» دارد.
+/// </summary>
 public record AdvanceStepRequest(
     Guid? ServiceProviderId,
     decimal? ManualCostOverride,
@@ -74,12 +87,32 @@ public record AdvanceStepRequest(
     string? FieldValuesJson,
     string? Notes,
     bool MarkCompleted = true,
-    decimal? Adjustment = null);
+    decimal? Adjustment = null,
+    /// <summary>true = مبلغ دستیِ ذخیره‌شده پاک شود (مگر همین درخواست مبلغ دستی تازه‌ای بفرستد).</summary>
+    bool? ClearManualOverride = null,
+    /// <summary>true = انجام‌دهنده برداشته شود (مگر همین درخواست انجام‌دهندهٔ صریحی بفرستد).</summary>
+    bool? ClearServiceProvider = null,
+    /// <summary>
+    /// «با اندازهٔ تازه» (spec B.5): عکس اندازه و تعدادِ قیمت‌گذاری (<c>Priced*</c>) از اندازهٔ مؤثر و تعداد فعلی دوباره
+    /// گرفته شود. بی آن، مرحله‌ای که یک بار قیمت خورده با همان عکس قبلی دوباره قیمت می‌خورد.
+    /// </summary>
+    bool RefreshPricedSize = false);
 
-/// <summary>خلاصهٔ مالی یک فرش برای نمایش</summary>
+/// <summary>
+/// خلاصهٔ مالی یک فرش برای نمایش. نام‌های قدیمی ماندند: <see cref="TotalProcessCost"/> = هزینهٔ مراحل،
+/// <see cref="PurchaseCost"/> = خرید با سهم «خرید یکجا»، <see cref="TotalInvestment"/> = بهای تمام‌شده (<c>RugCostTotal</c>).
+/// </summary>
 public record RugCostSummary(
     decimal TotalProcessCost,
     decimal PurchaseCost,
     decimal TotalInvestment,
     decimal? TargetSalePrice,
-    decimal? EstimatedMargin);
+    decimal? EstimatedMargin,
+    // ── فاز ۲: ستون‌های دیگر RugCostTotal ─────────────────────────────────
+    decimal StepCost = 0,
+    decimal ExpenseCost = 0,
+    decimal? CostPerM2 = null,
+    decimal CostPerPiece = 0,
+    decimal? ExportRevenueShare = null,
+    /// <summary>از ردیف ذخیره‌شدهٔ <c>RugCostTotal</c> آمده؛ false یعنی محاسبهٔ درون‌حافظه (پیش از بازسازی، یا آزمون).</summary>
+    bool Computed = false);

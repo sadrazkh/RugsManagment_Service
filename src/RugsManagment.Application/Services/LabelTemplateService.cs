@@ -59,10 +59,11 @@ public sealed class LabelTemplateService(
 
     private async Task<LabelTemplate> GetOwnedAsync(Guid tenantId, Guid id, CancellationToken ct)
     {
-        var label = await labels.GetByIdAsync(id, ct)
-            ?? throw new KeyNotFoundException("قالب برچسب یافت نشد.");
-        if (label.TenantId != tenantId)
-            throw new UnauthorizedAccessException("این قالب متعلق به کارگاه شما نیست.");
+        var label = await labels.GetByIdAsync(id, ct);
+
+        // قالب کارگاه دیگر درست مثل قالب ناموجود است (۴۰۴، نه ۴۰۳) تا وجود شناسه لو نرود
+        if (label is null || label.TenantId != tenantId)
+            throw new KeyNotFoundException("قالب برچسب یافت نشد.");
         return label;
     }
 

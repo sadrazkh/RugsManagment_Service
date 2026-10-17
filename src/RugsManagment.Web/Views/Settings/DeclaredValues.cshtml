@@ -1,0 +1,30 @@
+@using RugsManagment.Web.Controllers.Settings
+@model DeclaredValuesPageModel
+@{
+    ViewData["Title"] = "ارزش گمرکی";
+}
+
+@*
+    قاب صفحهٔ جدول ارزش گمرکی؛ خودِ جدول جزیرهٔ declared-values-editor است (islands/settings/DeclaredValuesEditor.island.vue)
+    که از /api/declared-values می‌خواند، مهر هم‌زمانی را نگه می‌دارد و با PUT /api/settings/declared-values کل جدول را
+    جایگزین می‌کند. واژهٔ اظهار صادراتی در این قاب نمی‌آید (آزمون واژه‌نامه)؛ متن‌هایی که به آن نیاز دارند در
+    lib/messages/shipments.ts هستند.
+*@
+<div class="mx-auto max-w-3xl space-y-5">
+    <div class="flex items-center gap-3">
+        @* در RTL «بازگشت» به سمت راست اشاره می‌کند *@
+        <a href="/settings"
+           class="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-outline-variant hover:bg-surface-container">
+            <icon name="arrow-right" label="بازگشت به تنظیمات" />
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold">ارزش گمرکی</h1>
+            <p class="text-sm text-on-surface-variant">
+                دلار هر متر برای هر «@Model.KeyFieldLabel». فیلد کلید و نرخ پیش‌فرض در «ترجیحات» تنظیم می‌شود.
+            </p>
+        </div>
+    </div>
+
+    <div data-island="declared-values-editor" data-skeleton="24rem"
+         data-props='@Json.Serialize(new { keyField = Model.KeyField, keyFieldLabel = Model.KeyFieldLabel, fallbackUsd = Model.FallbackUsd })'></div>
+</div>

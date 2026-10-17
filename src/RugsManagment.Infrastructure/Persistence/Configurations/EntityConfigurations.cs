@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using RugsManagment.Domain.Common;
 using RugsManagment.Domain.Entities;
 
 namespace RugsManagment.Infrastructure.Persistence.Configurations;
@@ -22,6 +23,13 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasIndex(u => u.Email).IsUnique();
         builder.Property(u => u.Email).HasMaxLength(256).IsRequired();
         builder.Property(u => u.FullName).HasMaxLength(200).IsRequired();
+        // مهر امنیتی نشست؛ مقدار فعلی ۳۲ نویسهٔ hex است و ۶۴ جا برای قالب دیگری در آینده می‌ماند
+        builder.Property(u => u.SecurityStamp).HasMaxLength(64).IsRequired();
+
+        // ترجیحات کاربر: UiMode، TextScale و GridEnter مثل بقیهٔ enumها int ذخیره می‌شوند. پیش‌فرض هر نقش را
+        // کد می‌گذارد (User.ApplyRoleDefaultPreferences) و migration همان را برای کاربران قدیمی پر کرده است.
+        builder.Property(u => u.CoachDismissedJson).HasColumnType("jsonb");
+
         builder.HasOne(u => u.Tenant).WithMany(t => t.Users).HasForeignKey(u => u.TenantId);
     }
 }
@@ -52,8 +60,22 @@ public class WorkflowTemplateConfiguration : IEntityTypeConfiguration<WorkflowTe
     }
 }
 
+/// <summary>
+/// فرش (spec B.4): شماره و تعداد، سه جفت اندازه، مساحت‌های تولیدشده در دیتابیس، شناسهٔ ردیف جدول ورود.
+/// قیدهای CHECK همان قاعده‌های دامنه را در دیتابیس هم نگه می‌دارند تا SQL خام (migration، ورود از اکسل) هم
+/// نتواند دادهٔ ناسازگار بنویسد.
+/// </summary>
 public class RugConfiguration : IEntityTypeConfiguration<Rug>
 {
+    /// <summary>مساحت یک تخته در اندازهٔ مؤثر — همان <c>AreaMath.PieceArea</c> (round در پستگرس نصفه را دور از صفر می‌برد).</summary>
+    public const string AreaM2Sql = "round(\"LengthMeters\" * \"WidthMeters\", 2)";
+
+    /// <summary>مساحت ردیف: مساحت تخته × تعداد (قاعدهٔ دسته: اول گرد، بعد ضرب).</summary>
+    public const string TotalAreaM2Sql = "round(\"LengthMeters\" * \"WidthMeters\", 2) * \"Quantity\"";
+
+    /// <summary>مساحت یک تخته در اندازهٔ اول.</summary>
+    public const string IntakeAreaM2Sql = "round(\"IntakeLength\" * \"IntakeWidth\", 2)";
+
     public void Configure(EntityTypeBuilder<Rug> builder)
     {
         builder.HasIndex(r => new { r.TenantId, r.Sku }).IsUnique();
@@ -63,6 +85,67 @@ public class RugConfiguration : IEntityTypeConfiguration<Rug>
         builder.HasMany(r => r.WorkflowSteps).WithOne(s => s.Rug).HasForeignKey(s => s.RugId).OnDelete(DeleteBehavior.Cascade);
         builder.Property(r => r.MetadataJson).HasColumnType("jsonb"); // متادیتای انعطاف‌پذیر
         builder.Ignore(r => r.AreaSquareMeters); // فقط در کد محاسبه می‌شود
+        builder.Ignore(r => r.HasFinalSize);
+        builder.Ignore(r => r.Serial);
+
+        // ── شماره و تعداد ─────────────────────────────────────────────
+        builder.Property(r => r.SerialNo).HasMaxLength(SerialNumber.MaxLength);
+        // پیش‌فرض ۱ برای ردیف‌های موجود و INSERTهای خام؛ کد همیشه مقدار را می‌فرستد (SetQuantity کمتر از ۱ نمی‌پذیرد)
+        builder.Property(r => r.Quantity).HasDefaultValue(1);
+
+        // شمارهٔ یکسان بین فرش‌های فعال یک کارگاه ممنوع است؛ فرش سطل‌زباله شماره‌اش را آزاد می‌کند. همپوشانی
+        // دسته‌ها را این ایندکس نمی‌بیند — SerialOverlapStage زیر قفل کارگاه می‌سنجد.
+        builder.HasIndex(r => new { r.TenantId, r.SerialNo })
+            .IsUnique()
+            .HasFilter("\"DeletedAt\" IS NULL AND \"SerialNo\" IS NOT NULL");
+
+        // همپوشانی بازه‌ها، «شماره داخل دسته» و «شمارهٔ بعدی» روی همین ایندکس می‌خوانند
+        builder.HasIndex(r => new { r.TenantId, r.SerialFrom, r.SerialTo })
+            .HasFilter("\"DeletedAt\" IS NULL AND \"SerialFrom\" IS NOT NULL");
+
+        // تلاش دوبارهٔ همان ردیف جدول ورود همان فرش را پیدا می‌کند و فرش دوم نمی‌سازد
+        builder.HasIndex(r => new { r.TenantId, r.ClientRowId })
+            .IsUnique()
+            .HasFilter("\"ClientRowId\" IS NOT NULL");
+
+        // ── اندازه‌ها: numeric(9,2)، و جفت مؤثر همان LengthMeters/WidthMeters قدیمی ─────────
+        builder.Property(r => r.LengthMeters).HasPrecision(9, 2);
+        builder.Property(r => r.WidthMeters).HasPrecision(9, 2);
+        builder.Property(r => r.IntakeLength).HasPrecision(9, 2);
+        builder.Property(r => r.IntakeWidth).HasPrecision(9, 2);
+        builder.Property(r => r.FinalLength).HasPrecision(9, 2);
+        builder.Property(r => r.FinalWidth).HasPrecision(9, 2);
+
+        // ستون‌های تولیدشده (stored): هر SQL همان عدد C# را می‌بیند. EF فقط فیلد پشتیبان را پر می‌کند؛ getter
+        // همان فرمول را روی اضلاع فعلی حساب می‌کند تا پیش از ذخیره هم درست باشد.
+        builder.Property(r => r.AreaM2)
+            .HasPrecision(12, 2)
+            .HasComputedColumnSql(AreaM2Sql, stored: true)
+            .HasField("_storedAreaM2")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.Property(r => r.TotalAreaM2)
+            .HasPrecision(12, 2)
+            .HasComputedColumnSql(TotalAreaM2Sql, stored: true)
+            .HasField("_storedTotalAreaM2")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.Property(r => r.IntakeAreaM2)
+            .HasPrecision(12, 2)
+            .HasComputedColumnSql(IntakeAreaM2Sql, stored: true)
+            .HasField("_storedIntakeAreaM2")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        builder.ToTable(t =>
+        {
+            t.HasCheckConstraint("CK_Rugs_Quantity", "\"Quantity\" >= 1");
+            // بازه می‌تواند از تعداد بلندتر باشد، هرگز کوتاه‌تر؛ شمارهٔ تک SerialTo = SerialFrom دارد و متنی هیچ‌کدام
+            t.HasCheckConstraint(
+                "CK_Rugs_SerialRange",
+                "(\"SerialFrom\" IS NULL AND \"SerialTo\" IS NULL) OR " +
+                "(\"SerialFrom\" IS NOT NULL AND \"SerialTo\" IS NOT NULL AND \"SerialTo\"::bigint - \"SerialFrom\" + 1 >= \"Quantity\")");
+            // اندازهٔ نهایی: هر دو ضلع یا هیچ‌کدام
+            t.HasCheckConstraint("CK_Rugs_FinalSize", "(\"FinalLength\" IS NULL) = (\"FinalWidth\" IS NULL)");
+        });
+        // رابطه‌های سطر خرید و جمع هزینه در CostingConfigurations (سمت کلید خارجی) پیکربندی شده‌اند
 
         // ── حذف نرم ────────────────────────────────────────────────
         // فیلتر سراسری: فرش‌های سطل‌زباله از هر کوئری‌ای (فهرست، داشبورد، گزارش، فروش)
@@ -87,6 +170,12 @@ public class CustomFieldDefinitionConfiguration : IEntityTypeConfiguration<Custo
         builder.Property(f => f.Key).HasMaxLength(60).IsRequired();
         builder.Property(f => f.Label).HasMaxLength(120).IsRequired();
         builder.Property(f => f.OptionsJson).HasColumnType("jsonb");
+
+        // پیش‌فرض دیتابیسی true تا فیلدهای موجود هنگام migration «قابل خروجی» بمانند. Sentinel = true یعنی EF
+        // فقط وقتی مقدار را نمی‌فرستد که true است (همان پیش‌فرض)؛ false صریح همیشه نوشته می‌شود — بدون آن،
+        // false (پیش‌فرض CLR) با پیش‌فرض دیتابیس جایگزین و بی‌صدا true می‌شد.
+        builder.Property(f => f.Exportable).HasDefaultValue(true).HasSentinel(true);
+
         builder.HasOne(f => f.Tenant).WithMany().HasForeignKey(f => f.TenantId).OnDelete(DeleteBehavior.Cascade);
     }
 }
@@ -102,12 +191,30 @@ public class LabelTemplateConfiguration : IEntityTypeConfiguration<LabelTemplate
     }
 }
 
+/// <summary>
+/// «ورودی» (spec B.5): شمارهٔ یکتا در کارگاه، فروشنده و روز ایران، و کلید «یک ورودی برای هر فروشنده در هر روز».
+/// </summary>
 public class RugBatchConfiguration : IEntityTypeConfiguration<RugBatch>
 {
     public void Configure(EntityTypeBuilder<RugBatch> builder)
     {
         builder.Property(b => b.Name).HasMaxLength(200).IsRequired();
+        builder.Property(b => b.SellerName).HasMaxLength(RugBatch.SellerMaxLength);
+        builder.Property(b => b.SellerKey).HasMaxLength(RugBatch.SellerMaxLength);
         builder.HasOne(b => b.Tenant).WithMany().HasForeignKey(b => b.TenantId).OnDelete(DeleteBehavior.Cascade);
+
+        // شمارهٔ ورودی از شمارندهٔ «batch» می‌آید؛ این ایندکس پشتوانهٔ یکتایی است
+        builder.HasIndex(b => new { b.TenantId, b.Number }).IsUnique();
+
+        // کلید «ورودی»: یک ورودی برای هر فروشنده در هر روز ایران. NULLها برابر حساب می‌شوند (NULLS NOT DISTINCT) تا
+        // کلید خالی هم یکتا بماند؛ ورودی‌های قدیمیِ بی‌روز (ReceivedOn = NULL) بیرون از این قاعده‌اند.
+        builder.HasIndex(b => new { b.TenantId, b.ReceivedOn, b.SellerKey })
+            .IsUnique()
+            .HasFilter("\"ReceivedOn\" IS NOT NULL")
+            .AreNullsDistinct(false);
+
+        // دو ویرایش هم‌زمانِ یک ورودی همدیگر را بی‌صدا پاک نکنند
+        builder.Property<uint>("xmin").IsRowVersion();
     }
 }
 
@@ -170,6 +277,8 @@ public class AuditEntryConfiguration : IEntityTypeConfiguration<AuditEntry>
         builder.Property(a => a.EntityType).HasMaxLength(60).IsRequired();
         builder.Property(a => a.EntityLabel).HasMaxLength(200);
         builder.Property(a => a.Summary).HasMaxLength(500).IsRequired();
+        // جزئیات ساخت‌یافته (چه از چه به چه شد)؛ بدون مبلغ تومانی
+        builder.Property(a => a.DetailsJson).HasColumnType("jsonb");
 
         builder.HasOne(a => a.Tenant).WithMany()
             .HasForeignKey(a => a.TenantId).OnDelete(DeleteBehavior.Cascade);
@@ -193,6 +302,8 @@ public class RugSaleConfiguration : IEntityTypeConfiguration<RugSale>
         builder.Property(s => s.SalePrice).HasPrecision(18, 2);
         builder.Property(s => s.Discount).HasPrecision(18, 2);
         builder.Property(s => s.ReceivedAmount).HasPrecision(18, 2);
+        // عکس بهای تمام‌شده در لحظهٔ فروش (D.6) — نوشتنش کار RugCostTotalStage است
+        builder.Property(s => s.CostAtSale).HasPrecision(18, 2);
 
         // فقط در کد محاسبه می‌شوند
         builder.Ignore(s => s.NetAmount);
@@ -243,7 +354,12 @@ public class RugWorkflowStepConfiguration : IEntityTypeConfiguration<RugWorkflow
         builder.HasIndex(s => new { s.RugId, s.OrderIndex });
         builder.Property(s => s.CompletedByName).HasMaxLength(200);
         builder.Ignore(s => s.EffectiveCost); // فقط در کد محاسبه می‌شود
+        builder.Ignore(s => s.HasPricingSnapshot);
         builder.Property<uint>("xmin").IsRowVersion();
+
+        // عکس اندازه و تعداد هنگام قیمت‌گذاری (B.5)؛ هم‌دقت با اضلاع فرش
+        builder.Property(s => s.PricedLength).HasPrecision(9, 2);
+        builder.Property(s => s.PricedWidth).HasPrecision(9, 2);
 
         // هم‌راستا با فیلتر حذف نرمِ فرش: تسویهٔ استادکار نباید مرحلهٔ فرشِ
         // سطل‌زباله‌شده را بشمارد، وگرنه بدهی‌ای گزارش می‌شود که وجود ندارد.

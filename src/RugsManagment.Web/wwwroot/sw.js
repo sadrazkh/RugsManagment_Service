@@ -1,17 +1,29 @@
 /*
  * Service Worker محافظه‌کار برای PWA سامانهٔ مدیریت فرش.
  * راهبرد:
- *   • دارایی‌های ساکن (/dist, /js, آیکون) → cache-first (سریع + آفلاین)
+ *   • دارایی‌های ساکن (/dist، /js، /icons، /fonts، آیکون‌ها) → cache-first (سریع + آفلاین)
  *   • ناوبری صفحات و API → network-only (چون به کوکی احراز هویت و دادهٔ زنده وابسته‌اند)
  *     اگر صفحه‌ای آفلاین باز شود، صفحهٔ offline نمایش داده می‌شود.
  * دادهٔ حساس/احرازشده هرگز کش نمی‌شود.
  */
-// ⚠ با هر تغییر در PRECACHE (یا در فایل‌هایی که آنجا فهرست شده‌اند، مثل manifest)
-// این شماره را یک واحد بالا ببرید؛ وگرنه مرورگرِ کاربرانی که PWA را نصب کرده‌اند
-// تا ابد نسخهٔ قدیمی را از کش سرو می‌کند. activate کش‌های قدیمی را پاک می‌کند.
-const CACHE = 'rugs-static-v3';
-// اسپرایت آیکون هم پیش‌کش می‌شود: بدون آن، صفحهٔ آفلاین و نشانگر صف بی‌آیکون می‌مانند
-const PRECACHE = ['/icon.svg', '/icons.svg', '/manifest.webmanifest', '/offline.html'];
+
+// نسخهٔ کش. هر بار محتوای PRECACHE (یا خودِ فایل‌های داخل آن) عوض شود این عدد باید بالا برود؛
+// وگرنه نصب‌های قبلی همان نسخهٔ قدیمی را از کش برمی‌دارند و هرگز به‌روز نمی‌شوند
+// (رویداد activate فقط کش‌هایی را پاک می‌کند که نامشان با این مقدار فرق دارد).
+const CACHE = 'rugs-static-v5';
+
+// اسپرایت آیکون هم پیش‌کش می‌شود: بدون آن، صفحهٔ آفلاین و نشانگر صف بی‌آیکون می‌مانند.
+// هر چه offline.html می‌خواهد (فونت Vazirmatn) هم این‌جاست: آن صفحه وقتی نشان داده می‌شود که شبکه نیست، پس
+// هر نشانی‌ای که در آن است باید از همین فهرست بیاید (آزمون P1FixSourceTests.OfflinePage_EveryLocalUrl_IsPrecached همین را می‌سنجد).
+const PRECACHE = [
+  '/icon.svg',
+  '/icons.svg',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  '/manifest.webmanifest',
+  '/offline.html',
+  '/fonts/Vazirmatn-Variable.woff2',
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
@@ -25,10 +37,12 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// /fonts/: فونت‌های خودمیزبان (Vazirmatn) — هش ندارند ولی عملاً هرگز عوض نمی‌شوند؛ بدون کش، صفحهٔ آفلاین و
+// چاپ بدون فونت فارسی می‌ماندند
 function isStaticAsset(url) {
-  return url.pathname.startsWith('/dist/') || url.pathname.startsWith('/js/') ||
+  return url.pathname.startsWith('/dist/') || url.pathname.startsWith('/icons/') || url.pathname.startsWith('/fonts/') ||
     url.pathname === '/icon.svg' || url.pathname === '/icons.svg' ||
-    url.pathname === '/favicon.ico' || url.pathname.startsWith('/icons/');
+    url.pathname === '/favicon.ico' || url.pathname.startsWith('/js/');
 }
 
 self.addEventListener('fetch', (event) => {
@@ -42,8 +56,11 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       caches.match(request).then((cached) =>
         cached || fetch(request).then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(request, copy));
+          // فقط پاسخ سالم کش می‌شود؛ یک ۴۰۴ کش‌شده تا نسخهٔ بعدی کش ماندگار می‌ماند
+          if (res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put(request, copy));
+          }
           return res;
         }).catch(() => cached)
       )

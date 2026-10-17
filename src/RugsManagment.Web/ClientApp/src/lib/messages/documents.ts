@@ -1,0 +1,1 @@
+export const documentMessages = { title: 'اکسل و چاپ', draft: 'پیش‌نویس', preview: 'پیش‌نمایش', download: 'دریافت اکسل', print: 'چاپ', history: 'خروجی‌های قبلی', empty: 'قالبی پیدا نشد؛ از تنظیم‌کننده کمک بگیرید.' }

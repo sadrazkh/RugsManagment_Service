@@ -79,11 +79,11 @@ async function save() {
 </script>
 
 <template>
-  <div v-if="loading" class="rounded-xl border border-outline-variant bg-white p-8 text-center text-on-surface-variant">در حال بارگذاری…</div>
+  <div v-if="loading" class="rounded-xl border border-outline-variant bg-surface-container-lowest p-8 text-center text-on-surface-variant">در حال بارگذاری…</div>
   <div v-else class="space-y-5">
     <div v-if="error" class="rounded-lg bg-error-container px-4 py-3 text-sm text-error">{{ error }}</div>
 
-    <section class="rounded-xl border border-outline-variant bg-white p-5 shadow-sm">
+    <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
       <div class="grid gap-4 sm:grid-cols-2">
         <label class="block">
           <span class="mb-1 block text-sm">نام قالب</span>
@@ -102,7 +102,7 @@ async function save() {
 
     <div class="grid gap-5 md:grid-cols-3">
       <!-- پالت انواع مرحله -->
-      <section class="rounded-xl border border-outline-variant bg-white p-4 shadow-sm">
+      <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm">
         <h3 class="mb-3 text-sm font-semibold text-primary">افزودن مرحله</h3>
         <div class="flex flex-wrap gap-2">
           <button v-for="t in stepTypes" :key="t.id" type="button" @click="addStep(t)"
@@ -113,7 +113,7 @@ async function save() {
       </section>
 
       <!-- مراحل قابل مرتب‌سازی -->
-      <section class="rounded-xl border border-outline-variant bg-white p-4 shadow-sm md:col-span-2">
+      <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm md:col-span-2">
         <h3 class="mb-3 text-sm font-semibold text-primary">ترتیب مراحل (بکشید و جابه‌جا کنید)</h3>
         <p v-if="steps.length === 0" class="py-6 text-center text-sm text-on-surface-variant">
           از پالت کنار، مرحله اضافه کنید.

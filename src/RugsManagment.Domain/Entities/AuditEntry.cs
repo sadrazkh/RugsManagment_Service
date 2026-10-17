@@ -32,5 +32,12 @@ public class AuditEntry : BaseEntity, ITenantScoped
     /// <summary>توضیح فارسی آنچه اتفاق افتاد</summary>
     public string Summary { get; set; } = string.Empty;
 
+    /// <summary>
+    /// جزئیات ساخت‌یافتهٔ رویداد (jsonb، اختیاری) — مثلاً کدام ترجیح از چه به چه عوض شد، یا شمارهٔ
+    /// محموله و تعداد تخته‌ها. خلاصهٔ فارسی برای خواندن است و این برای فیلتر، «برگرداندن» و بررسی؛
+    /// هیچ‌وقت مبلغ تومانی در آن نوشته نمی‌شود تا تاریخچه برای انباردار هم امن بماند.
+    /// </summary>
+    public string? DetailsJson { get; set; }
+
     public Tenant Tenant { get; set; } = null!;
 }

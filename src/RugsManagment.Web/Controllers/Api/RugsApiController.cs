@@ -1,12 +1,16 @@
 using Microsoft.AspNetCore.Mvc;
+using RugsManagment.Application.Common;
 using RugsManagment.Application.DTOs.Rugs;
 using RugsManagment.Application.Services;
-using RugsManagment.Domain.Enums;
 using RugsManagment.Web.Auth;
 
 namespace RugsManagment.Web.Controllers.Api;
 
-/// <summary>API فرش‌ها که جزیره‌های Vue مصرف می‌کنند — tenantId از کوکی کاربر (جداسازی کارگاه).</summary>
+/// <summary>
+/// API فرش‌ها که جزیره‌های Vue مصرف می‌کنند — tenantId از کوکی کاربر (جداسازی کارگاه). همه Floor (کار روزانهٔ انبار)؛
+/// مبلغ‌ها را سرویس برای غیر Business پنهان می‌کند و نوشتن پولی از او را ۴۰۳ می‌کند (A.5). بخش‌های پولیِ ذاتی (سطرهای
+/// خرید، ریز هزینه) در <see cref="RugMoneyApiController"/> پشت Business‌اند.
+/// </summary>
 [Route("api/rugs")]
 public class RugsApiController(IRugManagementService rugs) : ApiControllerBase
 {
@@ -28,6 +32,24 @@ public class RugsApiController(IRugManagementService rugs) : ApiControllerBase
         return Ok(all.Take(Math.Clamp(count <= 0 ? 20 : count, 1, 50)).ToList());
     }
 
+    /// <summary>شمارهٔ پیشنهادی بعدی (G.4): <c>{next}</c>؛ در حالت «دستی» null.</summary>
+    [HttpGet("next-serial")]
+    public async Task<IActionResult> NextSerial(CancellationToken ct)
+        => Ok(await rugs.NextSerialAsync(User.RequireTenantId(), ct));
+
+    /// <summary>
+    /// یافتن فرش با شماره (اسکنر، «شماره را بزنید»): <c>{rug, location, matchType}</c> با تطبیق دقیق یا «داخل دسته»؛
+    /// پیدا نشد → ۴۰۴.
+    /// </summary>
+    [HttpGet("by-serial/{serial}")]
+    public async Task<IActionResult> BySerial(string serial, CancellationToken ct)
+    {
+        var hit = await rugs.FindBySerialAsync(User.RequireTenantId(), serial, ct);
+        return hit is null
+            ? NotFound(new { message = Messages.RugSerialNotFound.Format(("serial", PersianText.ToPersianDigits(serial.Trim()))) })
+            : Ok(hit);
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> Get(Guid id, CancellationToken ct)
     {
@@ -39,9 +61,25 @@ public class RugsApiController(IRugManagementService rugs) : ApiControllerBase
     public async Task<IActionResult> Create([FromBody] CreateRugRequest request, CancellationToken ct)
         => Ok(await rugs.CreateAsync(User.RequireTenantId(), request, ct));
 
+    /// <summary>
+    /// ویرایش: شکل فاز ۲ <c>{values, version}</c> (نسخه لازم)، یا شکل قدیمی با قاعده‌های I.3. نسخهٔ کهنه → ۴۰۹.
+    /// </summary>
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateRugRequest request, CancellationToken ct)
         => Ok(await rugs.UpdateAsync(User.RequireTenantId(), id, request, ct));
+
+    /// <summary>
+    /// اندازهٔ نهایی (C.4): <c>{length, width, version}</c>، <c>{sameAsIntake: true, version}</c> یا
+    /// <c>{clear: true, version}</c> → فرش تازه.
+    /// </summary>
+    [HttpPut("{id:guid}/final-size")]
+    public async Task<IActionResult> FinalSize(Guid id, [FromBody] SetFinalSizeRequest request, CancellationToken ct)
+        => Ok(await rugs.SetFinalSizeAsync(User.RequireTenantId(), id, request, ct));
+
+    /// <summary>برش دسته (D.9) → <c>{original, created}</c>. فروش‌دار یا قفل‌شده → ۴۰۹.</summary>
+    [HttpPost("{id:guid}/split")]
+    public async Task<IActionResult> Split(Guid id, [FromBody] SplitRugRequest request, CancellationToken ct)
+        => Ok(await rugs.SplitAsync(User.RequireTenantId(), id, request, ct));
 
     // ── حرکت مرحله و ثبت هزینه (استفاده در صفحهٔ جزئیات) ──
 

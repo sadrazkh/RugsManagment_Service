@@ -1,0 +1,10 @@
+@model Guid?
+@{ ViewData["Title"] = "ورود از اکسل"; }
+<div class="mx-auto max-w-6xl space-y-5">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <h1 class="text-2xl font-bold">ورود از اکسل</h1>
+        <a href="/Import/History" class="inline-flex min-h-11 items-center text-primary">ورودهای قبلی</a>
+    </div>
+    <p class="text-on-surface-variant">فایل را انتخاب کنید؛ اول ردیف‌ها و جمع‌ها را می‌بینید، بعد وارد می‌کنید.</p>
+    <div data-island="import-wizard" data-props='@Json.Serialize(new { jobId = Model })'></div>
+</div>

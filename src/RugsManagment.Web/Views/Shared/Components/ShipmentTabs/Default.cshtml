@@ -1,0 +1,130 @@
+@using RugsManagment.Application.Common
+@using RugsManagment.Web.Shipments
+@model ShipmentTabsModel
+@*
+    نوار زبانه‌های کارگاه محموله (IShipmentTab) و محتوای زبانهٔ باز. هر زبانه یک پیوند معمولی است (?tab=…)، پس بی‌اسکریپت
+    هم کار می‌کند و دکمهٔ «برگشت» مرورگر درست است. تا وقتی هیچ زبانه‌ای ثبت نشده (پیش از فاز ۴b)، به‌جایش خلاصهٔ
+    فقط‌خواندنی نگله‌ها از خودِ ShipmentDto نشان داده می‌شود. پانویس‌ها با توکن secondary-container، هرگز زرد ثابت.
+*@
+@{
+    var shipment = Model.Context.Shipment;
+    var terms = Model.Context.Terms;
+    var activeTab = Model.Tabs.FirstOrDefault(t => t.Active);
+}
+
+@if (Model.Tabs.Count > 0)
+{
+    <nav aria-label="بخش‌های محموله" class="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        <ul class="flex min-w-max gap-1 border-b border-outline-variant">
+            @foreach (var tab in Model.Tabs)
+            {
+                <li>
+                    <a href="@tab.Href" data-shipment-tab="@tab.Key"
+                       aria-current="@(tab.Active ? "page" : null)"
+                       class="-mb-px inline-flex min-h-12 items-center gap-2 border-b-2 px-4 text-base @(tab.Active ? "border-primary font-semibold text-primary" : "border-transparent text-on-surface-variant hover:border-outline-variant hover:text-on-surface")">
+                        <icon name="@tab.Icon" class="h-5 w-5" />
+                        @tab.Title
+                    </a>
+                </li>
+            }
+        </ul>
+    </nav>
+
+    <section class="pt-5" aria-label="@(activeTab?.Title ?? "محموله")">
+        @if (Model.Active is { Island: { } island } islandView)
+        {
+            <div data-island="@island" data-skeleton="@islandView.Skeleton"
+                 data-props='@Json.Serialize(islandView.Props ?? new { })'></div>
+        }
+        else if (Model.Active is { Partial: { } partial } partialView)
+        {
+            <partial name="@partial" model="partialView.Model" />
+        }
+        else
+        {
+            <p class="rounded-xl border border-dashed border-outline-variant p-8 text-center text-on-surface-variant">
+                این بخش فعلاً چیزی برای نشان دادن ندارد.
+            </p>
+        }
+    </section>
+}
+else
+{
+    @* پیش از زبانه‌ها: خلاصهٔ فقط‌خواندنی نگله‌ها *@
+    <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm"
+             aria-labelledby="shipment-bales-summary-title">
+        <h2 id="shipment-bales-summary-title" class="flex items-center gap-2 text-base font-semibold text-primary">
+            <icon name="bale" class="h-5 w-5" />
+            @terms.Bales
+        </h2>
+
+        @if (shipment.Bales.Count == 0)
+        {
+            <p class="mt-4 text-on-surface-variant">این محموله هنوز @terms.Bale ندارد.</p>
+        }
+        else
+        {
+            var target = Model.Context.TargetBaleAreaM2;
+            <div class="mt-4 overflow-x-auto">
+                <table class="w-full min-w-[32rem] text-start" data-numeric>
+                    <caption class="sr-only">@terms.Bales این محموله</caption>
+                    <thead class="text-sm text-on-surface-variant">
+                        <tr class="border-b border-outline-variant">
+                            <th scope="col" class="px-3 py-2 text-start font-medium">@terms.Bale</th>
+                            <th scope="col" class="px-3 py-2 text-start font-medium">تخته</th>
+                            <th scope="col" class="px-3 py-2 text-start font-medium">متر</th>
+                            <th scope="col" class="px-3 py-2 text-start font-medium">دلار</th>
+                            <th scope="col" class="px-3 py-2 text-start font-medium">وزن (کیلو)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-outline-variant">
+                        @foreach (var bale in shipment.Bales.OrderBy(b => b.Number))
+                        {
+                            var state = BaleTarget.State(bale.AreaM2, target, Model.Context.TolerancePercent);
+                            <tr>
+                                <th scope="row" class="px-3 py-2 text-start font-semibold">@terms.BaleOf @Messages.FormatNumber(bale.Number)</th>
+                                <td class="px-3 py-2">@Messages.FormatNumber(bale.Pieces)</td>
+                                <td class="px-3 py-2">
+                                    <span class="inline-flex items-center gap-1.5">
+                                        @Messages.FormatNumber(bale.AreaM2)
+                                        @if (state == BaleTargetState.Over)
+                                        {
+                                            <span class="inline-flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-xs font-medium text-warning">
+                                                <icon name="warning" class="h-3.5 w-3.5" />
+                                                بیشتر از هدف
+                                            </span>
+                                        }
+                                        else if (state == BaleTargetState.Within)
+                                        {
+                                            <span class="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-xs font-medium text-success">
+                                                <icon name="check" class="h-3.5 w-3.5" />
+                                                در حد هدف
+                                            </span>
+                                        }
+                                    </span>
+                                </td>
+                                <td class="px-3 py-2">@Messages.FormatNumber(bale.UsdTotal)</td>
+                                <td class="px-3 py-2">@(bale.WeightKg is { } kg ? Messages.FormatNumber(kg) : "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="bg-secondary-container font-semibold text-on-secondary-container">
+                            <th scope="row" class="px-3 py-2 text-start">جمع (@Messages.FormatNumber(shipment.Totals.Bales) @terms.Bale)</th>
+                            <td class="px-3 py-2">@Messages.FormatNumber(shipment.Totals.Pieces)</td>
+                            <td class="px-3 py-2">@Messages.FormatNumber(shipment.Totals.AreaM2)</td>
+                            <td class="px-3 py-2">@Messages.FormatNumber(shipment.Totals.UsdTotal)</td>
+                            <td class="px-3 py-2"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            @if (target is { } t)
+            {
+                <p class="mt-3 text-sm text-on-surface-variant">
+                    هدف هر @terms.Bale: @Messages.FormatNumber(t) متر (± @Messages.FormatNumber(Model.Context.TolerancePercent)٪)
+                </p>
+            }
+        }
+    </section>
+}

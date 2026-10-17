@@ -14,7 +14,7 @@ namespace RugsManagment.Web.Controllers;
 /// هیچ‌کس بدون احراز هویت و بدون بررسی مالکیتِ کارگاه به عکس‌های یک مشتری دیگر نرسد.
 /// شناسهٔ کارگاه از کوکی کاربر می‌آید، نه از آدرس — پس دستکاری آدرس بی‌فایده است.
 /// </summary>
-[Authorize(Roles = $"{nameof(Domain.Enums.UserRole.TenantAdmin)},{nameof(Domain.Enums.UserRole.Operator)}")]
+[Authorize(Policy = Policies.Floor)]
 [Route("media")]
 public class MediaController(
     IRepository<RugImage> images,

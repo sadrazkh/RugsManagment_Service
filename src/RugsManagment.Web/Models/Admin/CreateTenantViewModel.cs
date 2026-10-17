@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using RugsManagment.Application.Common;
 
 namespace RugsManagment.Web.Models.Admin;
 
@@ -30,8 +31,12 @@ public sealed class CreateTenantViewModel
     [Display(Name = "ایمیل ورود مدیر")]
     public string AdminEmail { get; set; } = string.Empty;
 
+    /// <summary>
+    /// همان حداقل طول <see cref="PasswordPolicy"/> که سرویس ساخت کارگاه می‌سنجد (پیام هم همان متن است)، تا فرم و
+    /// سرور یک قاعده داشته باشند.
+    /// </summary>
     [Required(ErrorMessage = "رمز عبور لازم است.")]
-    [MinLength(6, ErrorMessage = "رمز حداقل ۶ کاراکتر.")]
+    [MinLength(PasswordPolicy.MinLength, ErrorMessage = "رمز عبور باید حداقل ۸ کاراکتر باشد.")]
     [DataType(DataType.Password)]
     [Display(Name = "رمز عبور مدیر")]
     public string AdminPassword { get; set; } = string.Empty;

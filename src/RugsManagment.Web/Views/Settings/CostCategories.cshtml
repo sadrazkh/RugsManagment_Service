@@ -1,0 +1,26 @@
+@{
+    ViewData["Title"] = "نوع‌های هزینه";
+}
+
+@*
+    قاب صفحهٔ نوع‌های هزینه (/settings/cost-categories، Configure)؛ خودِ فهرست و ویرایشگر جزیرهٔ cost-categories-manager است
+    (islands/settings/CostCategoriesManager.island.vue) که از /api/cost-categories می‌خواند و با POST/PUT/DELETE همان‌جا
+    می‌نویسد. نوعِ به‌کاررفته حذف نمی‌شود، غیرفعال می‌شود؛ دستهٔ هزینهٔ آن هم دیگر عوض نمی‌شود.
+*@
+<div class="mx-auto max-w-4xl space-y-5">
+    <div class="flex items-center gap-3">
+        @* در RTL «بازگشت» به سمت راست اشاره می‌کند *@
+        <a href="/settings"
+           class="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-outline-variant hover:bg-surface-container">
+            <icon name="arrow-right" label="بازگشت به تنظیمات" />
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold">نوع‌های هزینه</h1>
+            <p class="text-sm text-on-surface-variant">
+                هر نوع، مبلغ پیش‌فرض و روش تقسیم خودش را دارد؛ این‌ها فقط فرم ثبت تازه را پر می‌کنند و هزینه‌های ثبت‌شده عوض نمی‌شوند.
+            </p>
+        </div>
+    </div>
+
+    <div data-island="cost-categories-manager" data-skeleton="24rem" data-props='{}'></div>
+</div>

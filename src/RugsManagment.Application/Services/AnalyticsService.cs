@@ -2,6 +2,7 @@ using RugsManagment.Application.Abstractions.Persistence;
 using RugsManagment.Application.Abstractions.Services;
 using RugsManagment.Application.Common;
 using RugsManagment.Application.DTOs.Analytics;
+using RugsManagment.Domain.Common;
 using RugsManagment.Domain.Entities;
 using RugsManagment.Domain.Enums;
 
@@ -14,7 +15,8 @@ public interface IAnalyticsService
     Task<AgingReportDto> GetAgingAsync(Guid tenantId, CancellationToken ct = default);
 }
 
-public sealed class AnalyticsService(IRugRepository rugs, IWorkflowEngine workflowEngine) : IAnalyticsService
+public sealed class AnalyticsService(IRugRepository rugs, IWorkflowEngine workflowEngine,
+    IAnalyticsReadRepository? reports = null) : IAnalyticsService
 {
     /// <summary>
     /// آستانه‌های پیش‌فرض کهنگی (روز) — وقتی نوع مرحله «مدت معمول» تعریف‌شده ندارد.
@@ -24,11 +26,12 @@ public sealed class AnalyticsService(IRugRepository rugs, IWorkflowEngine workfl
     private const int CriticalDays = 30;
 
     public async Task<AgingReportDto> GetAgingAsync(Guid tenantId, CancellationToken ct = default)
-        => BuildAging(await rugs.ListByTenantAsync(tenantId, null, ct));
+        => reports is not null ? await reports.AgingAsync(tenantId, ct) : BuildAging(await rugs.ListByTenantAsync(tenantId, null, ct));
 
     public async Task<AnalyticsReportDto> GetAsync(
         Guid tenantId, int trendMonths = 12, CancellationToken ct = default)
     {
+        if (reports is not null) return await reports.ReadAsync(tenantId, trendMonths, ct);
         var all = await rugs.ListByTenantAsync(tenantId, null, ct);
 
         return new AnalyticsReportDto(
@@ -136,7 +139,7 @@ public sealed class AnalyticsService(IRugRepository rugs, IWorkflowEngine workfl
                     g.Key.Name,
                     completed.Count,
                     totalCost,
-                    completed.Count == 0 ? 0 : Math.Round(totalCost / completed.Count, 0),
+                    completed.Count == 0 ? 0 : Num.Round(totalCost / completed.Count, 0), // نصفه دور از صفر، مثل همهٔ مبلغ‌ها (G.4)
                     timed.Count == 0 ? null : Math.Round(timed.Average(), 1),
                     g.Count(s => s.Status == WorkflowStepStatus.InProgress));
             })
@@ -171,7 +174,9 @@ public sealed class AnalyticsService(IRugRepository rugs, IWorkflowEngine workfl
                 .ToList();
 
             var net = soldInMonth.Sum(r => r.Sale!.NetAmount);
-            var profit = soldInMonth.Sum(r => r.Sale!.NetAmount - workflowEngine.CalculateRugCosts(r).TotalInvestment);
+            // سود واقعی از عکس بهای لحظهٔ فروش (CostAtSale ?? بهای امروز، D.6)؛ بهای امروز از RugCostTotal که
+            // ListByTenantAsync یک‌جا برای همهٔ فرش‌ها پیش‌بارگذاری کرده
+            var profit = soldInMonth.Sum(r => r.Sale!.ActualProfit(workflowEngine.CalculateRugCosts(r).TotalInvestment));
 
             return new TrendPointDto(b.Key, b.Label, added, soldInMonth.Count, net, profit);
         }).ToList();

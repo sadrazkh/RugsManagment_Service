@@ -4,9 +4,10 @@ services:
     container_name: rugs_postgres
     environment:
       POSTGRES_USER: postgres
-      # باید با ConnectionStrings:DefaultConnection در appsettings.json یکی بماند،
-      # وگرنه اجرای «docker compose up» طبق README به خطای احراز هویت می‌خورد.
-      POSTGRES_PASSWORD: 7082
+      # باید با Password در ConnectionStrings:DefaultConnection فایل
+      # src/RugsManagment.Web/appsettings.json یکی بماند؛ اگر یکی را عوض کردید دیگری را هم عوض کنید
+      # (این رمز فقط برای توسعهٔ محلی است — در تولید رشتهٔ اتصال از متغیر محیطی می‌آید).
+      POSTGRES_PASSWORD: "7082"
       POSTGRES_DB: rugs_management
     ports:
       - "5432:5432"

@@ -1,0 +1,126 @@
+@using RugsManagment.Web.Home.Cards
+@using RugsManagment.Web.Navigation
+@model HomeTilesModel
+@*
+    کاشی‌های بزرگ خانه (A.4). هر کاشی یک کار دارد و با یک لمس به آن می‌رسد:
+      Link   → پیوند ساده
+      Panel  → دکمهٔ data-open-panel (پنل بی‌رفتن از صفحه؛ site.js بازش می‌کند)
+      Post   → دکمهٔ data-post-json (ساختن با یک لمس، مثل «محمولهٔ تازه»؛ site.js می‌فرستد و می‌رود)
+      Choose → برگهٔ انتخاب با دکمه‌های ۵۶ پیکسلی (data-sheet-open)
+      None   → فقط وضعیت، بی‌دکمه
+    هیچ handler درون‌خطی نیست (CSP)؛ همه با data-* و یک delegate در site.js.
+*@
+@{
+    const string TileBase =
+        "group flex min-h-32 w-full flex-col justify-between gap-4 rounded-xl border p-5 text-start shadow-sm";
+    const string TileActive =
+        "border-outline-variant bg-surface-container-lowest hover:border-primary hover:bg-primary/5";
+    const string TileIdle = "border-dashed border-outline-variant bg-surface-container-low";
+
+    // سرِ کاشی و متن زیرش در همهٔ گونه‌ها یکی است
+    async Task TileBody(HomeTile tile)
+    {
+        var idle = tile.Action == HomeTileAction.None;
+        <span class="flex items-center gap-3">
+            <span class="grid h-12 w-12 shrink-0 place-items-center rounded-xl @(idle ? "bg-surface-container text-on-surface-variant" : "bg-primary/10 text-primary")">
+                <icon name="@tile.Icon" class="h-6 w-6" />
+            </span>
+            <span class="text-lg font-bold @(idle ? "text-on-surface-variant" : "text-on-surface")">@tile.Title</span>
+        </span>
+        <span class="flex flex-wrap items-center justify-between gap-2">
+            @if (tile.Subtitle is not null)
+            {
+                <span class="text-sm text-on-surface-variant" data-numeric>@tile.Subtitle</span>
+            }
+            @if (tile.ActionLabel is not null)
+            {
+                <span class="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-primary px-3 text-sm font-semibold text-on-primary">
+                    <icon name="plus" class="h-4 w-4" />
+                    @tile.ActionLabel
+                </span>
+            }
+            else if (!idle)
+            {
+                <icon name="chevron-left" class="h-5 w-5 text-on-surface-variant transition-transform group-hover:-translate-x-0.5" />
+            }
+        </span>
+    }
+}
+
+<section aria-labelledby="home-tiles-title">
+    <h2 id="home-tiles-title" class="sr-only">کارهای اصلی</h2>
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        @foreach (var tile in Model.Tiles)
+        {
+            switch (tile.Action)
+            {
+                case HomeTileAction.Link:
+                    <a href="@NavBuilder.Resolve(Context, tile.Href!)" class="@TileBase @TileActive" data-home-tile="@tile.Key">
+                        @{ await TileBody(tile); }
+                    </a>
+                    break;
+
+                case HomeTileAction.Panel:
+                    <button type="button" class="@TileBase @TileActive" data-home-tile="@tile.Key"
+                            data-open-panel="@tile.PanelName"
+                            data-panel-props='@Json.Serialize(tile.PanelProps ?? new { })'>
+                        @{ await TileBody(tile); }
+                    </button>
+                    break;
+
+                case HomeTileAction.Post:
+                    <button type="button" class="@TileBase @TileActive" data-home-tile="@tile.Key"
+                            data-post-json="@NavBuilder.Resolve(Context, tile.PostUrl!)"
+                            data-post-body='@Json.Serialize(tile.PostBody ?? new { })'
+                            data-post-redirect="@NavBuilder.Resolve(Context, tile.PostRedirect!)">
+                        @{ await TileBody(tile); }
+                    </button>
+                    break;
+
+                case HomeTileAction.Choose:
+                    var sheetId = $"home-sheet-{tile.Key}";
+                    <button type="button" class="@TileBase @TileActive" data-home-tile="@tile.Key"
+                            data-sheet-open="@sheetId" aria-haspopup="dialog" aria-controls="@sheetId">
+                        @{ await TileBody(tile); }
+                    </button>
+
+                    @* برگهٔ انتخاب: پایین صفحه روی گوشی، وسط روی دسکتاپ؛ Esc و پس‌زمینه می‌بندند (site.js) *@
+                    <div id="@sheetId" class="fixed inset-0 z-[65]" role="dialog" aria-modal="true"
+                         aria-labelledby="@(sheetId)-title" data-sheet hidden>
+                        <div class="absolute inset-0 bg-black/50" data-sheet-close></div>
+                        <div class="pb-safe absolute inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto rounded-t-2xl border border-outline-variant bg-surface-container-lowest p-4 shadow-xl sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl">
+                            <div class="mb-3 flex items-center justify-between gap-3">
+                                <h2 id="@(sheetId)-title" class="text-lg font-bold">@tile.ChoicesTitle</h2>
+                                <button type="button" class="grid h-11 w-11 place-items-center rounded-lg hover:bg-surface-container" data-sheet-close>
+                                    <icon name="close" label="بستن" />
+                                </button>
+                            </div>
+                            <ul class="space-y-2">
+                                @foreach (var choice in tile.Choices ?? Array.Empty<HomeTileChoice>())
+                                {
+                                    <li>
+                                        <a href="@NavBuilder.Resolve(Context, choice.Href)"
+                                           class="flex min-h-14 items-center justify-between gap-3 rounded-xl border px-4 text-base font-semibold hover:bg-primary/5 @(choice.IsLatest ? "border-primary text-primary" : "border-outline-variant")"
+                                           data-sheet-autofocus="@(choice.IsLatest ? "true" : null)" data-numeric>
+                                            <span>@choice.Label</span>
+                                            @if (choice.IsLatest)
+                                            {
+                                                <span class="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium">تازه‌ترین</span>
+                                            }
+                                        </a>
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+                    </div>
+                    break;
+
+                default:
+                    <div class="@TileBase @TileIdle" data-home-tile="@tile.Key">
+                        @{ await TileBody(tile); }
+                    </div>
+                    break;
+            }
+        }
+    </div>
+</section>

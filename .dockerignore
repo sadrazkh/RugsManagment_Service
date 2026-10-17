@@ -11,5 +11,7 @@ src/RugsManagment.Web/App_Data/
 .vscode/
 .claude/
 docs/
+backups/
+tests/
 **/*.user
 docker-compose.yml

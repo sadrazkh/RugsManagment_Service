@@ -1,0 +1,16 @@
+@using RugsManagment.Web.RugDetails
+@model IReadOnlyList<RugDetailPanelView>
+@*
+    پنل‌های درز IRugDetailPanel برای یک ستون صفحهٔ فرش (RugDetailPanelsViewComponent). هر پنل یا partial است یا جزیره.
+*@
+@foreach (var panel in Model)
+{
+    if (panel.Island is { } island)
+    {
+        <div data-island="@island" data-skeleton="@panel.Skeleton" data-props='@Json.Serialize(panel.Props ?? new { })'></div>
+    }
+    else if (panel.Partial is { } partial)
+    {
+        <partial name="@partial" model="panel.Model" />
+    }
+}

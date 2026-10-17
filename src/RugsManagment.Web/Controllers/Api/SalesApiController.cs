@@ -2,16 +2,18 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RugsManagment.Application.DTOs.Sales;
 using RugsManagment.Application.Services;
-using RugsManagment.Domain.Enums;
 using RugsManagment.Web.Auth;
 
 namespace RugsManagment.Web.Controllers.Api;
 
 /// <summary>
-/// فروش فرش. ثبت فروش کار روزمرهٔ اپراتور است، ولی گزارش کل فروش و سود
-/// اطلاعات مالی کارگاه است و فقط برای مدیر باز می‌شود.
+/// فروش فرش و گزارش فروش و سود.
+///
+/// کل کلاس Business است: هم خواندن و ثبت فروش یک فرش (مبلغ فروش، تخفیف، دریافتی) و هم گزارش کل پول است،
+/// و انباردار هیچ مبلغ تومانی نمی‌بیند. صفحهٔ جزئیات فرش جزیرهٔ فروش را هم برای او اصلاً رندر نمی‌کند.
 /// </summary>
 [Route("api/sales")]
+[Authorize(Policy = Policies.Business)]
 public class SalesApiController(IRugSaleService sales) : ApiControllerBase
 {
     [HttpGet("rug/{rugId:guid}")]
@@ -32,9 +34,20 @@ public class SalesApiController(IRugSaleService sales) : ApiControllerBase
         return NoContent();
     }
 
-    /// <summary>گزارش فروش و سود واقعی — فقط مدیر کارگاه.</summary>
+    /// <summary>
+    /// «به‌روزرسانی بهای تمام‌شده» (D.6): عکس بهای لحظهٔ فروش با بهای امروز فرش جایگزین می‌شود و سود دوباره حساب می‌شود.
+    /// ویرایش عادی فروش (<c>PUT</c>) عکس را عوض نمی‌کند؛ فقط همین کار صریح. فرش بی‌فروش ۴۰۰، فرش کارگاه دیگر ۴۰۴.
+    /// </summary>
+    [HttpPost("rug/{rugId:guid}/refresh-cost")]
+    public async Task<IActionResult> RefreshCost(Guid rugId, CancellationToken ct)
+        => Ok(await sales.RefreshCostAtSaleAsync(User.RequireTenantId(), rugId, ct));
+
+    /// <summary>
+    /// گزارش فروش و سود واقعی. <c>from</c> و <c>to</c> «روز»اند (<c>yyyy-MM-dd</c>) و مثل CSV و چاپ صفحهٔ فروش از آغاز روز «از» تا
+    /// پایان روز «تا» به وقت ایران خوانده می‌شوند (<see cref="SalesDayRange"/>)؛ پس صفحه و فایل همیشه همان فروش‌ها را دارند.
+    /// </summary>
     [HttpGet("report")]
-    [Authorize(Roles = nameof(UserRole.TenantAdmin))]
-    public async Task<IActionResult> Report([FromQuery] SalesQuery query, CancellationToken ct)
-        => Ok(await sales.GetReportAsync(User.RequireTenantId(), query, ct));
+    public async Task<IActionResult> Report(
+        [FromQuery] DateTimeOffset? from, [FromQuery] DateTimeOffset? to, [FromQuery] bool onlyOutstanding, CancellationToken ct)
+        => Ok(await sales.GetReportAsync(User.RequireTenantId(), SalesDayRange.Build(from, to, onlyOutstanding), ct));
 }

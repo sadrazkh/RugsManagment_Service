@@ -1,3 +1,4 @@
+using RugsManagment.Application.Common;
 using RugsManagment.Application.DTOs.Tenants;
 using RugsManagment.Application.Services;
 using RugsManagment.Domain.Enums;
@@ -6,14 +7,19 @@ using RugsManagment.Web.Auth;
 namespace RugsManagment.Web.Support;
 
 /// <summary>
-/// دسترسی viewها به تنظیمات کارگاه جاری (واحد پول، لوگو، وضعیت اشتراک).
+/// دسترسی viewها به تنظیمات کارگاه جاری (واحد پول، لوگو، وضعیت اشتراک) و به اینکه بیننده مبلغ ببیند یا نه.
 ///
 /// در طول هر درخواست فقط یک بار از دیتابیس می‌خواند و کش می‌کند؛ چون viewها ممکن است
 /// ده‌ها بار واحد پول را بخواهند و هر بار یک کوئری، صفحه را کند می‌کند.
+///
+/// چرا دید پول هم این‌جاست: viewها مبلغ را با <see cref="Money"/> همین کلاس قالب می‌کنند و این کلاس در همهٔ
+/// viewها با نام <c>Tenant</c> تزریق شده است. اگر view جایی شرط <see cref="CanSeeMoney"/> را جا انداخت، خودِ
+/// <see cref="Money"/> برای انباردار «—» می‌نویسد؛ لایهٔ دوم پشت null کردن مبلغ‌ها در سرویس‌ها.
 /// </summary>
 public sealed class TenantSettingsAccessor(
     ITenantSettingsService settings,
-    IHttpContextAccessor accessor)
+    IHttpContextAccessor accessor,
+    IMoneyVisibility moneyVisibility)
 {
     private TenantSettingsDto? _cached;
     private bool _loaded;
@@ -44,8 +50,22 @@ public sealed class TenantSettingsAccessor(
         }
     }
 
+    /// <summary>
+    /// واحد پول کارگاه: فقط تومان یا ریال. هر مقدار دیگری (مثلاً دلار که هرگز واحد کارگاه نیست) تومان خوانده
+    /// می‌شود تا برچسب و کد همیشه یکی از این دو باشند.
+    /// </summary>
+    public CurrencyUnit CurrencyUnit => Current?.Currency == CurrencyUnit.Rial ? CurrencyUnit.Rial : CurrencyUnit.Toman;
+
     /// <summary>برچسب واحد پول: «تومان» یا «ریال».</summary>
-    public string Currency => Current?.Currency == CurrencyUnit.Rial ? "ریال" : "تومان";
+    public string Currency => CurrencyUnit == CurrencyUnit.Rial ? "ریال" : "تومان";
+
+    /// <summary>کد واحد برای app-context جزیره‌ها: «IRT» (تومان) یا «IRR» (ریال).</summary>
+    public string CurrencyCode => CurrencyUnit == CurrencyUnit.Rial ? "IRR" : "IRT";
+
+    /// <summary>
+    /// آیا بینندهٔ این صفحه مبلغ تومانی می‌بیند (سیاست Business). viewها بخش‌های پولی را با همین پنهان می‌کنند.
+    /// </summary>
+    public bool CanSeeMoney => moneyVisibility.CanSeeMoney;
 
     public string? LogoUrl => Current?.LogoUrl;
 
@@ -62,7 +82,9 @@ public sealed class TenantSettingsAccessor(
         }
     }
 
-    /// <summary>مبلغ همراه واحد پول کارگاه — جایگزین متن ثابت «تومان» در viewها.</summary>
+    /// <summary>
+    /// مبلغ همراه واحد پول کارگاه — جایگزین متن ثابت «تومان» در viewها. برای بیننده‌ای که مبلغ نمی‌بیند همیشه «—».
+    /// </summary>
     public string Money(decimal? value)
-        => value.HasValue ? $"{PersianFormat.Money(value)} {Currency}" : "—";
+        => value.HasValue && CanSeeMoney ? $"{PersianFormat.Money(value)} {Currency}" : "—";
 }

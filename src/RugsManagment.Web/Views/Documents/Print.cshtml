@@ -1,0 +1,14 @@
+@using RugsManagment.Application.Features.Documents.Composer
+@model RenderModel
+@using System.Globalization
+@{ Layout = null; ViewData["DocumentStyles"] = Model.Styles; }
+<!doctype html>
+<html lang="fa" dir="rtl"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>اکسل و چاپ</title>
+<link rel="stylesheet" href="~/css/document-print.css" asp-append-version="true" />
+<style nonce="@Context.CspNonce()">@@page { size: @Model.Page.Paper @Model.Page.Orientation; margin: @(Model.Page.Margins.Top.ToString(CultureInfo.InvariantCulture))in @(Model.Page.Margins.Right.ToString(CultureInfo.InvariantCulture))in @(Model.Page.Margins.Bottom.ToString(CultureInfo.InvariantCulture))in @(Model.Page.Margins.Left.ToString(CultureInfo.InvariantCulture))in; }</style></head>
+<body data-autoprint="@(ViewData["Autoprint"] is true ? "true" : "false")" class="@(Model.Page.Orientation == "landscape" ? "landscape" : "portrait")">
+<nav class="print-tools"><button id="document-print" type="button">چاپ</button><a href="/Shipments" id="document-back">برگشت</a></nav>
+@if (Model.IsDraft) { <p class="draft">پیش‌نویس</p> }
+@foreach (var sheet in Model.Sheets) { <partial name="~/Views/Documents/_RenderedSheet.cshtml" model="sheet" /> }
+<script src="~/js/document-print.js" asp-append-version="true" nonce="@Context.CspNonce()"></script>
+</body></html>

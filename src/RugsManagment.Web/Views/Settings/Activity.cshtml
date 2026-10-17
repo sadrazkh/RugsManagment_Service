@@ -9,42 +9,67 @@
     var fromRaw = ViewData["FromRaw"] as DateTimeOffset?;
     var toRaw = ViewData["ToRaw"] as DateTimeOffset?;
 
-    // فقط رویدادهایی که کاربر کارگاه واقعاً می‌بیند
-    AuditAction[] actions =
-    [
-        AuditAction.Created, AuditAction.Updated,
-        AuditAction.StepAdvanced, AuditAction.StepReverted, AuditAction.StepSkipped,
-        AuditAction.SaleRecorded, AuditAction.SaleCancelled,
-        AuditAction.ProviderPaid,
-        AuditAction.UserInvited, AuditAction.UserDisabled, AuditAction.PasswordChanged,
-        AuditAction.SettingsChanged
-    ];
+    // همهٔ رویدادها، به ترتیب عدد (هر فاز رویدادهایش را در همان بازهٔ عددی دارد: ۶۰ ترجیحات، ۷۰ فرش، ۸۰ اظهار و
+    // نگله، ۹۰ هزینه، ۱۰۰ قالب و خروجی، ۱۱۰ ورود از اکسل، ۱۲۰ نگهداری). همهٔ مقدارها یک‌جا در این فاز آمده‌اند تا
+    // این صفحه دیگر ویرایش نشود؛ برچسب فارسی هر کدام از ActivityLogService.ActionLabel است.
+    var actions = Enum.GetValues<AuditAction>().OrderBy(a => (int)a).ToArray();
+
+    const string Neutral = "bg-surface-container-high text-on-surface-variant";
+    const string Positive = "bg-secondary-container text-on-secondary-container";
+    const string Danger = "bg-error-container text-on-error-container";
 
     (string Icon, string Css) Style(AuditAction a) => a switch
     {
         AuditAction.StepAdvanced => ("check", "bg-success/12 text-success"),
         AuditAction.StepReverted => ("arrow-right", "bg-warning/12 text-warning"),
-        AuditAction.StepSkipped => ("close", "bg-surface-container-high text-on-surface-variant"),
+        AuditAction.StepSkipped => ("close", Neutral),
+        AuditAction.WorkflowChanged => ("workflow", Neutral),
         AuditAction.SaleRecorded => ("receipt", "bg-primary/12 text-primary"),
-        AuditAction.SaleCancelled => ("close", "bg-error-container text-on-error-container"),
-        AuditAction.ProviderPaid => ("handshake", "bg-secondary-container text-on-secondary-container"),
-        AuditAction.UserDisabled => ("users", "bg-error-container text-on-error-container"),
-        AuditAction.UserInvited => ("users", "bg-secondary-container text-on-secondary-container"),
+        AuditAction.SaleCancelled => ("close", Danger),
+        AuditAction.ProviderPaid => ("handshake", Positive),
+        AuditAction.UserDisabled => ("users", Danger),
+        AuditAction.UserInvited => ("users", Positive),
         AuditAction.PasswordChanged => ("settings", "bg-warning/12 text-warning"),
-        AuditAction.SettingsChanged => ("settings", "bg-surface-container-high text-on-surface-variant"),
-        AuditAction.Created => ("plus", "bg-secondary-container text-on-secondary-container"),
-        AuditAction.Deleted => ("trash", "bg-error-container text-on-error-container"),
-        AuditAction.Restored => ("undo", "bg-secondary-container text-on-secondary-container"),
-        _ => ("edit", "bg-surface-container-high text-on-surface-variant")
+        AuditAction.SettingsChanged or AuditAction.PreferencesChanged => ("settings", Neutral),
+        AuditAction.PresetApplied => ("wand", Positive),
+        AuditAction.GridLayoutChanged => ("spreadsheet", Neutral),
+        AuditAction.RugSplit => ("split", Positive),
+        AuditAction.FinalSizeRecorded => ("ruler", Positive),
+        AuditAction.ShipmentFinalized => ("lock", "bg-primary/12 text-primary"),
+        AuditAction.ShipmentReopened => ("unlock", "bg-warning/12 text-warning"),
+        AuditAction.ShipmentDeleted or AuditAction.BaleDeleted
+            or AuditAction.CostEntryDeleted or AuditAction.TemplateDeleted => ("trash", Danger),
+        AuditAction.ShipmentCreated or AuditAction.ShipmentUpdated => ("truck", Positive),
+        AuditAction.BaleCreated or AuditAction.BalesRenumbered or AuditAction.LinesChanged => ("bale", Positive),
+        AuditAction.DeclaredValuesChanged => ("dollar", Neutral),
+        AuditAction.CostEntryRestored or AuditAction.TemplateRestored => ("undo", Positive),
+        AuditAction.CostEntryCreated or AuditAction.CostEntryUpdated or AuditAction.RevenueChanged => ("coins", Positive),
+        AuditAction.CostCategoryChanged => ("coins", Neutral),
+        AuditAction.TemplateCreated or AuditAction.TemplateUpdated => ("spreadsheet", Positive),
+        AuditAction.Exported => ("download", Positive),
+        AuditAction.ImportCommitted => ("upload", Positive),
+        AuditAction.ImportUndone => ("undo", "bg-warning/12 text-warning"),
+        AuditAction.LedgerRebuilt => ("calculator", Neutral),
+        AuditAction.Created => ("plus", Positive),
+        AuditAction.Deleted => ("trash", Danger),
+        AuditAction.Restored => ("undo", Positive),
+        _ => ("edit", Neutral)
     };
 }
 
 <div class="space-y-5">
-    <div>
-        <h1 class="text-2xl font-bold">تاریخچهٔ فعالیت</h1>
-        <p class="text-sm text-on-surface-variant">
-            چه کسی، کِی، چه کاری انجام داد. این فهرست فقط خواندنی است و ویرایش نمی‌شود.
-        </p>
+    <div class="flex items-center gap-3">
+        @* در RTL «بازگشت» به سمت راست اشاره می‌کند *@
+        <a href="/settings"
+           class="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-outline-variant hover:bg-surface-container">
+            <icon name="arrow-right" label="بازگشت به تنظیمات" />
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold">تاریخچهٔ فعالیت</h1>
+            <p class="text-sm text-on-surface-variant">
+                چه کسی، کِی، چه کاری انجام داد. این فهرست فقط خواندنی است و ویرایش نمی‌شود.
+            </p>
+        </div>
     </div>
 
     <!-- فیلترها -->
@@ -62,17 +87,8 @@
             </select>
         </label>
 
-        <label class="block">
-            <span class="mb-1 block text-sm">از تاریخ</span>
-            <input type="date" name="from" dir="ltr" value="@fromRaw?.ToString("yyyy-MM-dd")"
-                   class="min-h-11 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-sm outline-none focus:border-primary" />
-        </label>
-
-        <label class="block">
-            <span class="mb-1 block text-sm">تا تاریخ</span>
-            <input type="date" name="to" dir="ltr" value="@toRaw?.ToString("yyyy-MM-dd")"
-                   class="min-h-11 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-sm outline-none focus:border-primary" />
-        </label>
+        <island name="date-filter" props="@(new { name = "from", value = fromRaw?.ToString("yyyy-MM-dd"), label = "از تاریخ" })"></island>
+        <island name="date-filter" props="@(new { name = "to", value = toRaw?.ToString("yyyy-MM-dd"), label = "تا تاریخ" })"></island>
 
         <button type="submit"
                 class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-on-primary hover:bg-primary-hover">

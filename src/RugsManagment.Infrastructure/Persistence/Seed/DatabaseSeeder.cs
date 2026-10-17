@@ -1,17 +1,21 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
+using RugsManagment.Application.Abstractions;
 using RugsManagment.Application.Services;
+using RugsManagment.Domain.Costing;
 using RugsManagment.Domain.Entities;
 using RugsManagment.Domain.Enums;
+using RugsManagment.Infrastructure.Persistence.Repositories;
 
 namespace RugsManagment.Infrastructure.Persistence.Seed;
 
 /// <summary>
-/// دادهٔ اولیه هنگام بالا آمدن API:
-/// 1) اجرای migration
-/// 2) انواع مرحله (قالیشویی، دارکشی، …)
-/// 3) ادمین سیستم
-/// 4) کارگاه دمو + دو قالب مسیر نمونه
+/// دادهٔ اولیه هنگام بالا آمدن برنامه (migration پیش از این، کار <see cref="Migrator"/> است):
+/// 1) انواع مرحله (قالیشویی، دارکشی، …)
+/// 2) ادمین سیستم
+/// 3) کارگاه دمو + دو قالب مسیر نمونه
 /// </summary>
 public static class DatabaseSeeder
 {
@@ -19,7 +23,6 @@ public static class DatabaseSeeder
     {
         using var scope = services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        //await db.Database.MigrateAsync();
 
         if (!await db.ProcessStepTypes.AnyAsync())
         {
@@ -45,11 +48,14 @@ public static class DatabaseSeeder
                 PasswordHash = AuthService.HashPassword("Admin@12345"),
                 IsActive = true
             };
+            // پیش‌فرض‌های نقش (حالت کامل)؛ پیش‌فرض خودِ موجودیت «ساده» است
+            admin.ApplyRoleDefaultPreferences();
             db.Users.Add(admin);
             await db.SaveChangesAsync();
         }
 
-        if (!await db.Tenants.AnyAsync())
+        var seedDemo = !bool.TryParse(scope.ServiceProvider.GetService<IConfiguration>()?["Seed:Demo"], out var configuredDemo) || configuredDemo;
+        if (seedDemo && !await db.Tenants.AnyAsync())
         {
             var demoTenant = new Tenant
             {
@@ -70,6 +76,7 @@ public static class DatabaseSeeder
                 PasswordHash = AuthService.HashPassword("Demo@12345"),
                 IsActive = true
             };
+            demoAdmin.ApplyRoleDefaultPreferences();
             db.Users.Add(demoAdmin);
 
             var washing = await db.ProcessStepTypes.FirstAsync(s => s.Code == "washing");
@@ -114,16 +121,24 @@ public static class DatabaseSeeder
             db.WorkflowTemplates.AddRange(fullTemplate, shortTemplate);
             await db.SaveChangesAsync();
 
-            await SeedDemoContentAsync(db, demoTenant, fullTemplate, [washing, darkening, repair, inspection, ready]);
+            await SeedDemoContentAsync(
+                db, scope.ServiceProvider.GetService<IUnitOfWork>(), demoTenant, fullTemplate,
+                [washing, darkening, repair, inspection, ready]);
         }
     }
 
     /// <summary>
-    /// دادهٔ نمایشی برای کارگاه دمو: چند فرش در مراحل مختلف، یک گروه، یک فیلد سفارشی، و یک برچسب.
+    /// دادهٔ نمایشی برای کارگاه دمو: چند فرش در مراحل مختلف، یک «ورودی»، یک فیلد سفارشی، یک فروش و یک برچسب.
     /// فقط یک بار (هنگام ساخت اولیهٔ کارگاه دمو) اجرا می‌شود.
+    ///
+    /// <para><b>از فاز ۲ (جای ۷ از هفت جای «سرمایهٔ کل»، D.4):</b> هیچ جمعی این‌جا حساب نمی‌شود. قیمت خرید سطر خرید «کل» است
+    /// (ستون منسوخ <c>PurchaseCost</c> نوشته نمی‌شود)، قیمت مراحل با همان قاعدهٔ دسته و عکس اندازه (<see cref="RugCostMath"/>)،
+    /// و ذخیره از <see cref="IUnitOfWork"/> (پاس سازگاری) می‌گذرد تا مبلغ سطرها، <c>RugCostTotal</c> و عکس بهای فروش را همان
+    /// پاس بنویسد. میزبانی که UnitOfWork ثبت نکرده (آزمون استارت با DI حداقلی) مستقیم ذخیره می‌کند و بررسی استارت حساب‌ها
+    /// (<c>LedgerStartupCheck</c>) ردیف‌ها را می‌سازد. فرش «فروخته‌شده» حالا فروش واقعی دارد (پیش از این بی‌فروش بود).</para>
     /// </summary>
     private static async Task SeedDemoContentAsync(
-        AppDbContext db, Tenant tenant, WorkflowTemplate template, ProcessStepType[] flow)
+        AppDbContext db, IUnitOfWork? unitOfWork, Tenant tenant, WorkflowTemplate template, ProcessStepType[] flow)
     {
         // فیلد سفارشی نمونه
         db.CustomFieldDefinitions.Add(new CustomFieldDefinition
@@ -132,49 +147,80 @@ public static class DatabaseSeeder
             FieldType = CustomFieldType.Text, SortOrder = 0, IsActive = true
         });
 
-        var batch = new RugBatch { TenantId = tenant.Id, Name = "محمولهٔ نمونه", Description = "فرش‌های ورودی نمونه", ReceivedAt = DateTimeOffset.UtcNow.AddDays(-3) };
+        // شمارهٔ ورودی از شمارندهٔ کارگاه (یکتا در کارگاه؛ ورودی بعدی‌ای که کاربر می‌سازد از همین ادامه می‌دهد)
+        var batchNumber = await new TenantCounterRepository(db).NextBlockAsync(tenant.Id, RugBatchService.BatchCounterKey);
+        var batch = new RugBatch
+        {
+            TenantId = tenant.Id, Number = checked((int)batchNumber), Name = "ورودی نمونه", Description = "فرش‌های ورودی نمونه",
+            ReceivedAt = DateTimeOffset.UtcNow.AddDays(-3)
+        };
         db.RugBatches.Add(batch);
 
-        var month = DateTime.UtcNow.ToString("yyyyMM");
+        var month = DateTime.UtcNow.ToString("yyyyMM", CultureInfo.InvariantCulture);
         var seq = 0;
 
         Rug MakeRug(string title, string origin, decimal w, decimal l, decimal purchase, decimal target, int currentIdx, RugStatus status, string? color, Guid? batchId)
         {
-            var area = w * l;
-            var steps = new List<RugWorkflowStep>();
+            var rug = new Rug
+            {
+                TenantId = tenant.Id, Sku = $"RUG-{month}-{++seq:D4}", Title = title, Origin = origin,
+                Pattern = "لچک ترنج", Material = "پشم و ابریشم",
+                TargetSalePrice = target, Status = status, CurrentStepIndex = currentIdx,
+                WorkflowTemplateId = template.Id, BatchId = batchId,
+                MetadataJson = color is null ? null : $"{{\"bg_color\":\"{color}\"}}"
+            };
+            rug.SetIntakeSize(l, w);
+
             for (var i = 0; i < flow.Length; i++)
             {
                 var st = status is RugStatus.ReadyForSale or RugStatus.Sold ? WorkflowStepStatus.Completed
                     : i < currentIdx ? WorkflowStepStatus.Completed
                     : i == currentIdx ? WorkflowStepStatus.InProgress
                     : WorkflowStepStatus.Pending;
-                decimal? cost = st is WorkflowStepStatus.Completed or WorkflowStepStatus.InProgress
-                    ? (flow[i].DefaultPricingModel == StepPricingModel.PerSquareMeter ? Math.Round(flow[i].DefaultUnitRate * area, 2) : flow[i].DefaultUnitRate)
-                    : null;
-                steps.Add(new RugWorkflowStep
+                var step = new RugWorkflowStep
                 {
-                    ProcessStepTypeId = flow[i].Id, OrderIndex = i, Status = st, CalculatedCost = cost,
+                    RugId = rug.Id, ProcessStepTypeId = flow[i].Id, OrderIndex = i, Status = st,
                     StartedAt = st != WorkflowStepStatus.Pending ? DateTimeOffset.UtcNow.AddDays(-flow.Length + i) : null,
                     CompletedAt = st == WorkflowStepStatus.Completed ? DateTimeOffset.UtcNow.AddDays(-flow.Length + i + 1) : null
-                });
+                };
+                if (st is WorkflowStepStatus.Completed or WorkflowStepStatus.InProgress)
+                {
+                    // قیمت‌گذاری روی عکس اندازه (B.5) و قاعدهٔ دسته در رقم اعشار ۰ (پیش‌فرض کارگاه تازه)
+                    step.SnapshotPricingSize(l, w, rug.Quantity);
+                    step.CalculatedCost = RugCostMath.StepLinePrice(
+                        flow[i].DefaultPricingModel, flow[i].DefaultUnitRate, l, w, rug.Quantity, moneyScale: 0);
+                }
+                rug.WorkflowSteps.Add(step);
             }
-            return new Rug
+
+            rug.PurchaseLines.Add(new RugPurchaseLine
             {
-                TenantId = tenant.Id, Sku = $"RUG-{month}-{++seq:D4}", Title = title, Origin = origin,
-                Pattern = "لچک ترنج", Material = "پشم و ابریشم", WidthMeters = w, LengthMeters = l,
-                PurchaseCost = purchase, TargetSalePrice = target, Status = status, CurrentStepIndex = currentIdx,
-                WorkflowTemplateId = template.Id, BatchId = batchId,
-                MetadataJson = color is null ? null : $"{{\"bg_color\":\"{color}\"}}",
-                WorkflowSteps = steps
-            };
+                TenantId = tenant.Id, RugId = rug.Id, Label = RugPurchaseLine.LegacyPurchaseLabel,
+                Basis = CostBasis.Total, Rate = purchase, SortOrder = 0
+            });
+            return rug;
         }
 
-        db.Rugs.AddRange(
+        // ترتیب ساخت = ترتیب SKU (۰۰۰۱ تبریز … ۰۰۰۵ قم)، همان پیش از فاز ۲
+        var rugs = new[]
+        {
             MakeRug("تبریز لاکی", "تبریز", 2m, 3m, 45_000_000, 90_000_000, 0, RugStatus.InProgress, "لاکی", batch.Id),
             MakeRug("کاشان سرمه‌ای", "کاشان", 1.5m, 2.25m, 30_000_000, 65_000_000, 2, RugStatus.InProgress, "سرمه‌ای", batch.Id),
             MakeRug("اصفهان کرم", "اصفهان", 3m, 4m, 120_000_000, 260_000_000, 4, RugStatus.ReadyForSale, "کرم", null),
             MakeRug("نایین آبی", "نایین", 2m, 3m, 80_000_000, 170_000_000, 4, RugStatus.Sold, "آبی", null),
-            MakeRug("قم ابریشم", "قم", 1m, 1.5m, 60_000_000, 140_000_000, 0, RugStatus.Draft, null, null));
+            MakeRug("قم ابریشم", "قم", 1m, 1.5m, 60_000_000, 140_000_000, 0, RugStatus.Draft, null, null)
+        };
+        var sold = rugs[3];
+        db.Rugs.AddRange(rugs);
+        db.RugWorkflowSteps.AddRange(rugs.SelectMany(r => r.WorkflowSteps));
+        db.Set<RugPurchaseLine>().AddRange(rugs.SelectMany(r => r.PurchaseLines));
+
+        // «فروخته‌شده» یعنی فروش ثبت‌شده (RugStatusResolver)؛ عکس بهای فروش را پاس در همین ذخیره می‌گیرد
+        db.RugSales.Add(new RugSale
+        {
+            TenantId = tenant.Id, RugId = sold.Id, BuyerName = "خریدار نمونه", SalePrice = 170_000_000,
+            ReceivedAmount = 170_000_000, PaymentMethod = SalePaymentMethod.Cash, SoldAt = DateTimeOffset.UtcNow.AddDays(-1)
+        });
 
         // برچسب نمونه (طراحی بصری)
         db.LabelTemplates.Add(new LabelTemplate
@@ -191,7 +237,10 @@ public static class DatabaseSeeder
             """
         });
 
-        await db.SaveChangesAsync();
+        if (unitOfWork is not null)
+            await unitOfWork.SaveChangesAsync();
+        else
+            await db.SaveChangesAsync();
     }
 
     private static ProcessStepType Step(

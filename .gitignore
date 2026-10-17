@@ -366,5 +366,10 @@ FodyWeavers.xsd
 src/RugsManagment.Web/ClientApp/node_modules/
 src/RugsManagment.Web/wwwroot/dist/
 
-# کلیدهای Data Protection (محلی) — در تولید روی volume ماندگار CapRover
+# کلیدهای Data Protection (محلی) — در تولید روی volume ماندگار CapRover.
+# کلید رمزنگاری‌نشده هرگز نباید در مخزن باشد: هر کس آن را داشته باشد می‌تواند کوکی ورود جعل کند.
+# (فایلی که پیش از این قاعده track شده بود باید با git rm --cached از مخزن بیرون برود.)
 src/RugsManagment.Web/App_Data/
+
+# خروجی اسکریپت‌های پشتیبان‌گیری دیتابیس (scripts/db-backup.*) — دادهٔ واقعی مشتری
+backups/

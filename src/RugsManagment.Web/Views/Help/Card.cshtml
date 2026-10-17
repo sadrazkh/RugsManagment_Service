@@ -1,0 +1,221 @@
+@using RugsManagment.Web.Auth
+@using RugsManagment.Web.Home
+@using RugsManagment.Web.Navigation
+@*
+    «کارت راهنما» (/Help/Card) — یک برگ A4 برای چاپ و گذاشتن کنار کامپیوتر (H.5).
+
+    Layout = null: بدون منو و جزیره. رنگ‌ها hex نوشته شده‌اند چون این یک سطح چاپی است (کاغذ روشن در هر دو
+    تم). فونت خودمیزبان است تا چاپ بی‌اینترنت هم فارسی درست داشته باشد. گام‌ها همان گام‌های راهنمای شروع
+    خانه‌اند (MerchantSteps) و از سیاست بیننده و واژهٔ نگلهٔ کارگاه پیروی می‌کنند.
+*@
+@{
+    Layout = null;
+
+    var terms = await AppShell.TermsAsync(Context);
+    var steps = MerchantSteps.For(Policies.IsBusiness(User), terms);
+    var tenantName = User.GetTenantName() ?? "کارگاه";
+
+    string Digit(int n) => PersianFormat.ToPersianDigits(n.ToString(System.Globalization.CultureInfo.InvariantCulture));
+}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>کارت راهنما — @tenantName</title>
+    <link rel="stylesheet" href="~/fonts/vazirmatn.css" asp-append-version="true" />
+    <style>
+        @@page { size: A4 portrait; margin: 12mm; }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 24px 16px;
+            background: #efeeea;
+            color: #1b1c1a;
+            font-family: 'Vazirmatn', Tahoma, sans-serif;
+            font-size: 15px;
+            line-height: 1.8;
+        }
+
+        .toolbar {
+            max-width: 186mm;
+            margin: 0 auto 12px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 44px;
+            padding: 0 16px;
+            border-radius: 8px;
+            border: 1px solid #6b0008;
+            background: #6b0008;
+            color: #fff;
+            font: inherit;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .btn.ghost { background: #fff; color: #6b0008; }
+        .btn svg { width: 20px; height: 20px; }
+
+        .sheet {
+            max-width: 186mm;
+            margin: 0 auto;
+            padding: 14mm 12mm;
+            background: #fff;
+            border: 1px solid #e0bfbc;
+            border-radius: 12px;
+        }
+
+        .head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 16px;
+            border-bottom: 3px solid #6b0008;
+            padding-bottom: 10px;
+            margin-bottom: 18px;
+        }
+
+        h1 { margin: 0; font-size: 26px; color: #6b0008; }
+        .muted { color: #58413f; font-size: 13px; }
+
+        ol.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+
+        ol.steps li {
+            display: grid;
+            grid-template-columns: 44px 52px 1fr;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            border: 1px solid #e0bfbc;
+            border-radius: 12px;
+            break-inside: avoid;
+        }
+
+        .num {
+            display: grid;
+            place-items: center;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #6b0008;
+            color: #fff;
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .ic {
+            display: grid;
+            place-items: center;
+            width: 52px;
+            height: 52px;
+            border-radius: 12px;
+            background: #fed488;
+            color: #5d4201;
+        }
+
+        .ic svg { width: 30px; height: 30px; }
+
+        ol.steps h2 { margin: 0; font-size: 19px; }
+        ol.steps p { margin: 2px 0 0; color: #3a2f2e; }
+
+        .keys {
+            margin-top: 18px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            background: #f5f3ef;
+        }
+
+        .keys h2 { margin: 0 0 6px; font-size: 16px; }
+        .keys ul { margin: 0; padding: 0 18px 0 0; }
+
+        kbd {
+            display: inline-block;
+            min-width: 28px;
+            padding: 0 6px;
+            border: 1px solid #8c716e;
+            border-bottom-width: 2px;
+            border-radius: 6px;
+            background: #fff;
+            font-family: inherit;
+            font-size: 13px;
+            text-align: center;
+            direction: ltr;
+        }
+
+        .tip {
+            margin-top: 16px;
+            font-weight: 600;
+            color: #6b0008;
+        }
+
+        @@media print {
+            body { background: #fff; padding: 0; font-size: 14px; }
+            .toolbar { display: none; }
+            .sheet { border: 0; border-radius: 0; padding: 0; max-width: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        @* هندلر درون‌خطی نداریم؛ CSP فقط اسکریپت nonce‌دار را اجرا می‌کند *@
+        <button type="button" class="btn" id="print-card">
+            <icon name="printer" />
+            چاپ
+        </button>
+        <a class="btn ghost" href="@NavBuilder.Resolve(Context, "/")">
+            <icon name="home" />
+            برگشت به خانه
+        </a>
+    </div>
+    <script nonce="@Context.CspNonce()">
+        document.getElementById('print-card').addEventListener('click', function () { window.print(); });
+    </script>
+
+    <main class="sheet">
+        <div class="head">
+            <div>
+                <h1>کار روزانه در @RugsManagment.Application.Common.NumberWords.ToWords(steps.Count) قدم</h1>
+                <div class="muted">@tenantName</div>
+            </div>
+            <div class="muted">این برگ را چاپ کنید و کنار کامپیوتر بگذارید.</div>
+        </div>
+
+        <ol class="steps">
+            @for (var i = 0; i < steps.Count; i++)
+            {
+                var step = steps[i];
+                <li>
+                    <span class="num" aria-hidden="true">@Digit(i + 1)</span>
+                    <span class="ic"><icon name="@step.Icon" /></span>
+                    <div>
+                        <h2>@step.Title</h2>
+                        <p>@step.Text</p>
+                    </div>
+                </li>
+            }
+        </ol>
+
+        <section class="keys">
+            <h2>دکمه‌های کمکی صفحه‌کلید</h2>
+            <ul>
+                <li><kbd>Ctrl</kbd> + <kbd>K</kbd> : پیدا کردن فرش با شماره، یا رفتن به هر بخش</li>
+                <li><kbd>Enter</kbd> : رفتن به خانهٔ پایینی در جدول</li>
+                <li><kbd>Tab</kbd> : رفتن به خانهٔ بعدی</li>
+                <li><kbd>Esc</kbd> : بستن پنجره</li>
+            </ul>
+        </section>
+
+        <p class="tip">@MerchantSteps.HelpTip</p>
+    </main>
+</body>
+</html>

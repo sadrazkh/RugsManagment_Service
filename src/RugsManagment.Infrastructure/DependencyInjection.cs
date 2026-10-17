@@ -5,7 +5,13 @@ using RugsManagment.Application.Abstractions;
 using RugsManagment.Application.Abstractions.Persistence;
 using RugsManagment.Application.Abstractions.Services;
 using RugsManagment.Application.Services;
-using RugsManagment.Infrastructure.Identity;
+using RugsManagment.Infrastructure.Features.Costs;
+using RugsManagment.Infrastructure.Features.Documents;
+using RugsManagment.Infrastructure.Features.Import;
+using RugsManagment.Infrastructure.Features.Intake;
+using RugsManagment.Infrastructure.Features.Ledger;
+using RugsManagment.Infrastructure.Features.Platform;
+using RugsManagment.Infrastructure.Features.Shipments;
 using RugsManagment.Infrastructure.Persistence;
 using RugsManagment.Infrastructure.Persistence.Repositories;
 using RugsManagment.Infrastructure.Storage;
@@ -13,8 +19,11 @@ using RugsManagment.Infrastructure.Storage;
 namespace RugsManagment.Infrastructure;
 
 /// <summary>
-/// لایهٔ زیرساخت — اتصال PostgreSQL و پیاده‌سازی Repositoryها.
+/// لایهٔ زیرساخت — اتصال PostgreSQL، پیاده‌سازی Repositoryها، شمارنده‌ها و ذخیرهٔ تصویر.
 /// Application فقط interface می‌بیند؛ اینجا جایگزین واقعی ثبت می‌شود.
+///
+/// این فایل از این پس یخ زده است: ثبت‌های هر فاز در ماژول زیرساختی همان فاز
+/// (<c>Features/{X}/{X}InfrastructureModule.cs</c>) است و این‌جا فقط ماژول‌ها صدا زده می‌شوند.
 /// </summary>
 public static class DependencyInjection
 {
@@ -35,13 +44,27 @@ public static class DependencyInjection
         services.AddScoped<IWorkflowTemplateRepository, WorkflowTemplateRepository>();
         services.AddScoped<IProcessStepTypeRepository, ProcessStepTypeRepository>();
         services.AddScoped<IServiceProviderRepository, ServiceProviderRepository>();
+        services.AddScoped<IAnalyticsReadRepository, AnalyticsReadRepository>();
+        // scoped: فقط نوع مرحلهٔ سیستمی یا مال کارگاه کاربر جاری را برمی‌گرداند
         services.AddScoped<IProcessStepTypeLookup, ProcessStepTypeLookup>();
+
+        // شمارندهٔ اتمیک کارگاه (SKU، شمارهٔ محموله، …) — یک UPSERT، بدون تلاش دوباره
+        services.AddScoped<ITenantCounters, TenantCounterRepository>();
 
         // ذخیره‌سازی تصاویر روی دیسک — مسیر از Storage:ImagePath خوانده می‌شود
         services.AddSingleton<IImageStorage, LocalImageStorage>();
 
         // تاریخچهٔ فعالیت — در همان DbContext و همان تراکنش عملیات اصلی می‌نویسد
         services.AddScoped<IAuditLog, AuditLog>();
+
+        // ماژول‌های فازها — هر فاز فقط فایل ماژول زیرساختی خودش را پر می‌کند
+        services.AddPlatformModule(configuration);
+        services.AddLedgerModule(configuration);
+        services.AddIntakeModule(configuration);
+        services.AddShipmentsModule(configuration);
+        services.AddCostsModule(configuration);
+        services.AddDocumentsModule(configuration);
+        services.AddImportModule(configuration);
 
         return services;
     }

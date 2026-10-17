@@ -42,6 +42,17 @@ public class RugSale : BaseEntity, ITenantScoped
 
     public string? Notes { get; set; }
 
+    /// <summary>
+    /// بهای تمام‌شدهٔ فرش در لحظهٔ فروش (<c>RugCostTotal.Total</c>) — عکسی که پاس سازگاری در همان ذخیرهٔ فروش
+    /// می‌گیرد (spec D.6). چرا عکس: سود یک فروش نباید با هزینه‌ای که ماه‌ها بعد ثبت می‌شود بی‌صدا عوض شود؛
+    /// تفاوت بعدی به‌صورت «هزینه پس از فروش تغییر کرده» نشان داده می‌شود. ویرایش فروش آن را نگه می‌دارد مگر کاربر
+    /// «به‌روزرسانی بهای تمام‌شده» را بخواهد. فروش‌های پیش از M2 را خود M2 پر کرد.
+    /// </summary>
+    public decimal? CostAtSale { get; set; }
+
+    /// <summary>زمان گرفتن <see cref="CostAtSale"/>.</summary>
+    public DateTimeOffset? CostAtSaleAt { get; set; }
+
     public Rug Rug { get; set; } = null!;
     public Tenant Tenant { get; set; } = null!;
 
@@ -50,4 +61,10 @@ public class RugSale : BaseEntity, ITenantScoped
 
     /// <summary>باقی‌ماندهٔ طلب از خریدار (فروش اقساطی)</summary>
     public decimal OutstandingAmount => Math.Max(0, NetAmount - ReceivedAmount);
+
+    /// <summary>
+    /// سود واقعی (D.6): خالص فروش − (عکس بهای تمام‌شده ?? بهای فعلی). تنها فرمول C# سود فروش؛ گزارش‌های SQL همین را
+    /// با COALESCE تکرار می‌کنند.
+    /// </summary>
+    public decimal ActualProfit(decimal currentTotal) => NetAmount - (CostAtSale ?? currentTotal);
 }

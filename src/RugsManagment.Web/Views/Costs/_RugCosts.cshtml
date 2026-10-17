@@ -1,0 +1,14 @@
+@using RugsManagment.Web.RugDetails
+@model RugCostsPanelModel
+@*
+    بخش «هزینه‌ها»ی صفحهٔ فرش (فاز ۵، Business): جزیرهٔ cost-ledger در نمای فشرده با فیلتر همین فرش — ثبت‌هایی که فرش در آن‌ها
+    سهم دارد، «ثبت هزینه برای این فرش» و لمس هر ردیف برای ویرایش. سهم دقیق فرش از هر ثبت را «این عدد از کجا آمد؟» در کارت
+    بهای تمام‌شده نشان می‌دهد.
+*@
+<section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm" aria-labelledby="rug-costs-title" data-rug-costs-panel="@Model.RugId">
+    <h3 id="rug-costs-title" class="mb-3 flex items-center gap-2 text-sm font-semibold text-primary">
+        <icon name="coins" class="h-4 w-4" />
+        هزینه‌ها
+    </h3>
+    <div data-island="cost-ledger" data-skeleton="8rem" data-props='@Json.Serialize(Model.IslandProps)'></div>
+</section>

@@ -7,9 +7,12 @@ using RugsManagment.Web.Auth;
 
 namespace RugsManagment.Web.Controllers.Api;
 
-/// <summary>مدیریت فیلدهای سفارشی کارگاه — فقط مدیر کارگاه.</summary>
+/// <summary>
+/// مدیریت فیلدهای سفارشی کارگاه — فقط تنظیم‌کننده (Configure). فرم فرش فهرست فیلدهای فعال را از
+/// <c>/api/lookups/custom-fields</c> (Floor) می‌خواند، نه از این‌جا.
+/// </summary>
 [Route("api/custom-fields")]
-[Authorize(Roles = nameof(UserRole.TenantAdmin))]
+[Authorize(Policy = Policies.Configure)]
 public class CustomFieldsApiController(ICustomFieldService fields) : ApiControllerBase
 {
     [HttpGet]

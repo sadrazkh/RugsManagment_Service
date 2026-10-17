@@ -4,12 +4,16 @@
  *
  * فقط وقتی چیزی برای گفتن هست دیده می‌شود — نوار دائمیِ «آنلاین» فضا می‌گیرد
  * و چشم را عادت می‌دهد نادیده بگیرد.
+ *
+ * پس از ارسال، صفحه فقط وقتی تازه می‌شود که کاری در جریان نباشد (requestReload ← blockReload)؛
+ * وگرنه نوشتهٔ ذخیره‌نشدهٔ یک جدول یا پنل با تازه‌سازی از دست می‌رفت.
  */
 import { computed, ref } from 'vue'
 import AppIcon from './AppIcon.vue'
 import { faNumber } from '@/lib/format'
+import { message } from '@/lib/messages'
 import { clear, flush, isOnline, queue } from '@/lib/offlineQueue'
-import { toast } from '@/lib/ui'
+import { confirmDialog, requestReload, toast } from '@/lib/ui'
 
 const expanded = ref(false)
 const sending = ref(false)
@@ -28,13 +32,23 @@ async function retryNow() {
     const result = await flush()
     if (result.sent > 0) toast.success(`${faNumber(result.sent)} عملیات ارسال شد.`)
     for (const r of result.rejected) toast.error(`${r.label}: ${r.message}`)
-    if (result.sent > 0) window.setTimeout(() => window.location.reload(), 900)
+    if (result.signInRequired) toast.warning(message('E_OFFLINE_SIGN_IN', { n: result.remaining }))
+    if (result.sent > 0) requestReload({ delayMs: 900 })
   } finally {
     sending.value = false
   }
 }
 
 async function discard() {
+  // دور انداختن برگشت ندارد؛ کارهای در صف هنوز به سرور نرسیده‌اند
+  const ok = await confirmDialog({
+    title: `${faNumber(count.value)} کار در صف دور انداخته شود؟`,
+    message: 'این کارها هنوز به سرور نرسیده‌اند و دیگر برنمی‌گردند.',
+    confirmLabel: 'دور بینداز',
+    cancelLabel: 'نه، نگه دار',
+    danger: true,
+  })
+  if (!ok) return
   clear()
   toast.info('صف پاک شد.')
   expanded.value = false
@@ -42,7 +56,8 @@ async function discard() {
 </script>
 
 <template>
-  <div v-if="visible" class="fixed bottom-4 left-4 z-[55] max-w-sm" data-no-print>
+  <!-- روی گوشی بالای نوار پایین می‌نشیند تا دکمه‌های ناوبری را نپوشاند -->
+  <div v-if="visible" class="fixed bottom-20 left-4 z-[55] max-w-sm md:bottom-4" data-no-print>
     <div class="overflow-hidden rounded-xl border shadow-lg"
          :class="isOnline ? 'border-warning/40 bg-warning/10' : 'border-outline-variant bg-surface-container-highest'">
       <button

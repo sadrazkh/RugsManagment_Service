@@ -1,0 +1,166 @@
+@using RugsManagment.Application.Common
+@using RugsManagment.Domain.Enums
+@using RugsManagment.Web.Controllers
+@using RugsManagment.Web.Navigation
+@using RugsManagment.Web.Shipments
+@model ShipmentsIndexModel
+@*
+    فهرست محموله‌ها (/Shipments، Floor). قاب فاز ۴a: فهرست را خودِ سرور می‌سازد، داخل میزبان جزیرهٔ shipment-list؛ وقتی
+    فاز ۴b جزیره را آورد همین میزبان را جایگزین می‌کند (props همان { canCreate })، و تا آن روز همین فهرست بی‌اسکریپت کار
+    می‌کند. «محمولهٔ تازه» با یک لمس و بی پنجره می‌سازد (data-post-json در site.js، C.1) و به زبانهٔ نگله‌ها می‌رود.
+    واژهٔ نگله از ترجیح کارگاه است (Model.Terms)، هرگز متن ثابت.
+*@
+@{
+    ViewData["Title"] = "محموله‌ها";
+    var terms = Model.Terms;
+    var createBody = new { documentDate = AppShell.IranToday().ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) };
+    var createRedirect = NavBuilder.Resolve(Context, "/Shipments/{id}?tab=" + ShipmentTabKeys.Bales);
+
+    string FilterHref(string? status) => status is null ? NavBuilder.Resolve(Context, ShipmentRoutes.Index)
+        : NavBuilder.Resolve(Context, $"{ShipmentRoutes.Index}?status={status}");
+
+    // شمار تخته؛ با دسته شمار ردیف هم پشتش می‌آید (واژه‌نامهٔ A.2: «۵۲ تخته (۳ ردیف)»)
+    string PiecesText(int pieces, int lines) => lines != pieces
+        ? $"{Messages.FormatNumber(pieces)} تخته ({Messages.FormatNumber(lines)} ردیف)"
+        : $"{Messages.FormatNumber(pieces)} تخته";
+
+    var filters = new (string? Key, string Label)[] { (null, "همه"), ("open", "پیش‌نویس"), ("finalized", "قطعی") };
+    var currentFilter = Model.Status switch
+    {
+        ShipmentStatus.Open => "open",
+        ShipmentStatus.Finalized => "finalized",
+        _ => null
+    };
+}
+
+<div class="space-y-5">
+    <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+            <h1 class="text-2xl font-bold">محموله‌ها</h1>
+            <p class="text-sm text-on-surface-variant">هر محموله یک اظهار صادراتی است، با @terms.Bales و فرش‌هایش.</p>
+        </div>
+        @if (Model.CanCreate)
+        {
+            <button type="button" data-post-json="@NavBuilder.Resolve(Context, "/api/shipments")"
+                    data-post-body='@Json.Serialize(createBody)'
+                    data-post-redirect="@createRedirect"
+                    class="inline-flex min-h-12 items-center gap-2 rounded-lg bg-primary px-5 text-base font-semibold text-on-primary hover:bg-primary-hover">
+                <icon name="plus" class="h-5 w-5" />
+                محمولهٔ تازه
+            </button>
+        }
+    </div>
+
+    <nav aria-label="وضعیت محموله‌ها">
+        <ul class="flex flex-wrap gap-2">
+            @foreach (var filter in filters)
+            {
+                var active = filter.Key == currentFilter;
+                <li>
+                    <a href="@FilterHref(filter.Key)" aria-current="@(active ? "page" : null)"
+                       class="inline-flex min-h-11 items-center rounded-full border px-4 text-sm @(active ? "border-primary bg-primary/10 font-semibold text-primary" : "border-outline-variant hover:bg-surface-container")">
+                        @filter.Label
+                    </a>
+                </li>
+            }
+        </ul>
+    </nav>
+
+    @* جزیرهٔ shipment-list (فاز ۴b): props I.5 ({ canCreate }) به‌اضافهٔ فیلتر وضعیت همین صفحه (status: «open»، «finalized» یا null) *@
+    <div data-island="shipment-list" data-skeleton="off"
+         data-props='@Json.Serialize(new { canCreate = Model.CanCreate, status = currentFilter })'>
+        @if (Model.Shipments.Count == 0)
+        {
+            <div class="rounded-xl border border-dashed border-outline-variant bg-surface-container-lowest p-10 text-center sm:p-12">
+                <span class="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full bg-surface-container text-on-surface-variant">
+                    <icon name="truck" class="h-7 w-7" />
+                </span>
+                @if (currentFilter is not null)
+                {
+                    <p class="font-medium">محموله‌ای با این وضعیت نیست.</p>
+                    <a href="@FilterHref(null)" class="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-4 font-medium hover:bg-surface-container">
+                        همهٔ محموله‌ها
+                    </a>
+                }
+                else if (Model.CanCreate)
+                {
+                    <p class="mx-auto max-w-md font-medium">
+                        هنوز محموله‌ای نساخته‌اید. وقتی فرش‌ها آمادهٔ بسته‌بندی شدند یک محموله بسازید.
+                    </p>
+                    <button type="button" data-post-json="@NavBuilder.Resolve(Context, "/api/shipments")"
+                            data-post-body='@Json.Serialize(createBody)'
+                            data-post-redirect="@createRedirect"
+                            class="mt-4 inline-flex min-h-12 items-center gap-2 rounded-lg bg-primary px-5 font-semibold text-on-primary hover:bg-primary-hover">
+                        <icon name="plus" class="h-5 w-5" />
+                        محمولهٔ تازه
+                    </button>
+                }
+                else
+                {
+                    <p class="mx-auto max-w-md font-medium">هنوز محمولهٔ بازی نیست؛ از بازرگان بخواهید یکی بسازد.</p>
+                }
+            </div>
+        }
+        else
+        {
+            <ul class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                @foreach (var s in Model.Shipments)
+                {
+                    var finalized = s.Status == ShipmentStatus.Finalized;
+                    <li>
+                        <a href="@NavBuilder.Resolve(Context, ShipmentRoutes.Workspace(s.Id))" data-shipment-id="@s.Id"
+                           class="flex h-full flex-col gap-3 rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm transition hover:border-primary hover:shadow-md">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="min-w-0">
+                                    <h2 class="text-lg font-bold" data-numeric>محمولهٔ @Messages.FormatNumber(s.Number)</h2>
+                                    <p class="truncate text-sm text-on-surface-variant">@s.Title</p>
+                                </div>
+                                @if (finalized)
+                                {
+                                    <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-container-highest px-2.5 py-1 text-xs font-medium text-on-surface">
+                                        <icon name="lock" class="h-3.5 w-3.5" />
+                                        قطعی
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-secondary-container px-2.5 py-1 text-xs font-medium text-on-secondary-container">
+                                        <icon name="edit" class="h-3.5 w-3.5" />
+                                        پیش‌نویس
+                                    </span>
+                                }
+                            </div>
+
+                            <p class="flex items-center gap-1.5 text-sm text-on-surface-variant" data-numeric>
+                                <icon name="calendar" class="h-4 w-4" />
+                                @AppShell.JalaliPersian(s.DocumentDate)
+                            </p>
+
+                            <p class="text-sm" data-numeric>
+                                @Messages.FormatNumber(s.Bales) @terms.Bale ·
+                                @PiecesText(s.Pieces, s.Lines) ·
+                                @Messages.FormatNumber(s.AreaM2) متر ·
+                                @Messages.FormatNumber(s.UsdTotal) دلار
+                            </p>
+
+                            @if (!finalized && s.ReadinessBlocking > 0)
+                            {
+                                <p class="mt-auto inline-flex items-center gap-1.5 self-start rounded-full bg-warning/12 px-2.5 py-1 text-xs font-medium text-warning" data-numeric>
+                                    <icon name="warning" class="h-3.5 w-3.5" />
+                                    @Messages.FormatNumber(s.ReadinessBlocking) کار مانده تا قطعی شدن
+                                </p>
+                            }
+                            else if (!finalized && s.Lines > 0)
+                            {
+                                <p class="mt-auto inline-flex items-center gap-1.5 self-start rounded-full bg-success/12 px-2.5 py-1 text-xs font-medium text-success">
+                                    <icon name="check" class="h-3.5 w-3.5" />
+                                    آمادهٔ قطعی شدن
+                                </p>
+                            }
+                        </a>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+</div>

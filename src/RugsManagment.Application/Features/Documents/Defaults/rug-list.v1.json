@@ -1,0 +1,29 @@
+{ "schemaVersion": 1, "kind": "RugList", "lotRow": "perPiece",
+  "page": { "paper": "A4", "orientation": "portrait", "fitToWidth": true, "scale": 95,
+            "margins": { "left": 0.2, "right": 0.2, "top": 0.5, "bottom": 0.5, "header": 0.3, "footer": 0.3 },
+            "zoom": 70, "rtl": true, "font": "B Nazanin", "fontSize": 11, "rowHeight": 16.8,
+            "printTitleRows": 2, "keepGroupTogether": true, "draftHeader": "پیش‌نویس", "summaryPlacement": "sheet" },
+  "sheets": [
+    { "name": "فهرست فرش", "role": "main", "columnStyle": "plain",
+      "title": { "fromCol": "serial", "toCol": "last", "style": "title", "expr": "\"فهرست فرش\"" },
+      "columns": [
+        { "key": "serial",   "label": "شماره",    "width": 12, "field": "rug.serial" },
+        { "key": "qty",      "label": "تعداد",    "width": 6,  "field": "rug.qty", "visibleWhen": "hasLots" },
+        { "key": "pattern",  "label": "نقشه",     "width": 12, "field": "rug.pattern" },
+        { "key": "origin",   "label": "محل بافت", "width": 12, "field": "rug.origin" },
+        { "key": "size",     "label": "اندازه",   "width": 12, "expr": "rug.length & \"×\" & rug.width" },
+        { "key": "area",     "label": "مساحت",    "width": 8,  "field": "rug.areaM2" },
+        { "key": "location", "label": "جای فرش",  "width": 14, "field": "rug.location" } ],
+      "group": null,
+      "grandTotal": { "label": "جمع", "style": "footer",
+        "cells": [
+          { "id": "count", "col": "pattern", "span": 1, "agg": "count" },
+          { "id": "unit",  "col": "origin",  "span": 1, "text": "تخته" },
+          { "id": "area",  "col": "area",    "span": 1, "agg": "sum", "of": "area" } ] },
+      "checkAgainst": [] } ],
+  "styles": {
+    "title":  { "font": "B Nazanin", "size": 11, "colorRgb": "FF767171", "fillRgb": "FFFFFF00", "border": "thin", "hAlign": "center", "vAlign": "center" },
+    "header": { "font": "B Nazanin", "size": 11, "border": "thin", "hAlign": "center", "vAlign": "center" },
+    "cell":   { "font": "B Nazanin", "size": 11, "border": "thin", "hAlign": "center", "vAlign": "center", "shrinkToFit": true },
+    "footer": { "font": "B Nazanin", "size": 11, "fillRgb": "FFFFFF00", "border": "thin", "hAlign": "center", "vAlign": "center" },
+    "plain":  { "font": "B Nazanin", "size": 11, "border": "none", "hAlign": "center", "vAlign": "center" } } }

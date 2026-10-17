@@ -337,7 +337,7 @@ onMounted(load)
 
         <button
           type="button"
-          class="absolute left-4 top-4 grid h-11 w-11 place-items-center rounded-lg bg-white/10 text-white hover:bg-white/20"
+          class="absolute left-4 top-4 grid h-11 w-11 place-items-center rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high"
           @click="lightboxIndex = null"
         >
           <AppIcon name="close" label="بستن" />
@@ -346,14 +346,14 @@ onMounted(load)
         <template v-if="items.length > 1">
           <button
             type="button"
-            class="absolute right-4 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-lg bg-white/10 text-white hover:bg-white/20"
+            class="absolute right-4 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high"
             @click="step(-1)"
           >
             <AppIcon name="arrow-right" label="عکس قبلی" />
           </button>
           <button
             type="button"
-            class="absolute left-4 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-lg bg-white/10 text-white hover:bg-white/20"
+            class="absolute left-4 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high"
             @click="step(1)"
           >
             <AppIcon name="arrow-left" label="عکس بعدی" />

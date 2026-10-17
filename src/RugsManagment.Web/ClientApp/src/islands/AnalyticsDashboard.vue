@@ -9,7 +9,8 @@ import { computed, onMounted, ref } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import BarChart from '@/components/BarChart.vue'
 import LineChart from '@/components/LineChart.vue'
-import { api } from '@/lib/api'
+import { api, errorMessage } from '@/lib/api'
+import { moneyVisible } from '@/lib/context'
 import { faMoney, faNumber } from '@/lib/format'
 import { toast } from '@/lib/ui'
 
@@ -57,12 +58,23 @@ const months = ref(12)
 /** روند: مالی یا تعدادی — واحدشان فرق دارد پس در یک نمودار جمع نمی‌شوند */
 const trendMode = ref<'money' | 'count'>('money')
 
+/**
+ * گزارش کامل (هزینهٔ مراحل، فروش و سود) پول داخلی است و فقط برای Business (A.5)؛ `/api/analytics` برای
+ * دیگران ۴۰۳ است. کهنگی (فرش‌های گیرکرده) پول ندارد و از `/api/analytics/aging` برای همه می‌آید.
+ */
+const canSeeMoney = moneyVisible()
+
 async function load() {
   loading.value = true
   try {
-    report.value = await api.get<Report>(`/api/analytics?months=${months.value}`)
+    if (canSeeMoney) {
+      report.value = await api.get<Report>(`/api/analytics?months=${months.value}`)
+    } else {
+      const aging = await api.get<Report['aging']>('/api/analytics/aging')
+      report.value = { aging, stepBreakdown: [], trend: [] }
+    }
   } catch (e) {
-    toast.error((e as Error).message)
+    toast.error(errorMessage(e))
   } finally {
     loading.value = false
   }
@@ -184,7 +196,7 @@ onMounted(load)
         </ul>
       </section>
 
-      <div class="grid gap-6 lg:grid-cols-2">
+      <div v-if="canSeeMoney" class="grid gap-6 lg:grid-cols-2">
         <!-- ══ شکست هزینه به تفکیک مرحله ══ -->
         <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
           <h2 class="mb-1 flex items-center gap-2 text-sm font-semibold text-primary">
@@ -242,7 +254,7 @@ onMounted(load)
       </div>
 
       <!-- ══ روند ماهانه ══ -->
-      <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
+      <section v-if="canSeeMoney" class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
         <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 class="flex items-center gap-2 text-sm font-semibold text-primary">

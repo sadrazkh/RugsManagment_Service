@@ -95,6 +95,34 @@ public static class PersianFormat
         => ToPersianDigits(value.ToString("#,0", CultureInfo.InvariantCulture));
 
     /// <summary>
+    /// مبلغ دلاری (ارزش گمرکی) با دو رقم اعشار و واحد: «۶۰۷.۹۵ دلار». دلار گمرکی پول داخلی نیست و برای همه
+    /// دیده می‌شود، پس جدا از <see cref="Money"/> است که مبلغ تومانی را قالب می‌کند.
+    /// </summary>
+    public static string Usd(decimal? value)
+        => value.HasValue
+            ? $"{ToPersianDigits(value.Value.ToString("#,0.00", CultureInfo.InvariantCulture))} دلار"
+            : "—";
+
+    /// <summary>
+    /// تاریخ شمسی نقطه‌دار با ارقام لاتین: «1405.06.15» — همان شکلی که بازرگان در عنوان اکسل اظهار و نام
+    /// فایل می‌نویسد. ارقام لاتین عمدی است: اکسل و نام فایل ارقام فارسی را درست مرتب نمی‌کنند.
+    /// </summary>
+    public static string JalaliDotted(DateOnly date) => JalaliLatin(date, '.');
+
+    /// <summary><see cref="JalaliDotted(DateOnly)"/> برای یک لحظه (به روزِ ایران)؛ «—» برای null.</summary>
+    public static string JalaliDotted(DateTimeOffset? value)
+        => value.HasValue
+            ? JalaliDotted(DateOnly.FromDateTime(ToIranTime(value.Value)))
+            : "—";
+
+    private static string JalaliLatin(DateOnly date, char separator)
+    {
+        var day = date.ToDateTime(TimeOnly.MinValue);
+        return string.Create(CultureInfo.InvariantCulture,
+            $"{Calendar.GetYear(day):0000}{separator}{Calendar.GetMonth(day):00}{separator}{Calendar.GetDayOfMonth(day):00}");
+    }
+
+    /// <summary>
     /// شروع روزِ انتخاب‌شده به وقت ایران، به‌صورت لحظهٔ UTC.
     ///
     /// چرا لازم است: وقتی کاربر در فیلتر «از تاریخ» یک روز را انتخاب می‌کند منظورش

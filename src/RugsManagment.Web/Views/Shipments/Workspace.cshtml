@@ -1,0 +1,159 @@
+@using RugsManagment.Application.Common
+@using RugsManagment.Domain.Enums
+@using RugsManagment.Web.Controllers
+@using RugsManagment.Web.Navigation
+@using RugsManagment.Web.Shipments
+@model ShipmentWorkspaceModel
+@*
+    کارگاه یک محموله (/Shipments/{id}?tab=…، Floor) — قاب فاز ۴a، که فازهای بعد ویرایشش نمی‌کنند:
+      ۱) سربرگ: داخل میزبان جزیرهٔ shipment-header (فاز ۴b؛ props { shipmentId, canBusiness }). تا آن جزیره بیاید همین
+         سربرگ سرور دیده می‌شود: شماره، عنوان، تاریخ، وضعیت، جمع‌ها، تراشه‌های آمادگی و «بیشتر» (H.1).
+      ۲) زبانه‌ها: ShipmentTabs (درز IShipmentTab)؛ نگله‌ها (۴b)، هزینه‌ها و حساب محموله (۵)، اکسل و چاپ (۶) هر کدام یک
+         فایل در Web/Shipments اضافه می‌کنند.
+    شناسهٔ محمولهٔ کارگاه دیگر پیش از رسیدن به این‌جا ۴۰۴ شده است.
+*@
+@{
+    var s = Model.Shipment;
+    var terms = Model.Terms;
+    var finalized = s.Status == ShipmentStatus.Finalized;
+    var number = Messages.FormatNumber(s.Number);
+    ViewData["Title"] = $"محمولهٔ {number}";
+
+    var defaultTitle = Messages.ShipmentDefaultTitle.Format(("number", s.Number));
+    var hasOwnTitle = !string.IsNullOrWhiteSpace(s.Title) && s.Title != defaultTitle;
+
+    var lockMessage = Model.CanBusiness
+        ? Messages.ShipmentLockedHeader.Format(("number", s.Number))
+        : Messages.ShipmentLockedOperator.Text;
+
+    var more = new (string Label, string? Value)[]
+    {
+        ("مقصد", s.Destination),
+        ("خریدار", s.BuyerName),
+        ("شمارهٔ اظهار", s.DeclarationNo),
+        ("گمرک", s.CustomsOffice),
+        ("نرخ دلار", s.UsdRate is { } rate ? Messages.FormatNumber(rate) : null),
+        ("یادداشت", s.Notes)
+    };
+}
+
+<div class="space-y-5" data-shipment-workspace="@s.Id">
+    <div data-island="shipment-header" data-skeleton="off"
+         data-props='@Json.Serialize(new { shipmentId = s.Id, canBusiness = Model.CanBusiness })'>
+        <header class="space-y-4">
+            <div class="flex items-start gap-3">
+                @* در RTL «بازگشت» به سمت راست اشاره می‌کند *@
+                <a href="@NavBuilder.Resolve(Context, ShipmentRoutes.Index)"
+                   class="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-outline-variant hover:bg-surface-container">
+                    <icon name="arrow-right" label="بازگشت به محموله‌ها" />
+                </a>
+                <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <h1 class="text-2xl font-bold" data-numeric>محمولهٔ @number</h1>
+                        @if (finalized)
+                        {
+                            <span class="inline-flex items-center gap-1 rounded-full bg-surface-container-highest px-3 py-1 text-sm font-medium text-on-surface">
+                                <icon name="lock" class="h-4 w-4" />
+                                قطعی
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="inline-flex items-center gap-1 rounded-full bg-secondary-container px-3 py-1 text-sm font-medium text-on-secondary-container">
+                                <icon name="edit" class="h-4 w-4" />
+                                پیش‌نویس
+                            </span>
+                        }
+                    </div>
+                    <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-on-surface-variant" data-numeric>
+                        @if (hasOwnTitle)
+                        {
+                            <span class="font-medium text-on-surface">@s.Title</span>
+                        }
+                        <span class="inline-flex items-center gap-1">
+                            <icon name="calendar" class="h-4 w-4" />
+                            @AppShell.JalaliPersian(s.DocumentDate)
+                        </span>
+                    </p>
+                </div>
+            </div>
+
+            <dl class="flex flex-wrap gap-x-8 gap-y-3 rounded-xl border border-outline-variant bg-surface-container-lowest px-5 py-4" data-numeric>
+                <div>
+                    <dt class="text-sm text-on-surface-variant">@terms.Bale</dt>
+                    <dd class="text-2xl font-bold">@Messages.FormatNumber(s.Totals.Bales)</dd>
+                </div>
+                <div>
+                    <dt class="text-sm text-on-surface-variant">تخته</dt>
+                    <dd class="text-2xl font-bold">
+                        @Messages.FormatNumber(s.Totals.Pieces)
+                        @if (s.Totals.Lines != s.Totals.Pieces)
+                        {
+                            @* با دسته، شمار ردیف پشت تخته‌ها (واژه‌نامهٔ A.2: «۵۲ تخته (۳ ردیف)») *@
+                            <span class="text-sm font-normal text-on-surface-variant">(@Messages.FormatNumber(s.Totals.Lines) ردیف)</span>
+                        }
+                    </dd>
+                </div>
+                <div>
+                    <dt class="text-sm text-on-surface-variant">متر</dt>
+                    <dd class="text-2xl font-bold">@Messages.FormatNumber(s.Totals.AreaM2)</dd>
+                </div>
+                <div>
+                    <dt class="text-sm text-on-surface-variant">دلار</dt>
+                    <dd class="text-2xl font-bold">@Messages.FormatNumber(s.Totals.UsdTotal)</dd>
+                </div>
+            </dl>
+
+            @if (finalized)
+            {
+                <p class="flex items-start gap-2 rounded-lg bg-surface-container-high px-4 py-3 text-sm" role="status" data-numeric>
+                    <icon name="lock" class="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>@lockMessage</span>
+                </p>
+            }
+            else if (s.Readiness.Count > 0 || s.Totals.Lines > 0)
+            {
+                <ul class="flex flex-wrap gap-2" aria-label="آمادگی برای قطعی شدن" data-numeric>
+                    @if (s.Totals.Lines > 0 && !s.Readiness.Any(i => i.Blocking))
+                    {
+                        @* چیزی جلوی «قطعی کن» را نگرفته (هشدارها بازدارنده نیستند)؛ همان نشانهٔ فهرست محموله‌ها *@
+                        <li class="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-success/12 px-3 py-1 text-sm font-medium text-success"
+                            data-readiness-state="ready">
+                            <icon name="check" class="h-4 w-4 shrink-0" />
+                            آمادهٔ قطعی شدن
+                        </li>
+                    }
+                    @foreach (var issue in s.Readiness)
+                    {
+                        <li class="inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 py-1 text-sm @(issue.Blocking ? "bg-error-container text-on-error-container" : "bg-warning/12 text-warning")"
+                            data-readiness="@issue.Code">
+                            <icon name="@(issue.Blocking ? "error" : "warning")" class="h-4 w-4 shrink-0" />
+                            @issue.Message
+                        </li>
+                    }
+                </ul>
+            }
+
+            @if (more.Any(m => !string.IsNullOrWhiteSpace(m.Value)))
+            {
+                <details class="group rounded-xl border border-outline-variant bg-surface-container-lowest">
+                    <summary class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-4 font-medium">
+                        بیشتر
+                        <icon name="chevron-down" class="h-5 w-5 transition-transform group-open:rotate-180" />
+                    </summary>
+                    <dl class="grid gap-x-6 gap-y-3 border-t border-outline-variant px-4 py-3 sm:grid-cols-2" data-numeric>
+                        @foreach (var item in more.Where(m => !string.IsNullOrWhiteSpace(m.Value)))
+                        {
+                            <div>
+                                <dt class="text-sm text-on-surface-variant">@item.Label</dt>
+                                <dd class="break-words">@item.Value</dd>
+                            </div>
+                        }
+                    </dl>
+                </details>
+            }
+        </header>
+    </div>
+
+    @await Component.InvokeAsync("ShipmentTabs", new { shipment = s, tab = Model.Tab })
+</div>

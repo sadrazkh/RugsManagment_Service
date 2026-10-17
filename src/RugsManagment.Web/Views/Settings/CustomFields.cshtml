@@ -2,11 +2,18 @@
     ViewData["Title"] = "فیلدهای سفارشی";
 }
 <div class="mx-auto max-w-4xl space-y-5">
-    <div>
-        <h1 class="text-2xl font-bold">فیلدهای سفارشی فرش</h1>
-        <p class="text-sm text-on-surface-variant">
-            فیلدهایی که هنگام ثبت/ویرایش فرش نمایش داده می‌شوند. مقادیر به‌صورت انعطاف‌پذیر (JSON) ذخیره می‌شوند.
-        </p>
+    <div class="flex items-center gap-3">
+        @* در RTL «بازگشت» به سمت راست اشاره می‌کند *@
+        <a href="/settings"
+           class="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-outline-variant hover:bg-surface-container">
+            <icon name="arrow-right" label="بازگشت به تنظیمات" />
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold">فیلدهای سفارشی فرش</h1>
+            <p class="text-sm text-on-surface-variant">
+                خانه‌های اضافه‌ای که هنگام ثبت و ویرایش فرش پرسیده می‌شوند، مثل رنگ متن یا رنگ حاشیه.
+            </p>
+        </div>
     </div>
     <div data-island="custom-fields-manager" data-skeleton="22rem"></div>
 </div>

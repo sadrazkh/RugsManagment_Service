@@ -32,19 +32,25 @@ public interface IServiceProviderService
     Task<ProviderRateDto?> FindRateAsync(Guid tenantId, Guid providerId, Guid stepTypeId, CancellationToken ct = default);
 }
 
+/// <remarks>
+/// نرخ‌های توافقی پول‌اند: فهرست و جزئیات طرف برای غیر Business نرخ را null برمی‌گردانند. اما
+/// <see cref="FindRateAsync"/> عمداً پنهان نمی‌کند، چون تکمیل مرحله به دست انباردار (بدون مبلغ) باید همان نرخ
+/// واقعی را روی مرحله بنشاند؛ خروجی آن هرگز مستقیم به کاربر برنمی‌گردد.
+/// </remarks>
 public sealed class ServiceProviderService(
     IServiceProviderRepository providers,
     IRepository<ServiceProviderRate> rates,
     IRepository<ProviderPayment> payments,
-    IUnitOfWork unitOfWork) : IServiceProviderService
+    IUnitOfWork unitOfWork,
+    IMoneyVisibility money) : IServiceProviderService
 {
     public async Task<IReadOnlyList<ServiceProviderDetailDto>> ListAsync(Guid tenantId, CancellationToken ct = default)
-        => (await providers.ListAllWithRatesAsync(tenantId, ct)).Select(ToDto).ToList();
+        => (await providers.ListAllWithRatesAsync(tenantId, ct)).Select(p => money.Redact(ToDto(p))).ToList();
 
     public async Task<ServiceProviderDetailDto?> GetAsync(Guid tenantId, Guid id, CancellationToken ct = default)
     {
         var provider = await providers.GetWithRatesAsync(id, tenantId, ct);
-        return provider is null ? null : ToDto(provider);
+        return provider is null ? null : money.Redact(ToDto(provider));
     }
 
     public async Task<ServiceProviderDetailDto> CreateAsync(

@@ -1,0 +1,63 @@
+@using RugsManagment.Application.Common
+@using RugsManagment.Web.Home.Cards
+@using RugsManagment.Web.Navigation
+@model HomeMoneyModel
+@*
+    کارت پول خانه (A.4؛ فقط Business): قیمت تمام‌شدهٔ هر متر اولین محمولهٔ باز و شمار هزینه‌های «تقسیم‌نشده»، با «ثبت هزینه»
+    (پنل cost-entry با «برای» محمولهٔ هدف؛ بی‌اسکریپت درون‌خطی، site.js) و «دیدن هزینه‌ها». نشانهٔ هر وضعیت نماد و نوشته
+    دارد، نه فقط رنگ.
+*@
+<section class="h-full rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm"
+         aria-labelledby="home-money-title" data-home-money>
+    <h2 id="home-money-title" class="flex items-center gap-2 text-base font-semibold text-primary">
+        <icon name="coins" class="h-5 w-5" />
+        هزینه‌ها
+    </h2>
+
+    <dl class="mt-4 space-y-3" data-numeric>
+        @if (Model.ShipmentName is not null)
+        {
+            <div>
+                <dt class="text-sm text-on-surface-variant">قیمت تمام‌شدهٔ هر متر · @Model.ShipmentName</dt>
+                <dd class="text-2xl font-bold" data-home-cost-per-m2>@(Model.CostPerM2 is decimal perM2 ? Tenant.Money(perM2) : "—")</dd>
+            </div>
+        }
+        @if (Model.UnallocatedEntries is int count)
+        {
+            <div>
+                <dt class="sr-only">تقسیم‌نشده</dt>
+                <dd>
+                    @if (count > 0)
+                    {
+                        <a href="@NavBuilder.Resolve(Context, Model.UnallocatedHref)"
+                           class="inline-flex min-h-11 items-center gap-2 rounded-full bg-warning/12 px-4 text-sm font-medium text-warning hover:bg-warning/20"
+                           data-home-unallocated="@count">
+                            <icon name="warning" class="h-4 w-4" />
+                            @Messages.FormatNumber(count) هزینه هنوز بین فرش‌ها تقسیم نشده.
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="inline-flex min-h-9 items-center gap-2 rounded-full bg-success/12 px-3 text-sm text-success" data-home-unallocated="0">
+                            <icon name="check" class="h-4 w-4" />
+                            همهٔ هزینه‌ها تقسیم شده‌اند
+                        </span>
+                    }
+                </dd>
+            </div>
+        }
+    </dl>
+
+    <div class="mt-5 flex flex-wrap gap-2">
+        <button type="button" data-open-panel="cost-entry" data-panel-props='@Json.Serialize(Model.PanelProps)'
+                class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 font-semibold text-on-primary hover:bg-primary-hover">
+            <icon name="plus" class="h-5 w-5" />
+            ثبت هزینه
+        </button>
+        <a href="@NavBuilder.Resolve(Context, Model.CostsHref)"
+           class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-4 text-sm font-medium hover:bg-surface-container">
+            دیدن هزینه‌ها
+            <icon name="chevron-left" class="h-4 w-4" />
+        </a>
+    </div>
+</section>

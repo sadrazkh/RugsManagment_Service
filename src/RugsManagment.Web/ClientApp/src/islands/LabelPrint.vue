@@ -160,7 +160,7 @@ onMounted(load)
       >
         <div
           v-if="template.mode === 1"
-          v-html="fillPlaceholders(item.rug, template.htmlContent || '')"
+          v-html="fillPlaceholders(item.rug, template.htmlContent || '', true)"
         ></div>
         <LabelRender v-else :layout="layout" :rug="item.rug" />
       </div>
