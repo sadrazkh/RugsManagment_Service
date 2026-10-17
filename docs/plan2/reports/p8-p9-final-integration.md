@@ -55,3 +55,9 @@ No credentials, database dumps, owner workbook or generated large binary artifac
 - Fresh pre-upgrade custom backup: `work/backups/rugs_before_m7_owner_confirmed.dump`, 90,193 bytes, pg_restore listing valid; SHA256 `45F30EC4F46165CA1C76EE08996F2E74C63729C63B40E6DCD61C5E2F604B56D8`.
 - Exported committed snapshot `9eb0d18` with git archive, built Release warning/error-free, started once on port 5297 with Development, `Seed__Demo=false`, exact M7 confirmation and the real connection. Startup advisory lock acquired; M4/M5/M6/M7 succeeded, tenant defaults reported 0 errors, both tenant ledgers healthy (5 and 1 rugs).
 - Post-upgrade SQL: history includes M7; 6 totals / 344,937,269.00 unchanged; legacy PurchaseCost column absent. No tests were run against the real database.
+- Stopped the one-time upgrade app after verification. Snapshot source/archive removed afterwards; durable backups and the upgrade log remain outside Git.
+
+## Published delivery
+
+- Owner-authorized push to `sadrazkh/RugsManagment_Service`, branch `feature/export-workflow`, succeeded. Draft PR [#1](https://github.com/sadrazkh/RugsManagment_Service/pull/1) created and attached to the task; no direct master changes. GitHub reports it mergeable without conflicts.
+- [Remote CI](https://github.com/sadrazkh/RugsManagment_Service/actions/workflows/ci.yml) runs on the PR. Its live outcome is separate from the recorded local tests above.
