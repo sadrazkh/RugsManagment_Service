@@ -1,0 +1,23 @@
+A1 RTL=True zoom=70/70
+A2 sheet names=اظهار,خلاصه
+A3 merges=A1:L1,A3:A6
+A4 formula J3 f='ROUND(H3*I3, 2)' v='(none)' t=(none)
+A4b cross-sheet D3 f=''اظهار'!J3' v='(none)'
+A5 fonts=Calibri 11 FF000000 | B Nazanin 11 FF000000 | B Nazanin 11 FF767171
+A5b fills=PatternValues { }  | PatternValues { }  | PatternValues { } FFFFFF00
+A5c numFmts=0:''
+A6 cols=1-1:4.597344c 2-2:7.265312c 3-3:8.597344c 4-4:9.374688c 5-5:9.82c 6-6:8.710625c 7-7:10.82c 8-8:6.82c 9-9:7.152031c 10-10:7.82c 11-11:15.597344c 12-12:16.710625c
+A6b sheetFormat defaultColWidth=9.82 defaultRowHeight=16.8
+A7 row1 ht=16.8 customHeight=True
+A8 pageSetup paper=9 orient=OrientationValues { } scale=95 fitW= fitH= fitToPage=
+A9 margins L0.2 R0.2 T0.5 B0.5 H0.3 F0.3
+A10 definedNames=_xlnm.Print_Titles local=0 text=اظهار!1:2
+A11 rowBreaks=id=43 max=1048576 man=1
+A12 header='&Cپیش‌نویس'
+A13 fullCalcOnLoad=True
+A14 parts=/xl/workbook.xml,/docProps/app.xml,/package/services/metadata/core-properties/1d438f1f7de24900ba946cd2ac3a29bf.psmdcp
+A15 ClosedXML raw read-back J3 cached= needsRecalc=True
+B4 summary totals (cached) E=10000 F=38000 G=1710000
+B1 compose 10000 data rows / 12502 rows: 472 ms; write: 4152 ms; file 984 KB
+B2 ClosedXML load + read every used cell (cached, no evaluation): 864 ms; formulas=27500; numeric cells=72500
+B3 read under 3 s: PASS

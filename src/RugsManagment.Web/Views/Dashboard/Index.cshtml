@@ -1,19 +1,18 @@
 @using RugsManagment.Application.DTOs.Dashboard
+@using RugsManagment.Domain.Enums
 @using RugsManagment.Web.Support
 @model DashboardStatsDto
+@inject IUserPreferencesAccessor Prefs
 @{
     ViewData["Title"] = "داشبورد";
     var maxCount = Model.StepDistribution.Count > 0 ? Model.StepDistribution.Max(s => s.Count) : 1;
 
-    string StatusFa(string s) => s switch
-    {
-        "Draft" => "پیش‌نویس",
-        "InProgress" => "در جریان",
-        "ReadyForSale" => "آمادهٔ فروش",
-        "Sold" => "فروخته‌شده",
-        "Archived" => "بایگانی",
-        _ => s
-    };
+    // مبلغ‌ها فقط برای Business (بازرگان و تنظیم‌کننده). سرویس برای انباردار عضوهای پولی را null می‌فرستد؛
+    // این‌جا کارت‌های پولی، «طلب از خریداران» و ستون مبلغ فرش‌های اخیر اصلاً رندر نمی‌شوند.
+    var showMoney = Tenant.CanSeeMoney;
+
+    // نمای ساده: در «فرش‌های اخیر» فقط اینکه فرش کجاست، نه مرحلهٔ کارگاه (همان قاعدهٔ فهرست فرش‌ها)
+    var simple = Prefs.IsSimple;
 }
 
 <div class="space-y-6">
@@ -28,9 +27,9 @@
             (string Label, string Value, string Css, string Icon)[] countCards =
             {
                 ("کل فرش‌ها", PersianFormat.Count(Model.TotalRugs), "text-on-surface", "rug"),
-                ("در جریان", PersianFormat.Count(Model.InProgress), "text-secondary", "workflow"),
-                ("آمادهٔ فروش", PersianFormat.Count(Model.ReadyForSale), "text-success", "success"),
-                ("فروخته‌شده", PersianFormat.Count(Model.Sold), "text-primary", "check"),
+                (DisplayHelpers.RugStatus(RugStatus.InProgress).Label, PersianFormat.Count(Model.InProgress), "text-secondary", "workflow"),
+                (DisplayHelpers.RugStatus(RugStatus.ReadyForSale).Label, PersianFormat.Count(Model.ReadyForSale), "text-success", "success"),
+                (DisplayHelpers.RugStatus(RugStatus.Sold).Label, PersianFormat.Count(Model.Sold), "text-primary", "check"),
             };
         }
         @foreach (var c in countCards)
@@ -45,32 +44,35 @@
         }
     </div>
 
-    <!-- کارت‌های مالی -->
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        @{
-            // سود واقعی (فروش‌های ثبت‌شده) از سود تخمینی (فرش‌های فروخته‌نشده) جداست —
-            // جمع کردن این دو عدد را بی‌معنا می‌کند.
-            (string Label, decimal? Value, string Css)[] moneyCards =
+    @if (showMoney)
+    {
+        <!-- کارت‌های مالی -->
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            @{
+                // سود واقعی (فروش‌های ثبت‌شده) از سود تخمینی (فرش‌های فروخته‌نشده) جداست —
+                // جمع کردن این دو عدد را بی‌معنا می‌کند.
+                (string Label, decimal? Value, string Css)[] moneyCards =
+                {
+                    ("ارزش کل موجودی", Model.TotalInvestment, "text-on-surface"),
+                    ("ارزش در جریان تولید", Model.PipelineValue, "text-on-surface"),
+                    ("ارزش آمادهٔ فروش", Model.ReadyForSaleValue, "text-success"),
+                    ("سود تخمینی فروخته‌نشده‌ها", Model.ProfitEstimate, Model.ProfitEstimate >= 0 ? "text-success" : "text-error"),
+                    ("فروش واقعی", Model.ActualSalesTotal, "text-on-surface"),
+                    ("سود واقعی محقق‌شده", Model.ActualProfitTotal, Model.ActualProfitTotal >= 0 ? "text-success" : "text-error"),
+                };
+            }
+            @foreach (var c in moneyCards)
             {
-                ("ارزش کل موجودی", Model.TotalInvestment, "text-on-surface"),
-                ("ارزش در جریان تولید", Model.PipelineValue, "text-on-surface"),
-                ("ارزش آمادهٔ فروش", Model.ReadyForSaleValue, "text-success"),
-                ("سود تخمینی فروخته‌نشده‌ها", Model.ProfitEstimate, Model.ProfitEstimate >= 0 ? "text-success" : "text-error"),
-                ("فروش واقعی", Model.ActualSalesTotal, "text-on-surface"),
-                ("سود واقعی محقق‌شده", Model.ActualProfitTotal, Model.ActualProfitTotal >= 0 ? "text-success" : "text-error"),
-            };
-        }
-        @foreach (var c in moneyCards)
-        {
-            <div class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
-                <div class="text-sm text-on-surface-variant">@c.Label</div>
-                <div class="mt-1 text-xl font-bold @c.Css" data-numeric>
-                    @PersianFormat.Money(c.Value)
-                    <span class="text-xs font-normal text-on-surface-variant">@Tenant.Currency</span>
+                <div class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
+                    <div class="text-sm text-on-surface-variant">@c.Label</div>
+                    <div class="mt-1 text-xl font-bold @c.Css" data-numeric>
+                        @PersianFormat.Money(c.Value)
+                        <span class="text-xs font-normal text-on-surface-variant">@Tenant.Currency</span>
+                    </div>
                 </div>
-            </div>
-        }
-    </div>
+            }
+        </div>
+    }
 
     <div class="grid gap-6 lg:grid-cols-2">
         <!-- فرش‌ها بر اساس مرحله -->
@@ -113,9 +115,9 @@
                 <a asp-controller="Groups" asp-action="Index"
                    class="inline-flex items-center gap-1.5 rounded-full bg-secondary-container px-3 py-1 text-on-secondary-container hover:opacity-90">
                     <icon name="package" class="h-4 w-4" />
-                    گروه‌ها: @PersianFormat.Count(Model.BatchCount)
+                    ورودی‌ها: @PersianFormat.Count(Model.BatchCount)
                 </a>
-                @if (Model.OutstandingReceivable > 0)
+                @if (showMoney && Model.OutstandingReceivable > 0)
                 {
                     <a asp-controller="Sales" asp-action="Index" asp-route-onlyOutstanding="true"
                        class="inline-flex items-center gap-1.5 rounded-full bg-warning/10 px-3 py-1 text-warning hover:opacity-90"
@@ -148,7 +150,7 @@
                     <a asp-controller="Rugs" asp-action="Create"
                        class="mt-3 inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-on-primary hover:bg-primary-hover">
                         <icon name="plus" class="h-4 w-4" />
-                        ثبت فرش
+                        ثبت فرش تازه
                     </a>
                 </div>
             }
@@ -164,13 +166,16 @@
                                     <div class="truncate font-medium">@(string.IsNullOrEmpty(r.Title) ? "بدون عنوان" : r.Title)</div>
                                     <div class="truncate text-xs text-on-surface-variant">
                                         <span class="font-mono" dir="ltr">@r.Sku</span>
-                                        · @StatusFa(r.Status)@(r.CurrentStepName != null ? " · " + r.CurrentStepName : "")
+                                        · @DisplayHelpers.RugStatus(r.Status, simple).Label@(!simple && r.CurrentStepName != null ? " · " + r.CurrentStepName : "")
                                     </div>
                                 </div>
-                                <span class="shrink-0 whitespace-nowrap text-sm" data-numeric>
-                                    @PersianFormat.Money(r.TotalInvestment)
-                                    <span class="text-xs text-on-surface-variant">@Tenant.Currency</span>
-                                </span>
+                                @if (showMoney)
+                                {
+                                    <span class="shrink-0 whitespace-nowrap text-sm" data-numeric>
+                                        @PersianFormat.Money(r.TotalInvestment)
+                                        <span class="text-xs text-on-surface-variant">@Tenant.Currency</span>
+                                    </span>
+                                }
                             </a>
                         </li>
                     }

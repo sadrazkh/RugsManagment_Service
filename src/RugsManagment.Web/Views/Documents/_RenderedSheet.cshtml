@@ -1,0 +1,28 @@
+@using RugsManagment.Application.Features.Documents.Composer
+@using RugsManagment.Application.Common
+@using System.Globalization
+@model RenderSheet
+@{
+    var styles = ViewData["DocumentStyles"] as IReadOnlyDictionary<string, RenderStyle>;
+    string CellStyle(RenderCell cell) {
+        if (styles?.GetValueOrDefault(cell.Style) is not { } style) return "";
+        return "font-size:" + style.Size.ToString(CultureInfo.InvariantCulture) + "pt;text-align:" + style.HAlign + ";vertical-align:" + (style.VAlign == "center" ? "middle" : style.VAlign)
+            + (style.FillRgb is { Length: 8 } fill ? ";background-color:#" + fill[2..] : "")
+            + (style.ColorRgb is { Length: 8 } color ? ";color:#" + color[2..] : "")
+            + (style.Border == "none" ? ";border:0" : "");
+    }
+}
+<section class="document-sheet @Model.Role" aria-label="@Model.Name">
+<table><colgroup>@foreach(var column in Model.Columns) { <col style="width:@(column.Width.ToString(CultureInfo.InvariantCulture))ch" /> }</colgroup><thead>
+@foreach (var row in Model.Rows.Where(r => r.Kind is RenderRowKinds.Title or RenderRowKinds.Header)) {
+<tr class="@row.Kind">@foreach (var cell in row.Cells) { <th colspan="@cell.ColSpan" rowspan="@cell.RowSpan" style="@CellStyle(cell)">@PersianText.ToPersianDigits(cell.Display)</th> }</tr>
+}
+</thead>
+@foreach (var group in Model.Rows.Where(r => r.Kind is not RenderRowKinds.Title and not RenderRowKinds.Header).GroupBy(r => r.Group)) {
+<tbody class="@(group.Any(r => Model.RowBreaksAfter.Contains(r.Number)) ? "page-break" : "")">
+@foreach (var row in group) {
+<tr class="@row.Kind">@foreach (var cell in row.Cells) { <td colspan="@cell.ColSpan" rowspan="@cell.RowSpan" style="@CellStyle(cell)" class="@(cell.IsNumber ? "number" : "")">@PersianText.ToPersianDigits(cell.Display)</td> }</tr>
+}
+</tbody>
+}
+</table></section>

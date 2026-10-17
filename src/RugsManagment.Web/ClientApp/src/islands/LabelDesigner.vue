@@ -117,7 +117,7 @@ async function save() {
 async function print() {
   await nextTick()
   const inner = meta.value.mode === 1
-    ? (sampleRug.value ? fillPlaceholders(sampleRug.value, html.value) : html.value)
+    ? (sampleRug.value ? fillPlaceholders(sampleRug.value, html.value, true) : html.value)
     : previewRef.value?.innerHTML ?? ''
   const w = window.open('', '_blank', 'width=480,height=360')
   if (!w) return
@@ -140,12 +140,12 @@ onMounted(load)
 </script>
 
 <template>
-  <div v-if="loading" class="rounded-xl border border-outline-variant bg-white p-8 text-center text-on-surface-variant">در حال بارگذاری…</div>
+  <div v-if="loading" class="rounded-xl border border-outline-variant bg-surface-container-lowest p-8 text-center text-on-surface-variant">در حال بارگذاری…</div>
   <div v-else class="space-y-4">
     <div v-if="error" class="rounded-lg bg-error-container px-4 py-3 text-sm text-error">{{ error }}</div>
 
     <!-- نوار تنظیمات -->
-    <div class="flex flex-wrap items-end gap-3 rounded-xl border border-outline-variant bg-white p-4 shadow-sm">
+    <div class="flex flex-wrap items-end gap-3 rounded-xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm">
       <label class="block"><span class="mb-1 block text-xs">نام</span><input v-model="meta.name" class="fld w-40" /></label>
       <label class="block"><span class="mb-1 block text-xs">عرض (mm)</span><input v-model.number="meta.widthMm" type="number" class="fld w-24" dir="ltr" /></label>
       <label class="block"><span class="mb-1 block text-xs">ارتفاع (mm)</span><input v-model.number="meta.heightMm" type="number" class="fld w-24" dir="ltr" /></label>
@@ -166,12 +166,12 @@ onMounted(load)
       <div class="space-y-4 lg:col-span-2">
         <template v-if="meta.mode === 0">
           <!-- پالت -->
-          <div class="flex flex-wrap gap-2 rounded-xl border border-outline-variant bg-white p-3 shadow-sm">
+          <div class="flex flex-wrap gap-2 rounded-xl border border-outline-variant bg-surface-container-lowest p-3 shadow-sm">
             <button v-for="p in palette" :key="p.type" @click="add(p.type)"
                     class="rounded-lg border border-outline-variant px-3 py-1.5 text-sm hover:bg-surface-container">+ {{ p.label }}</button>
           </div>
           <!-- شبکهٔ عناصر (قابل کشیدن) -->
-          <div class="rounded-xl border border-outline-variant bg-white p-3 shadow-sm">
+          <div class="rounded-xl border border-outline-variant bg-surface-container-lowest p-3 shadow-sm">
             <p v-if="layout.elements.length === 0" class="py-6 text-center text-sm text-on-surface-variant">از پالت بالا عنصر اضافه کنید.</p>
             <VueDraggable v-model="layout.elements" :animation="150" handle=".dh"
                           class="grid gap-2" :style="{ gridTemplateColumns: `repeat(${layout.columns}, 1fr)` }">
@@ -188,7 +188,7 @@ onMounted(load)
             </VueDraggable>
           </div>
           <!-- ویژگی‌های عنصر انتخاب‌شده -->
-          <div v-if="selected" class="space-y-3 rounded-xl border border-outline-variant bg-white p-4 shadow-sm">
+          <div v-if="selected" class="space-y-3 rounded-xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm">
             <h3 class="text-sm font-semibold text-primary">ویژگی‌ها</h3>
             <div class="grid grid-cols-2 gap-3">
               <label v-if="['heading','text'].includes(selected.type)" class="col-span-2 block"><span class="mb-1 block text-xs">متن (مثال placeholder: {{ ph('field') }})</span><input v-model="selected.text" class="fld" /></label>
@@ -209,7 +209,7 @@ onMounted(load)
             </div>
           </div>
           <!-- فیلدهای در دسترس -->
-          <div class="rounded-xl border border-outline-variant bg-white p-3 text-xs text-on-surface-variant shadow-sm">
+          <div class="rounded-xl border border-outline-variant bg-surface-container-lowest p-3 text-xs text-on-surface-variant shadow-sm">
             placeholderها: <code v-for="f in allFields" :key="f.key" class="mx-1" dir="ltr">{{ ph(f.key) }}</code>
           </div>
         </template>
@@ -217,7 +217,7 @@ onMounted(load)
         <!-- حالت HTML -->
         <template v-else>
           <textarea v-model="html" dir="ltr" spellcheck="false" rows="16"
-                    class="w-full rounded-xl border border-outline-variant bg-white p-3 font-mono text-sm shadow-sm outline-none focus:border-primary"></textarea>
+                    class="w-full rounded-xl border border-outline-variant bg-surface-container-lowest p-3 font-mono text-sm shadow-sm outline-none focus:border-primary"></textarea>
           <p class="text-xs text-on-surface-variant">از placeholderهایی مثل <code dir="ltr">{{ ph('sku') }}</code> استفاده کنید.</p>
         </template>
       </div>
@@ -231,9 +231,9 @@ onMounted(load)
           </select>
         </div>
         <div class="overflow-auto rounded-xl border border-outline-variant bg-surface-container p-4">
-          <div class="mx-auto bg-white shadow" :style="{ width: meta.widthMm + 'mm', minHeight: meta.heightMm + 'mm', padding: '3mm' }">
+          <div class="mx-auto bg-surface-container-lowest shadow" :style="{ width: meta.widthMm + 'mm', minHeight: meta.heightMm + 'mm', padding: '3mm' }">
             <div v-if="!sampleRug" class="py-8 text-center text-sm text-on-surface-variant">برای پیش‌نمایش، ابتدا یک فرش ثبت کنید.</div>
-            <div v-else-if="meta.mode === 1" ref="previewRef" v-html="fillPlaceholders(sampleRug, html)"></div>
+            <div v-else-if="meta.mode === 1" ref="previewRef" v-html="fillPlaceholders(sampleRug, html, true)"></div>
             <div v-else ref="previewRef"><LabelRender :layout="layout" :rug="sampleRug" /></div>
           </div>
         </div>

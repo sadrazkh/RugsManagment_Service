@@ -1,0 +1,16 @@
+@page { size:A4 portrait; margin:12.7mm 5mm; }
+html { font-family:'B Nazanin',Tahoma,sans-serif; color:#000; background:#fff; }
+body { margin:0; }
+.print-tools { display:flex;gap:16px;padding:12px; }
+.print-tools button,.print-tools a { min-height:44px;padding:8px 16px;font:inherit; }
+.document-sheet { margin:0 auto 24px; }
+table { border-collapse:collapse;width:100%;table-layout:auto;font-size:11pt; }
+th,td { border:1px solid #000;text-align:center;vertical-align:middle;padding:1px 3px;height:16.8pt; }
+.title,.footer,.grandTotal,.totals { background:#ffff00; }
+.number { direction:ltr; }
+.draft { text-align:center;font-size:16pt; }
+thead { display:table-header-group; }
+tbody { break-inside:avoid;page-break-inside:avoid; }
+.summary { break-before:page;page-break-before:always; }
+.page-break { break-after:page;page-break-after:always; }
+@media print { .print-tools { display:none; } .document-sheet { margin:0; } }

@@ -4,4 +4,6 @@
   <Project Path="src/RugsManagment.Infrastructure/RugsManagment.Infrastructure.csproj" />
   <Project Path="src/RugsManagment.Web/RugsManagment.Web.csproj" />
   <Project Path="tests/RugsManagment.Tests/RugsManagment.Tests.csproj" />
+  <Project Path="tests/RugsManagment.IntegrationTests/RugsManagment.IntegrationTests.csproj" />
+  <Project Path="tests/RugsManagment.ArchitectureTests/RugsManagment.ArchitectureTests.csproj" />
 </Solution>

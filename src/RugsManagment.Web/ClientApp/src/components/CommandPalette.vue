@@ -5,12 +5,19 @@
  * برای اپراتوری که تمام روز با این سامانه کار می‌کند، رسیدن به یک فرش از راه
  * منو → فهرست → جستجو → کلیک کند است. اینجا با تایپ کد یا نام، مستقیم می‌رود.
  *
- * دو نوع نتیجه: مقصدهای ثابت (صفحه‌ها و کنش‌ها) و فرش‌های واقعی از سرور.
+ * دو نوع نتیجه: فرمان‌ها (صفحه‌ها و کنش‌هایی که بیننده اجازه دارد — `commands` در app-context، ساختهٔ
+ * NavBuilder روی سرور) و فرش‌های واقعی از سرور.
+ *
+ * میان‌برهای تک‌حرفی («n» فرش تازه، «/» جست‌وجوی صفحه) هنگام تایپ، داخل هر بخشی با
+ * `data-hotkeys-off` (جدول‌ها) و وقتی یک دیالوگ یا پنل باز است کار نمی‌کنند تا نوشتهٔ ذخیره‌نشده با یک
+ * حرف از دست نرود.
  */
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import AppIcon from './AppIcon.vue'
 import { api } from '@/lib/api'
+import { appContext, isSimpleUi } from '@/lib/context'
 import { faNumber } from '@/lib/format'
+import { trapFocus } from '@/lib/ui'
 
 interface Command {
   id: string
@@ -36,35 +43,28 @@ const searching = ref(false)
 const activeIndex = ref(0)
 const input = ref<HTMLInputElement | null>(null)
 const listRef = ref<HTMLElement | null>(null)
+const dialogRef = ref<HTMLElement | null>(null)
+
+/** حالت ساده مرحلهٔ کارگاهِ فرش را نشان نمی‌دهد (A.3)؛ فقط عنوان و کد کوچک فرش. */
+const simple = computed(() => isSimpleUi())
 
 /** عنصری که قبل از باز شدن فوکوس داشت — بعد از بستن به آن برمی‌گردیم. */
 let previouslyFocused: HTMLElement | null = null
 let searchTimer: number | undefined
 
 /**
- * مقصدها از خودِ منوی صفحه خوانده می‌شوند، نه فهرست ثابت — پس اگر کاربر
- * اپراتور باشد و بخشی را نبیند، در پالت هم نمی‌آید.
+ * فرمان‌ها از app-context می‌آیند (سرور فقط صفحه‌هایی را می‌فرستد که بیننده اجازهٔ باز کردنشان را دارد)،
+ * نه از خراشیدن پیوندهای نوار کناری — پس صفحه‌های «بیشتر» و تنظیمات هم در Ctrl+K پیدا می‌شوند.
  */
-const navCommands = ref<Command[]>([])
-
-const staticCommands: Command[] = [
-  { id: 'new-rug', label: 'ثبت فرش جدید', icon: 'plus', url: '/Rugs/Create', keywords: 'new rug add' },
-  { id: 'scan', label: 'اسکن کد QR', icon: 'qr', url: '/Rugs?scan=1', keywords: 'scan qr barcode' },
-  { id: 'profile', label: 'حساب کاربری', icon: 'users', url: '/Account/Profile', keywords: 'profile password' },
-]
-
-function collectNavCommands() {
-  const links = document.querySelectorAll<HTMLAnchorElement>('#app-sidebar nav a[href]')
-  navCommands.value = [...links].map((a) => ({
-    id: a.getAttribute('href') ?? a.innerText,
-    label: a.innerText.trim(),
+const allCommands = computed<Command[]>(() =>
+  appContext().commands.map((c, index) => ({
+    id: `${index}:${c.href}`,
+    label: c.label,
     hint: 'رفتن به',
-    icon: a.querySelector('use')?.getAttribute('href')?.split('#')[1] ?? 'arrow-left',
-    url: a.getAttribute('href') ?? '#',
-  }))
-}
-
-const allCommands = computed(() => [...staticCommands, ...navCommands.value])
+    icon: c.icon,
+    url: c.href,
+  })),
+)
 
 const filteredCommands = computed(() => {
   const q = query.value.trim().toLowerCase()
@@ -107,7 +107,6 @@ watch(query, (q) => {
 
 async function show() {
   previouslyFocused = document.activeElement as HTMLElement | null
-  collectNavCommands()
   open.value = true
   query.value = ''
   rugs.value = []
@@ -155,10 +154,33 @@ function onKeydown(event: KeyboardEvent) {
   if (event.key === 'Enter') {
     event.preventDefault()
     go(activeIndex.value)
+    return
   }
+
+  // Tab داخل پالت بماند (دیالوگ مودال است؛ فوکوس نباید پشت پوشش تیره گم شود)
+  if (dialogRef.value) trapFocus(event, dialogRef.value)
 }
 
-/** میان‌برهای سراسری. در فیلدهای ورودی غیرفعال‌اند تا تایپ را نشکنند. */
+/**
+ * آیا یک دیالوگ مودالِ *دیده‌شدنی* باز است. برگه‌های انتخابِ خانه (data-sheet) از پیش با aria-modal در صفحه
+ * هستند ولی hidden؛ آن‌ها نباید میان‌برها را خاموش کنند. getClientRects برای عنصر fixed هم درست جواب می‌دهد
+ * (offsetParent عنصر fixed همیشه null است).
+ */
+function modalOpen(): boolean {
+  return [...document.querySelectorAll<HTMLElement>('[aria-modal="true"]')].some(
+    (el) => el.getClientRects().length > 0,
+  )
+}
+
+/** نشانی «فرش تازه» (صفحهٔ ورود فرش یا فرم تک‌فرش) — layout روی body می‌گذارد. */
+function newRugHref(): string {
+  return document.body.dataset.newRugHref || '/Rugs/Create'
+}
+
+/**
+ * میان‌برهای سراسری. در فیلدهای ورودی، داخل [data-hotkeys-off] (جدول‌ها) و زیر هر دیالوگ/پنل باز
+ * غیرفعال‌اند تا تایپ و کار ذخیره‌نشده را نشکنند.
+ */
 function onGlobalKey(event: KeyboardEvent) {
   const target = event.target as HTMLElement | null
   const typing =
@@ -174,7 +196,9 @@ function onGlobalKey(event: KeyboardEvent) {
     return
   }
 
-  if (typing || open.value) return
+  if (typing || open.value || event.defaultPrevented) return
+  if (target?.closest('[data-hotkeys-off]')) return
+  if (modalOpen()) return
 
   // «/» فوکوس روی جستجوی صفحه
   if (event.key === '/') {
@@ -187,10 +211,11 @@ function onGlobalKey(event: KeyboardEvent) {
     return
   }
 
-  // «n» فرش جدید
-  if (event.key === 'n' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+  // «n» فرش تازه — با صفحه‌کلید فارسی همان کلید «د» می‌نویسد، پس جای کلید (KeyN) هم پذیرفته است
+  const isN = event.key === 'n' || (event.code === 'KeyN' && !event.shiftKey)
+  if (isN && !event.ctrlKey && !event.metaKey && !event.altKey) {
     event.preventDefault()
-    window.location.href = '/Rugs/Create'
+    window.location.href = newRugHref()
   }
 }
 
@@ -225,6 +250,7 @@ defineExpose({ show })
       @keydown="onKeydown"
     >
       <div
+        ref="dialogRef"
         class="w-full max-w-lg overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest shadow-xl"
         role="dialog"
         aria-modal="true"
@@ -240,7 +266,7 @@ defineExpose({ show })
             placeholder="جستجوی فرش یا رفتن به بخش…"
             aria-label="جستجو"
           />
-          <kbd class="hidden shrink-0 rounded border border-outline-variant px-1.5 py-0.5 text-[0.65rem] text-on-surface-variant sm:block">Esc</kbd>
+          <kbd class="hidden shrink-0 rounded border border-outline-variant px-1.5 py-0.5 text-xs text-on-surface-variant sm:block" dir="ltr">Esc</kbd>
         </div>
 
         <div ref="listRef" class="max-h-80 overflow-y-auto p-2">
@@ -288,7 +314,7 @@ defineExpose({ show })
                   <span class="block truncate">{{ r.title || 'بدون عنوان' }}</span>
                   <span class="block truncate font-mono text-xs text-on-surface-variant" dir="ltr">{{ r.sku }}</span>
                 </span>
-                <span v-if="r.currentStepNameFa" class="shrink-0 text-xs text-on-surface-variant">
+                <span v-if="r.currentStepNameFa && !simple" class="shrink-0 text-xs text-on-surface-variant">
                   {{ r.currentStepNameFa }}
                 </span>
               </button>
@@ -296,11 +322,11 @@ defineExpose({ show })
           </template>
         </div>
 
-        <div class="flex flex-wrap items-center gap-3 border-t border-outline-variant px-4 py-2 text-[0.65rem] text-on-surface-variant">
+        <div class="flex flex-wrap items-center gap-3 border-t border-outline-variant px-4 py-2 text-xs text-on-surface-variant">
           <span><kbd class="rounded border border-outline-variant px-1">↑↓</kbd> جابه‌جایی</span>
           <span><kbd class="rounded border border-outline-variant px-1">Enter</kbd> رفتن</span>
           <span><kbd class="rounded border border-outline-variant px-1">/</kbd> جستجوی صفحه</span>
-          <span><kbd class="rounded border border-outline-variant px-1">n</kbd> فرش جدید</span>
+          <span><kbd class="rounded border border-outline-variant px-1">n</kbd> فرش تازه</span>
         </div>
       </div>
     </div>

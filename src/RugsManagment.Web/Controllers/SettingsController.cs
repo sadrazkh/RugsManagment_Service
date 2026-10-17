@@ -6,12 +6,17 @@ using RugsManagment.Application.DTOs.Tenants;
 using RugsManagment.Application.Services;
 using RugsManagment.Domain.Enums;
 using RugsManagment.Web.Auth;
+using RugsManagment.Web.Filters;
 using RugsManagment.Web.Support;
 
 namespace RugsManagment.Web.Controllers;
 
-/// <summary>تنظیمات کارگاه: فیلدهای سفارشی، مشخصات کارگاه و تاریخچهٔ فعالیت. فقط مدیر کارگاه.</summary>
-[Authorize(Roles = nameof(UserRole.TenantAdmin))]
+/// <summary>
+/// صفحه‌های قدیمی تنظیمات کارگاه: فیلدهای سفارشی، انواع مرحله، مشخصات کارگاه و تاریخچهٔ فعالیت. فقط
+/// تنظیم‌کننده (Configure). مرکز تنظیمات (<c>/settings</c>) و صفحه‌های تازه در <c>Controllers/Settings/</c> هستند؛
+/// آدرس‌های این کنترلر برای لینک‌های قبلی همان می‌مانند.
+/// </summary>
+[Authorize(Policy = Policies.Configure)]
 public class SettingsController(
     ITenantSettingsService settings,
     IActivityLogService activity,
@@ -41,6 +46,14 @@ public class SettingsController(
     {
         var tenantId = User.RequireTenantId();
 
+        // واحد پول کارگاه فقط تومان یا ریال است؛ دلار یک مبلغ برچسب‌دار جداست و هرگز واحد کارگاه نمی‌شود.
+        // فرم فقط همین دو را دارد، ولی درخواست دست‌ساز هم نباید چیز دیگری بنشاند.
+        if (currency is not (CurrencyUnit.Toman or CurrencyUnit.Rial))
+        {
+            PageToast.SetError(TempData, Messages.CurrencyNotAllowed.Text);
+            return RedirectToAction(nameof(Tenant));
+        }
+
         try
         {
             await settings.UpdateAsync(tenantId,
@@ -49,7 +62,7 @@ public class SettingsController(
         }
         catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException)
         {
-            TempData["Toast"] = ex.Message;
+            PageToast.SetError(TempData, ex.Message);
         }
 
         return RedirectToAction(nameof(Tenant));
@@ -78,7 +91,7 @@ public class SettingsController(
         }
         catch (InvalidOperationException ex)
         {
-            TempData["Toast"] = ex.Message;
+            PageToast.SetError(TempData, ex.Message);
         }
 
         return RedirectToAction(nameof(Tenant));

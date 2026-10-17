@@ -2,12 +2,19 @@
     ViewData["Title"] = "انواع مرحله";
 }
 <div class="mx-auto max-w-4xl space-y-5">
-    <div>
-        <h1 class="text-2xl font-bold">انواع مرحله</h1>
-        <p class="text-sm text-on-surface-variant">
-            مرحله‌های اختصاصی کارگاه خود را بسازید، مدت معمول هر کدام را تعیین کنید و
-            برایشان فرم اطلاعات طراحی کنید.
-        </p>
+    <div class="flex items-center gap-3">
+        @* در RTL «بازگشت» به سمت راست اشاره می‌کند *@
+        <a href="/settings"
+           class="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-outline-variant hover:bg-surface-container">
+            <icon name="arrow-right" label="بازگشت به تنظیمات" />
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold">انواع مرحله</h1>
+            <p class="text-sm text-on-surface-variant">
+                مرحله‌های اختصاصی کارگاه خود را بسازید، مدت معمول هر کدام را تعیین کنید و
+                برایشان فرم اطلاعات طراحی کنید.
+            </p>
+        </div>
     </div>
 
     <div data-island="step-type-manager" data-skeleton="24rem"></div>

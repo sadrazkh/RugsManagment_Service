@@ -3,6 +3,8 @@ using RugsManagment.Application.Abstractions.Persistence;
 using RugsManagment.Application.Abstractions.Services;
 using RugsManagment.Application.Common;
 using RugsManagment.Application.DTOs.Sales;
+using RugsManagment.Application.Features.Rugs;
+using RugsManagment.Application.Ledger;
 using RugsManagment.Domain.Entities;
 using RugsManagment.Domain.Enums;
 
@@ -19,6 +21,13 @@ public interface IRugSaleService
     /// <summary>لغو فروش — رکورد حذف و فرش به «آمادهٔ فروش» برمی‌گردد.</summary>
     Task CancelAsync(Guid tenantId, Guid rugId, CancellationToken ct = default);
 
+    /// <summary>
+    /// «به‌روزرسانی بهای تمام‌شده» (spec D.6): عکس بهای لحظهٔ فروش (<c>CostAtSale</c>) با بهای امروز فرش جایگزین می‌شود.
+    /// ویرایش عادی فروش عکس را نگه می‌دارد؛ فقط همین کار صریح آن را عوض می‌کند (مثلاً وقتی هزینه‌ای که پیش از فروش خرج شده
+    /// بود دیرتر ثبت شد و چیپ «هزینه پس از فروش تغییر کرده» دیده می‌شود).
+    /// </summary>
+    Task<RugSaleDto> RefreshCostAtSaleAsync(Guid tenantId, Guid rugId, CancellationToken ct = default);
+
     Task<SalesReportDto> GetReportAsync(Guid tenantId, SalesQuery query, CancellationToken ct = default);
 }
 
@@ -27,7 +36,9 @@ public sealed class RugSaleService(
     IRugRepository rugs,
     IWorkflowEngine workflowEngine,
     IAuditLog audit,
-    IUnitOfWork unitOfWork) : IRugSaleService
+    IUnitOfWork unitOfWork,
+    ILedgerLock ledgerLock,
+    IRugCostTotalReader costTotals) : IRugSaleService
 {
     public async Task<RugSaleDto?> GetForRugAsync(Guid tenantId, Guid rugId, CancellationToken ct = default)
     {
@@ -67,12 +78,13 @@ public sealed class RugSaleService(
         sale.Notes = Clean(request.Notes);
         sale.UpdatedAt = DateTimeOffset.UtcNow;
 
-        // فقط رکورد موجود Update می‌شود؛ رکورد تازه قبلاً Added شده و
-        // علامت‌گذاری دوبارهٔ آن به‌عنوان Modified باعث UPDATE روی ردیف ناموجود می‌شد.
-        if (!isNew) sales.Update(sale);
+        // فروش موجود از rug.Sale ردیابی‌شده می‌آید، پس فقط ستون‌هایی که همین‌جا عوض شدند نوشته می‌شوند. Update() نمی‌زنیم:
+        // همهٔ ستون‌ها را «عوض‌شده» می‌کرد و ویرایشی که پیش از یک «به‌روزرسانی بهای تمام‌شده» بارگذاری شده بود عکس بها
+        // (CostAtSale/CostAtSaleAt) را با مقدار کهنه رونویسی می‌کرد — بی هیچ ۴۰۹ (فروش xmin ندارد). رکورد تازه هم Added است.
 
-        // ثبت فروش یعنی فرش از چرخهٔ تولید خارج شده
-        rug.Status = RugStatus.Sold;
+        // ثبت فروش یعنی فرش از چرخهٔ تولید خارج شده (تقدم «فروخته‌شده» در RugStatusResolver). عکس بهای لحظهٔ فروش
+        // (CostAtSale) را برای فروش تازه پاس سازگاری در همین ذخیره می‌گیرد؛ ویرایش فروش آن را دست نمی‌زند (D.6).
+        RugStatusResolver.ApplyWorkflowStatus(rug, workflowEngine.ResolveStatusFromWorkflow(rug));
         rug.UpdatedAt = DateTimeOffset.UtcNow;
         rugs.Update(rug);
 
@@ -100,7 +112,7 @@ public sealed class RugSaleService(
 
         // وضعیت از روی مراحل بازمحاسبه می‌شود، نه ثابت «آمادهٔ فروش»:
         // فرشی که هنوز مسیر تولیدش تمام نشده بود نباید بعد از لغو فروش «آماده» به نظر برسد.
-        rug.Status = workflowEngine.ResolveStatusFromWorkflow(rug);
+        rug.Status = RugStatusResolver.Resolve(hasSale: false, exported: false, workflowEngine.ResolveStatusFromWorkflow(rug));
         rug.UpdatedAt = DateTimeOffset.UtcNow;
         rugs.Update(rug);
 
@@ -108,6 +120,38 @@ public sealed class RugSaleService(
             $"فروش به «{sale.BuyerName}» لغو شد.", rug.Sku);
 
         await unitOfWork.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// بهای امروز زیر قفل حساب‌های کارگاه خوانده می‌شود (همان الگوی شمارهٔ خودکار، E2): جمعی که هنگام بارگذاری فرش در حافظه
+    /// آمد ممکن است کهنه باشد (مرحله‌ای که هم‌زمان تمام و commit شد)، و تا قفل در دست است هیچ ذخیرهٔ دیگری جمع این کارگاه
+    /// را عوض نمی‌کند؛ پس عکس دقیقاً بهای همین لحظه است. فروش از rug.Sale ردیابی‌شده می‌آید؛ Update لازم نیست.
+    /// </summary>
+    public async Task<RugSaleDto> RefreshCostAtSaleAsync(Guid tenantId, Guid rugId, CancellationToken ct = default)
+    {
+        var rug = await rugs.GetWithWorkflowAsync(rugId, tenantId, ct)
+            ?? throw new KeyNotFoundException("فرش یافت نشد.");
+        var sale = rug.Sale
+            ?? throw new InvalidOperationException("برای این فرش فروشی ثبت نشده است.");
+
+        await unitOfWork.ExecuteInTransactionAsync(async token =>
+        {
+            await ledgerLock.AcquireAsync(tenantId, token);
+            costTotals.Invalidate([rug.Id]);
+            await costTotals.PreloadAsync([rug.Id], token);
+
+            var now = DateTimeOffset.UtcNow;
+            sale.CostAtSale = workflowEngine.CalculateRugCosts(rug).TotalInvestment;
+            sale.CostAtSaleAt = now;
+            sale.UpdatedAt = now;
+
+            audit.Record(AuditAction.SaleRecorded, nameof(Rug), rug.Id,
+                $"بهای تمام‌شدهٔ فروش به «{sale.BuyerName}» با بهای امروز به‌روز شد.", rug.Sku);
+
+            await unitOfWork.SaveChangesAsync(token);
+        }, ct);
+
+        return ToDto(rug, sale);
     }
 
     public async Task<SalesReportDto> GetReportAsync(
@@ -169,9 +213,14 @@ public sealed class RugSaleService(
             throw new InvalidOperationException("مبلغ دریافتی نمی‌تواند از مبلغ خالص فروش بیشتر باشد.");
     }
 
+    /// <summary>
+    /// سود واقعی = خالص فروش − (عکس بهای لحظهٔ فروش ?? بهای امروز) (D.6). «سرمایه» در گزارش هم همان عددی است که سود از
+    /// آن کم شده، تا ستون‌ها با هم بخوانند.
+    /// </summary>
     private RugSaleDto ToDto(Rug rug, RugSale sale)
     {
         var costs = workflowEngine.CalculateRugCosts(rug);
+        var cost = sale.CostAtSale ?? costs.TotalInvestment;
         return new RugSaleDto(
             sale.Id,
             rug.Id,
@@ -188,8 +237,8 @@ public sealed class RugSaleService(
             sale.SoldAt,
             sale.Reference,
             sale.Notes,
-            costs.TotalInvestment,
-            sale.NetAmount - costs.TotalInvestment);
+            cost,
+            sale.ActualProfit(costs.TotalInvestment));
     }
 
     private static string? Clean(string? value)

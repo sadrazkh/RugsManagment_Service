@@ -1,0 +1,15 @@
+@using RugsManagment.Web.Shipments
+@model ShipmentCostsTabModel
+@*
+    زبانهٔ «هزینه‌ها»ی محموله (فاز ۵، Business): میزبان جزیرهٔ shipment-costs (islands/costs/ShipmentCosts.island.vue). فهرست،
+    «ثبت هزینه»، تراشهٔ «تقسیم‌نشده»، حذف با «برگردان» و نوار هزینهٔ دیر همه در جزیره‌اند؛ این partial فقط میزبان و پیوند
+    «همه در صفحهٔ هزینه‌ها» است.
+*@
+<div class="space-y-3" data-tab-costs="@Model.ShipmentId">
+    <div data-island="shipment-costs" data-skeleton="20rem" data-props='@Json.Serialize(Model.IslandProps)'></div>
+    <a href="@Model.LedgerHref"
+       class="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm text-primary hover:bg-surface-container">
+        همه در صفحهٔ هزینه‌ها
+        <icon name="chevron-left" class="h-4 w-4" />
+    </a>
+</div>

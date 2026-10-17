@@ -1,0 +1,25 @@
+@using RugsManagment.Web.Controllers
+@model CostsPageModel
+@{
+    ViewData["Title"] = "هزینه‌ها";
+}
+@*
+    قاب صفحهٔ «هزینه‌ها» (/Costs، Business؛ H.1): خودِ دفتر جزیرهٔ cost-ledger است (islands/costs/CostLedger.island.vue) که از
+    /api/costs می‌خواند و پنل cost-entry را برای ثبت و ویرایش باز می‌کند. حالت خالی، تراشهٔ «تقسیم‌نشده»، حذف با «برگردان» و
+    صفحه‌بندی همه در جزیره‌اند؛ این قاب فقط عنوان و یک جملهٔ راهنما دارد.
+*@
+<div class="mx-auto max-w-4xl space-y-5" data-costs-page>
+    <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+            <h1 class="flex items-center gap-2 text-2xl font-bold">
+                <icon name="coins" class="h-6 w-6 text-primary" />
+                هزینه‌ها
+            </h1>
+            <p class="text-sm text-on-surface-variant">
+                رسید کرایه، شستشو، گمرک و هر هزینهٔ دیگر را این‌جا بزنید؛ خودش بین فرش‌ها تقسیم می‌شود و قیمت تمام‌شدهٔ هر متر معلوم می‌شود.
+            </p>
+        </div>
+    </div>
+
+    <div data-island="cost-ledger" data-skeleton="24rem" data-props='@Json.Serialize(Model.IslandProps)'></div>
+</div>

@@ -9,10 +9,10 @@ namespace RugsManagment.Web.Controllers.Api;
 
 /// <summary>
 /// طرف‌های خدمات: مشخصات، نرخ‌های توافقی، صورت‌حساب و پرداخت.
-/// همهٔ عملیات مالی فقط برای مدیر کارگاه؛ اپراتور نباید بتواند پرداخت ثبت کند.
+/// همه مالی است و فقط Business (بازرگان و تنظیم‌کننده)؛ انباردار نه مانده می‌بیند نه پرداخت ثبت می‌کند.
 /// </summary>
 [Route("api/providers")]
-[Authorize(Roles = nameof(UserRole.TenantAdmin))]
+[Authorize(Policy = Policies.Business)]
 public class ProvidersApiController(IServiceProviderService providers) : ApiControllerBase
 {
     [HttpGet]

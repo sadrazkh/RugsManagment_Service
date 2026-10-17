@@ -3,12 +3,14 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using RugsManagment.Application.Abstractions;
 using RugsManagment.Application.Abstractions.Services;
 using RugsManagment.Application.DTOs.Auth;
 using RugsManagment.Domain.Enums;
 using RugsManagment.Web.Auth;
 using RugsManagment.Web.Models.Account;
+using RugsManagment.Web.Support;
 using System.Security.Claims;
 
 namespace RugsManagment.Web.Controllers;
@@ -23,7 +25,8 @@ namespace RugsManagment.Web.Controllers;
 public class AccountController(
     IAuthService auth,
     RugsManagment.Application.Services.IProfileService profile,
-    IUnitOfWork unitOfWork) : Controller
+    IUnitOfWork unitOfWork,
+    IMemoryCache cache) : Controller
 {
     [AllowAnonymous]
     [HttpGet]
@@ -46,10 +49,10 @@ public class AccountController(
         if (!ModelState.IsValid)
             return View(model);
 
-        UserDto user;
+        AuthResult result;
         try
         {
-            user = await auth.LoginAsync(new LoginRequest(model.Email, model.Password), ct);
+            result = await auth.LoginAsync(new LoginRequest(model.Email, model.Password), ct);
             await unitOfWork.SaveChangesAsync(ct); // ذخیرهٔ LastLoginAt
         }
         catch (UnauthorizedAccessException ex)
@@ -59,19 +62,14 @@ public class AccountController(
             return View(model);
         }
 
-        var identity = new ClaimsIdentity(user.ToClaims(), CookieAuthenticationDefaults.AuthenticationScheme);
-        var props = new AuthenticationProperties
-        {
-            IsPersistent = model.RememberMe,
-            ExpiresUtc = DateTimeOffset.UtcNow.AddHours(8)
-        };
+        // مهر امنیتی (sstamp) هم داخل کوکی می‌نشیند تا SecurityStampValidator بتواند نشست را باطل کند
+        await HttpContext.SignInUserAsync(result, model.RememberMe);
 
-        await HttpContext.SignInAsync(
-            CookieAuthenticationDefaults.AuthenticationScheme,
-            new ClaimsPrincipal(identity),
-            props);
+        // ورود همین حالا وضعیت تازه را از دیتابیس خواند؛ وضعیت کش‌شدهٔ قبلی (مثلاً «کارگاه غیرفعال» از پیش
+        // از فعال‌سازی دوباره، یا مهری که روی نمونهٔ دیگری چرخیده) نباید کوکیِ تازه را رد کند یا کوکی قدیمی را بپذیرد.
+        SecurityStampValidator.Evict(cache, result.User.Id);
 
-        return RedirectToLocalOrHome(model.ReturnUrl, user.Role);
+        return RedirectToLocalOrHome(model.ReturnUrl, result.User.Role);
     }
 
     [HttpPost]
@@ -105,9 +103,11 @@ public class AccountController(
         if (!ModelState.IsValid)
             return View(await RefillAsync(model, ct));
 
+        UserDto updated;
+        string? newStamp = null;
         try
         {
-            await profile.UpdateNameAsync(userId, model.FullName, ct);
+            updated = await profile.UpdateNameAsync(userId, model.FullName, ct);
 
             if (wantsPasswordChange)
             {
@@ -116,7 +116,7 @@ public class AccountController(
                 if (string.IsNullOrWhiteSpace(model.NewPassword))
                     throw new InvalidOperationException("رمز جدید را وارد کنید.");
 
-                await profile.ChangePasswordAsync(userId, model.CurrentPassword, model.NewPassword, ct);
+                newStamp = await profile.ChangePasswordAsync(userId, model.CurrentPassword, model.NewPassword, ct);
             }
         }
         catch (Exception ex) when (ex is InvalidOperationException or UnauthorizedAccessException or KeyNotFoundException)
@@ -125,11 +125,17 @@ public class AccountController(
             return View(await RefillAsync(model, ct));
         }
 
-        // نام نمایشی داخل کوکی است؛ بدون تازه‌سازی، هدر نام قدیمی را نشان می‌دهد
-        var refreshed = await auth.RefreshAsync(userId, ct);
-        var identity = new ClaimsIdentity(refreshed.ToClaims(), CookieAuthenticationDefaults.AuthenticationScheme);
-        await HttpContext.SignInAsync(
-            CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
+        // نام نمایشی داخل کوکی است، پس کوکی همین دستگاه بازنویسی می‌شود — ولی مهرش فقط وقتی عوض می‌شود که
+        // «همین درخواست» رمز را عوض کرده باشد (مهری که ChangePasswordAsync نوشت). در غیر این صورت همان مهرِ
+        // کوکیِ فعلی می‌ماند. هرگز مهرِ دیتابیس کپی نمی‌شود: اگر مهر جای دیگری چرخیده باشد (بازنشانی رمز روی
+        // نمونهٔ دیگر) و کش این نمونه هنوز کهنه باشد، یک ذخیرهٔ سادهٔ نام (که رمز فعلی نمی‌خواهد) کوکیِ باطل‌شده
+        // را با مهر تازه «شست‌وشو» می‌داد و ابطال تا پایان عمر کوکی بی‌اثر می‌شد.
+        var stamp = newStamp ?? User.FindFirstValue(ClaimsPrincipalExtensions.SecurityStampClaim) ?? string.Empty;
+        await HttpContext.ReissueAsync(new AuthResult(updated, stamp));
+
+        // وضعیت کش‌شدهٔ این کاربر کنار می‌رود تا کوکی‌های قدیمیِ دستگاه‌های دیگر همان درخواست بعدی رد شوند
+        if (newStamp is not null)
+            SecurityStampValidator.Evict(cache, userId);
 
         TempData["Toast"] = wantsPasswordChange ? "حساب و رمز عبور به‌روزرسانی شد." : "حساب به‌روزرسانی شد.";
         return RedirectToAction(nameof(Profile));
@@ -158,14 +164,13 @@ public class AccountController(
         return model;
     }
 
-    private static string RoleLabel(string role) => role switch
-    {
-        nameof(UserRole.SystemAdmin) => "مدیر سامانه",
-        nameof(UserRole.TenantAdmin) => "مدیر کارگاه",
-        nameof(UserRole.Operator) => "اپراتور",
-        _ => role
-    };
+    /// <summary>برچسب نقش از تنها منبع برچسب‌ها (بازرگان، تنظیم‌کننده، کاربر / انباردار).</summary>
+    private static string RoleLabel(string role) => RoleLabels.For(role);
 
+    /// <summary>
+    /// بعد از ورود: آدرس محلیِ درخواستی، وگرنه مدیر سامانه به پنل خودش و هر کاربر کارگاه به خانه (<c>/</c>)
+    /// که کاشی‌های «ثبت فرش تازه»، «نگله‌بندی» و … را دارد.
+    /// </summary>
     private IActionResult RedirectToLocalOrHome(string? returnUrl, string? role = null)
     {
         if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
@@ -174,6 +179,6 @@ public class AccountController(
         role ??= User.FindFirstValue(ClaimTypes.Role);
         return role == nameof(UserRole.SystemAdmin)
             ? RedirectToAction("Index", "Admin")
-            : RedirectToAction("Index", "Dashboard");
+            : RedirectToAction("Index", "Home");
     }
 }

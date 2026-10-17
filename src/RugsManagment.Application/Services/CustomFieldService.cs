@@ -72,10 +72,11 @@ public sealed class CustomFieldService(
 
     private async Task<CustomFieldDefinition> GetOwnedAsync(Guid tenantId, Guid id, CancellationToken ct)
     {
-        var field = await fields.GetByIdAsync(id, ct)
-            ?? throw new KeyNotFoundException("فیلد یافت نشد.");
-        if (field.TenantId != tenantId)
-            throw new UnauthorizedAccessException("این فیلد متعلق به کارگاه شما نیست.");
+        var field = await fields.GetByIdAsync(id, ct);
+
+        // فیلد کارگاه دیگر درست مثل فیلد ناموجود است (۴۰۴، نه ۴۰۳) تا وجود شناسه لو نرود
+        if (field is null || field.TenantId != tenantId)
+            throw new KeyNotFoundException("فیلد یافت نشد.");
         return field;
     }
 

@@ -34,15 +34,17 @@ public interface IStepTypeService
 public sealed class StepTypeService(
     IProcessStepTypeRepository stepTypes,
     IRepository<WorkflowTemplateStep> templateSteps,
-    IRepository<RugWorkflowStep> rugSteps,
+    ITrashAwareQueries usage,
     IAuditLog audit,
-    IUnitOfWork unitOfWork) : IStepTypeService
+    IUnitOfWork unitOfWork,
+    IMoneyVisibility money) : IStepTypeService
 {
+    /// <summary>فهرست مرحله‌ها؛ نرخ پیش‌فرض برای غیر Business null است (پاسخ نوشتن فقط به تنظیم‌کننده می‌رسد).</summary>
     public async Task<IReadOnlyList<ProcessStepTypeDto>> ListAsync(
         Guid tenantId, bool onlyActive = true, CancellationToken ct = default)
     {
         var list = await stepTypes.ListForTenantAsync(tenantId, onlyActive, ct);
-        return list.Select(t => t.ToDto()).ToList();
+        return list.Select(t => t.ToDto(money)).ToList();
     }
 
     public async Task<ProcessStepTypeDto> CreateAsync(
@@ -116,11 +118,12 @@ public sealed class StepTypeService(
 
         EnsureOwnedByTenant(stepType);
 
-        // اگر در قالبی یا روی فرشی استفاده شده، حذف فیزیکی تاریخچه را می‌شکند
-        var usedInTemplates = (await templateSteps.ListAsync(s => s.ProcessStepTypeId == id, ct)).Count;
-        var usedOnRugs = (await rugSteps.ListAsync(s => s.ProcessStepTypeId == id, ct)).Count;
+        // اگر در قالبی یا روی فرشی استفاده شده، حذف فیزیکی تاریخچه را می‌شکند. فرش سطل زباله هم حساب است: کلید خارجی
+        // مراحلش cascade است و حذف نوع، مراحل آن فرش را بی پاس سازگاری پاک می‌کرد (بهای ذخیره‌شده‌اش کهنه می‌ماند)
+        var usedInTemplates = (await templateSteps.ListAsync(s => s.ProcessStepTypeId == id, ct)).Count > 0;
+        var usedOnRugs = await usage.IsStepTypeUsedAsync(id, ct);
 
-        if (usedInTemplates > 0 || usedOnRugs > 0)
+        if (usedInTemplates || usedOnRugs)
         {
             stepType.IsActive = false;
             stepType.UpdatedAt = DateTimeOffset.UtcNow;

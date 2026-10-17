@@ -4,16 +4,31 @@
 @using RugsManagment.Web.Support
 @model TenantSettingsDto
 @{
-    ViewData["Title"] = "تنظیمات کارگاه";
+    ViewData["Title"] = "مشخصات کارگاه";
     var templates = ViewData["Templates"] as IReadOnlyList<WorkflowTemplateDto> ?? [];
+
+    // واحد پول کارگاه فقط تومان یا ریال است؛ دلار مبلغی جدا و برچسب‌دار است و هرگز واحد کارگاه نمی‌شود
+    // (کنترلر هم هر مقدار دیگری را رد می‌کند).
+    (CurrencyUnit Value, string Label)[] currencies =
+    [
+        (CurrencyUnit.Toman, "تومان"),
+        (CurrencyUnit.Rial, "ریال")
+    ];
 }
 
 <div class="mx-auto max-w-2xl space-y-5">
-    <div>
-        <h1 class="text-2xl font-bold">تنظیمات کارگاه</h1>
-        <p class="text-sm text-on-surface-variant">
-            مشخصاتی که در برچسب‌ها، گزارش‌ها و سربرگ چاپ دیده می‌شود.
-        </p>
+    <div class="flex items-center gap-3">
+        @* در RTL «بازگشت» به سمت راست اشاره می‌کند *@
+        <a href="/settings"
+           class="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-outline-variant hover:bg-surface-container">
+            <icon name="arrow-right" label="بازگشت به تنظیمات" />
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold">مشخصات کارگاه</h1>
+            <p class="text-sm text-on-surface-variant">
+                مشخصاتی که در برچسب‌ها، گزارش‌ها و سربرگ چاپ دیده می‌شود.
+            </p>
+        </div>
     </div>
 
     @* وضعیت اشتراک — اطلاعاتی که کاربر باید بداند ولی نمی‌تواند خودش عوض کند *@
@@ -146,8 +161,10 @@
                     <span class="mb-1 block text-sm font-medium">واحد پول</span>
                     <select name="currency"
                             class="min-h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 outline-none focus:border-primary">
-                        <option value="@((int)CurrencyUnit.Toman)" selected="@(Model.Currency == CurrencyUnit.Toman)">تومان</option>
-                        <option value="@((int)CurrencyUnit.Rial)" selected="@(Model.Currency == CurrencyUnit.Rial)">ریال</option>
+                        @foreach (var (value, label) in currencies)
+                        {
+                            <option value="@((int)value)" selected="@(Model.Currency == value)">@label</option>
+                        }
                     </select>
                     @* هشدار صریح: این فقط برچسب است و هیچ عددی را تبدیل نمی‌کند *@
                     <span class="mt-1 block text-xs text-warning">

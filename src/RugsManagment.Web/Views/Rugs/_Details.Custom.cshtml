@@ -1,0 +1,48 @@
+@using System.Text.Json
+@using RugsManagment.Application.DTOs.Rugs
+@model RugDto
+@inject IUserPreferencesAccessor Prefs
+@*
+    فیلدهای سفارشی کارگاه (Rug.MetadataJson). برچسب‌ها را RugsController در ViewData["CustomFieldLabels"] می‌گذارد. کلیدِ
+    بی‌برچسب (فیلدی که حذف شده) در نمای ساده دیده نمی‌شود؛ بازرگان کلید انگلیسی نمی‌بیند.
+*@
+@{
+    var labels = ViewData["CustomFieldLabels"] as Dictionary<string, string> ?? new();
+
+    Dictionary<string, JsonElement> metadata = new();
+    if (!string.IsNullOrWhiteSpace(Model.MetadataJson))
+    {
+        try { metadata = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(Model.MetadataJson) ?? new(); }
+        catch { /* متادیتای خراب نباید صفحه را بشکند */ }
+    }
+
+    var customValues = metadata
+        .Where(kv => !Prefs.IsSimple || labels.ContainsKey(kv.Key))
+        .ToList();
+}
+@if (customValues.Count > 0)
+{
+    <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm">
+        <h3 class="mb-4 flex items-center gap-2 text-sm font-semibold text-primary">
+            <icon name="settings" class="h-4 w-4" />
+            مشخصات بیشتر
+        </h3>
+        <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
+            @foreach (var kv in customValues)
+            {
+                <div>
+                    @if (labels.TryGetValue(kv.Key, out var lbl))
+                    {
+                        <dt class="text-on-surface-variant">@lbl</dt>
+                    }
+                    else
+                    {
+                        @* فیلدی که دیگر تعریف نشده؛ فقط در نمای کامل، با کلیدش *@
+                        <dt class="font-mono text-xs text-on-surface-variant" dir="ltr">@kv.Key</dt>
+                    }
+                    <dd>@kv.Value.ToString()</dd>
+                </div>
+            }
+        </dl>
+    </section>
+}

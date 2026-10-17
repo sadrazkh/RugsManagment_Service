@@ -1,0 +1,83 @@
+@using RugsManagment.Web.Auth
+@using RugsManagment.Web.Navigation
+@*
+    «بیشتر» (/More) — هر صفحه‌ای که بیننده اجازه دارد و در نوار پایین گوشی جا نشده (A.4). از همان منوی
+    NavBuilder (جایگاه More) ساخته می‌شود، پس هر آیتمی که فازی اضافه کند خودکار این‌جا هم می‌آید و هرگز
+    دری نشان داده نمی‌شود که پشتش «دسترسی ندارید» باشد.
+*@
+@{
+    ViewData["Title"] = "بیشتر";
+
+    var nav = NavBuilder.For(Context);
+
+    // گروه‌ها به ترتیب اولین آیتمشان (ترتیب منو)؛ آیتم‌های بی‌گروه بی‌سرتیتر
+    var groups = nav.More
+        .Select((item, index) => (item, index))
+        .GroupBy(x => x.item.Group)
+        .OrderBy(g => g.Min(x => x.index))
+        .Select(g => (Title: g.Key, Items: g.Select(x => x.item).ToList()))
+        .ToList();
+
+    // آزمون میزبان پنل (پذیرش فاز ۱): فقط تنظیم‌کننده و فقط با ‎?diag=1
+    var showPanelTest = Policies.IsConfigure(User)
+                        && string.Equals(Context.Request.Query["diag"], "1", StringComparison.Ordinal);
+}
+
+<div class="mx-auto max-w-2xl space-y-6">
+    <h1 class="text-2xl font-bold">بیشتر</h1>
+
+    @foreach (var group in groups)
+    {
+        <section aria-label="@(group.Title ?? "صفحه‌ها")">
+            @if (group.Title is not null)
+            {
+                <h2 class="mb-2 px-1 text-sm font-semibold text-on-surface-variant">@group.Title</h2>
+            }
+            <ul class="divide-y divide-outline-variant overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest">
+                @foreach (var item in group.Items)
+                {
+                    <li>
+                        <a href="@NavBuilder.Resolve(Context, item.Href)"
+                           aria-current="@(nav.IsActive(item) ? "page" : null)"
+                           class="flex min-h-14 items-center gap-4 px-4 py-3 hover:bg-surface-container">
+                            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                                <icon name="@item.Icon" class="h-5 w-5" />
+                            </span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block font-semibold">@item.Label</span>
+                                @if (item.Hint is not null)
+                                {
+                                    <span class="block text-sm text-on-surface-variant">@item.Hint</span>
+                                }
+                            </span>
+                            <icon name="chevron-left" class="h-5 w-5 text-on-surface-variant" />
+                        </a>
+                    </li>
+                }
+            </ul>
+        </section>
+    }
+
+    <form asp-controller="Account" asp-action="Logout" method="post">
+        <button type="submit"
+                class="flex min-h-14 w-full items-center gap-4 rounded-xl border border-outline-variant bg-surface-container-lowest px-4 text-start font-semibold text-error hover:bg-error-container">
+            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-error-container text-on-error-container">
+                <icon name="logout" class="h-5 w-5" />
+            </span>
+            خروج
+        </button>
+    </form>
+
+    @if (showPanelTest)
+    {
+        <section class="rounded-xl border border-dashed border-outline-variant p-4" aria-label="آزمون میزبان پنل">
+            <p class="mb-3 text-sm text-on-surface-variant">آزمون فنی: باز کردن پنل از دکمهٔ صفحه، بدون اسکریپت درون‌خطی.</p>
+            <button type="button" data-open-panel="stub"
+                    data-panel-props='@Json.Serialize(new { source = "more", at = AppShell.JalaliLatin(AppShell.IranToday()) })'
+                    class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-4 text-sm font-medium hover:bg-surface-container">
+                <icon name="sliders" class="h-4 w-4" />
+                آزمایش پنل
+            </button>
+        </section>
+    }
+</div>

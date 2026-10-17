@@ -13,7 +13,10 @@
     <div class="rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 shadow-sm">
         @if (!string.IsNullOrEmpty(Model.Error))
         {
-            <div class="mb-4 rounded-lg bg-error-container px-4 py-3 text-sm text-error">@Model.Error</div>
+            <div role="alert" class="mb-4 flex items-start gap-2 rounded-lg bg-error-container px-4 py-3 text-sm text-on-error-container">
+                <icon name="error" class="mt-0.5 h-5 w-5" />
+                <span>@Model.Error</span>
+            </div>
         }
 
         <form asp-action="Save" method="post" class="space-y-5">
@@ -33,25 +36,44 @@
                 <span asp-validation-for="Email" class="mt-1 block text-xs text-error"></span>
             </div>
 
-            <div class="grid gap-4 sm:grid-cols-2">
-                <div>
-                    <label asp-for="Role" class="mb-1 block text-sm font-medium"></label>
-                    <select asp-for="Role" class="min-h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 outline-none focus:border-primary focus:ring-1 focus:ring-primary">
-                        <option value="@((int)UserRole.Operator)">اپراتور</option>
-                        <option value="@((int)UserRole.TenantAdmin)">مدیر کارگاه</option>
-                    </select>
+            @*
+                نقش با دکمه‌های رادیویی و یک جمله توضیح، نه یک فهرست کشویی: تنظیم‌کننده باید ببیند «بازرگان» مبلغ‌ها را
+                می‌بیند و «انباردار» نه. حالت ساده و اندازهٔ نوشتهٔ هر نقش را سرویس هنگام ساخت و تغییر نقش می‌گذارد.
+            *@
+            <fieldset>
+                <legend class="mb-2 block text-sm font-medium">نقش</legend>
+                <div class="space-y-2">
+                    @foreach (var role in RoleLabels.TenantRoles)
+                    {
+                        var id = $"role-{(int)role}";
+                        <label for="@id"
+                               class="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border border-outline-variant p-3 hover:bg-surface-container has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                            <input type="radio" id="@id" name="@Html.NameFor(m => m.Role)" value="@((int)role)"
+                                   checked="@(Model.Role == role)"
+                                   class="mt-1 h-5 w-5 shrink-0 border-outline-variant text-primary" />
+                            <span class="min-w-0">
+                                <span class="block font-medium">@RoleLabels.For(role)</span>
+                                <span class="mt-0.5 block text-xs text-on-surface-variant">@RoleLabels.Hint(role)</span>
+                            </span>
+                        </label>
+                    }
                 </div>
-                <label class="flex items-center gap-2 pt-7 text-sm">
-                    <input asp-for="IsActive" type="checkbox" class="h-5 w-5 rounded border-outline-variant text-primary" />
-                    حساب فعال باشد
-                </label>
-            </div>
+            </fieldset>
+
+            <label class="flex min-h-11 items-center gap-2 text-sm">
+                <input asp-for="IsActive" type="checkbox" class="h-5 w-5 rounded border-outline-variant text-primary" />
+                حساب فعال باشد
+            </label>
 
             <div>
                 <label asp-for="Password" class="mb-1 block text-sm font-medium"></label>
+                @* همان حداقل طولی که سرور (PasswordPolicy) می‌خواهد؛ مرورگر پیش از ارسال می‌گوید *@
                 <input asp-for="Password" dir="ltr" autocomplete="new-password"
+                       minlength="@RugsManagment.Application.Common.PasswordPolicy.MinLength"
+                       aria-describedby="password-hint"
                        placeholder="@(Model.IsEdit ? "برای تغییر رمز پر کنید" : "")"
                        class="min-h-11 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+                <p id="password-hint" class="mt-1 text-xs text-on-surface-variant">دست‌کم ۸ کاراکتر.</p>
                 <span asp-validation-for="Password" class="mt-1 block text-xs text-error"></span>
             </div>
 

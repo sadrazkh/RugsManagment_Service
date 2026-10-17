@@ -1,0 +1,62 @@
+@using RugsManagment.Application.Common
+@using RugsManagment.Application.DTOs.Rugs
+@using RugsManagment.Domain.Enums
+@using RugsManagment.Web.Navigation
+@using RugsManagment.Web.RugDetails
+@using RugsManagment.Web.Shipments
+@model RugDto
+@*
+    بخش «محموله / نگله» صفحهٔ فرش (H.1 ردیف ۵، C.10): فقط برای فرشی که در نگلهٔ یک محموله است — کدام محموله (پیوند به
+    زبانهٔ نگله‌هایش)، کدام نگله، و ارزش گمرکی همین ردیف (دلار؛ پول داخلی نیست و برای انباردار هم دیده می‌شود، A.5). فرش
+    محمولهٔ قطعی «صادر شده» است و اندازه‌ها و نگله‌اش قفل؛ این را همین‌جا می‌گوید. داده‌ها را enricher فاز محموله پر کرده
+    (ShipmentRugDtoEnricher). واژهٔ نگله/عدل از کارگاه.
+*@
+@if (Model.ShipmentId is Guid shipmentId)
+{
+    var terms = await AppShell.TermsAsync(Context);
+    var exported = Model.Location == RugLocation.Exported;
+    <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm"
+             aria-labelledby="rug-shipment-title" data-rug-shipment="@shipmentId">
+        <h3 id="rug-shipment-title" class="mb-4 flex items-center gap-2 text-sm font-semibold text-primary">
+            <icon name="truck" class="h-4 w-4" />
+            محموله / @terms.Bale
+        </h3>
+        <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-4" data-numeric>
+            <div>
+                <dt class="text-on-surface-variant">محموله</dt>
+                <dd>
+                    <a href="@NavBuilder.Resolve(Context, ShipmentRoutes.Tab(shipmentId, ShipmentTabKeys.Bales))"
+                       class="inline-flex min-h-11 items-center gap-1 font-semibold hover:text-primary hover:underline">
+                        محمولهٔ @(Model.ShipmentNumber is { } number ? PersianFormat.Count(number) : "—")
+                        <icon name="chevron-left" class="h-4 w-4" />
+                    </a>
+                </dd>
+            </div>
+            <div>
+                <dt class="text-on-surface-variant">@terms.Bale</dt>
+                <dd class="flex min-h-11 items-center font-semibold">
+                    @(Model.BaleNumber is { } bale ? $"{terms.BaleOf} {PersianFormat.Count(bale)}" : "—")
+                </dd>
+            </div>
+            <div>
+                <dt class="text-on-surface-variant">ارزش متر مربع</dt>
+                <dd class="flex min-h-11 items-center">
+                    @(Model.UsdPerM2 is { } rate ? $"{Messages.FormatNumber(rate)} دلار" : "ندارد")
+                </dd>
+            </div>
+            <div>
+                <dt class="text-on-surface-variant">@(Model.Quantity > 1 ? $"دلار ({PersianFormat.Count(Model.Quantity)} تخته)" : "دلار")</dt>
+                <dd class="flex min-h-11 items-center font-semibold">
+                    @(Model.LineUsd is { } usd ? Messages.FormatNumber(usd) : "—")
+                </dd>
+            </div>
+        </dl>
+        @if (exported)
+        {
+            <p class="mt-4 flex items-start gap-2 rounded-lg bg-surface-container-high px-4 py-3 text-sm" role="status">
+                <icon name="lock" class="mt-0.5 h-4 w-4 shrink-0" />
+                <span>این فرش با محمولهٔ قطعی‌شده «صادر شده» است؛ اندازه‌ها و @terms.Bale آن قفل است.</span>
+            </p>
+        }
+    </section>
+}

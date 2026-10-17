@@ -1,0 +1,13 @@
+@model RugsManagment.Web.Home.HomeCardsModel
+@*
+    کارت‌های خانه به ترتیب IHomeCard.Order. کارت «Wide» (کاشی‌ها) تمام‌عرض است؛ بقیه روی دسکتاپ دوتایی
+    کنار هم و روی گوشی زیر هم. هر کارت partial خودش را دارد؛ این فایل فقط می‌چیند.
+*@
+<div class="grid gap-6 lg:grid-cols-2">
+    @foreach (var card in Model.Cards)
+    {
+        <div class="min-w-0 @(card.Wide ? "lg:col-span-2" : null)">
+            @await Html.PartialAsync(card.ViewName, card.Model)
+        </div>
+    }
+</div>

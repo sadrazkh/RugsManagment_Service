@@ -20,6 +20,7 @@ public interface ITenantSettingsService
 
 public sealed class TenantSettingsService(
     ITenantRepository tenants,
+    IWorkflowTemplateRepository templates,
     IAuditLog audit,
     IUnitOfWork unitOfWork) : ITenantSettingsService
 {
@@ -32,7 +33,20 @@ public sealed class TenantSettingsService(
         if (string.IsNullOrWhiteSpace(request.Name))
             throw new InvalidOperationException("نام کارگاه الزامی است.");
 
+        // دلار فقط کنار مبلغ‌هایی می‌نشیند که واحدشان جدا ذخیره می‌شود؛ واحد پول کارگاه تومان یا ریال است
+        if (request.Currency is not (CurrencyUnit.Toman or CurrencyUnit.Rial))
+            throw AppValidationException.ForField("currency", Messages.CurrencyNotAllowed.Text);
+
         var tenant = await LoadAsync(tenantId, ct);
+
+        // قالب پیش‌فرض باید قالبِ همین کارگاه باشد؛ وگرنه شناسهٔ قالب کارگاه دیگر ذخیره می‌شد.
+        // ۴۰۰ با پیام فارسی (نه ۴۰۴) چون خودِ تنظیمات پیدا شده و فقط مقدار انتخابی نامعتبر است.
+        if (request.DefaultWorkflowTemplateId is Guid templateId)
+        {
+            var owned = await templates.ListAsync(t => t.Id == templateId && t.TenantId == tenantId, ct);
+            if (owned.Count == 0)
+                throw new InvalidOperationException("قالب فرایند انتخاب‌شده یافت نشد.");
+        }
 
         // تغییر واحد پول هیچ عددی را تبدیل نمی‌کند؛ در UI هم صریح هشدار داده می‌شود
         var currencyChanged = tenant.Currency != request.Currency;

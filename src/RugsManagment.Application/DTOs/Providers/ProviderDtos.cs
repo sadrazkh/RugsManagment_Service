@@ -18,7 +18,8 @@ public record ProviderRateDto(
     Guid ProcessStepTypeId,
     string StepNameFa,
     StepPricingModel PricingModel,
-    decimal UnitRate,
+    /// <summary>نرخ توافقی (تومان)؛ در فهرست و جزئیات طرف برای غیر Business null</summary>
+    decimal? UnitRate,
     string? Notes);
 
 public record SaveServiceProviderRequest(
@@ -61,7 +62,12 @@ public record ProviderBalanceDto(
     public decimal Balance => CompletedWorkTotal - PaidTotal;
 }
 
-/// <summary>یک ردیف کار انجام‌شده توسط طرف خدمات — برای صورت‌حساب.</summary>
+/// <summary>
+/// یک ردیف کار انجام‌شده توسط طرف خدمات — برای صورت‌حساب: یا یک مرحلهٔ کارگاه روی یک فرش، یا (از فاز هزینه‌ها) یک «رسید» = ثبت
+/// هزینه‌ای با این طرف که چند فرش را می‌پوشاند (I.3). برای رسید، <see cref="StepId"/> شناسهٔ ثبت، <see cref="RugId"/> خالی،
+/// <see cref="StepNameFa"/> نام نوع هزینه، <see cref="RugTitle"/> توضیح ثبت و <see cref="Cost"/> مبلغ منجمد رسید است.
+/// <para>این رکورد در projection ساخته می‌شود؛ هر عضو افزوده همان‌جا صریح پاس داده می‌شود (I.1).</para>
+/// </summary>
 public record ProviderWorkItemDto(
     Guid StepId,
     Guid RugId,
@@ -70,7 +76,16 @@ public record ProviderWorkItemDto(
     string StepNameFa,
     DateTimeOffset? CompletedAt,
     WorkflowStepStatus Status,
-    decimal Cost);
+    decimal Cost,
+    // ── فاز هزینه‌ها (I.3) ──────────────────────────────────────────────
+    /// <summary>مرحله یا رسید.</summary>
+    ProviderWorkKind Kind = ProviderWorkKind.Step,
+    /// <summary>شناسهٔ ثبت هزینه برای ردیف رسید؛ null برای مرحله.</summary>
+    Guid? CostEntryId = null,
+    /// <summary>شمارهٔ ثبت هزینه («هزینهٔ شمارهٔ ۱۲»)؛ null برای مرحله.</summary>
+    int? CostEntryNumber = null,
+    /// <summary>چند فرش زیر این رسید است؛ null برای مرحله.</summary>
+    int? RugCount = null);
 
 public record ProviderPaymentDto(
     Guid Id,

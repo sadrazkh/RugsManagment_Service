@@ -5,9 +5,11 @@
  * همهٔ اعداد اینجا «واقعی» هستند (از رکوردهای فروش)، نه تخمینی.
  */
 import { computed, onMounted, reactive, ref } from 'vue'
+import JalaliDateField from '@/components/ui/JalaliDateField.vue'
 import AppIcon from '@/components/AppIcon.vue'
-import { api } from '@/lib/api'
+import { api, errorMessage } from '@/lib/api'
 import { faDate, faMoney, faNumber } from '@/lib/format'
+import { paymentMethodLabel } from '@/lib/labels'
 import { toast } from '@/lib/ui'
 
 interface Sale {
@@ -37,8 +39,6 @@ interface Summary {
   marginPercent?: number
 }
 
-const METHODS = ['نقدی', 'کارت', 'حواله', 'چک', 'اقساطی']
-
 const summary = ref<Summary | null>(null)
 const sales = ref<Sale[]>([])
 const loading = ref(true)
@@ -54,7 +54,7 @@ const queryString = computed(() => {
   return p.toString()
 })
 
-const methodLabel = (v: number) => METHODS[v] ?? '—'
+const methodLabel = paymentMethodLabel
 
 async function load() {
   loading.value = true
@@ -65,7 +65,7 @@ async function load() {
     summary.value = data.summary
     sales.value = data.sales
   } catch (e) {
-    toast.error((e as Error).message)
+    toast.error(errorMessage(e))
   } finally {
     loading.value = false
   }
@@ -98,11 +98,11 @@ onMounted(load)
           data-no-print @submit.prevent="load">
       <label class="block">
         <span class="mb-1 block text-sm">از تاریخ</span>
-        <input v-model="filters.from" type="date" dir="ltr" class="fld" />
+        <JalaliDateField  :model-value="filters.from" @update:model-value="filters.from = $event ?? ''" />
       </label>
       <label class="block">
         <span class="mb-1 block text-sm">تا تاریخ</span>
-        <input v-model="filters.to" type="date" dir="ltr" class="fld" />
+        <JalaliDateField  :model-value="filters.to" @update:model-value="filters.to = $event ?? ''" />
       </label>
       <label class="flex min-h-11 items-center gap-2 text-sm">
         <input v-model="filters.onlyOutstanding" type="checkbox"

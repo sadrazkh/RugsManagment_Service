@@ -8,6 +8,15 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.8" />
   </ItemGroup>
 
+  <!--
+    قالب‌های پیش‌فرض اسناد خروجی (اظهارنامه، فهرست عدل‌ها و …) به‌صورت JSON داخل همین اسمبلی جاسازی
+    می‌شوند تا کارگاهِ تازه بدون هیچ فایل جانبی روی دیسک، قالب آماده داشته باشد. فازهای P6/P7 فایل‌ها را
+    در Features/Documents/Defaults/ می‌گذارند؛ تا آن موقع پوشه خالی است و این glob چیزی پیدا نمی‌کند.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="Features\Documents\Defaults\*.json" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>

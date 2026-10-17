@@ -1,0 +1,25 @@
+@{
+    ViewData["Title"] = "سلامت حساب‌ها";
+}
+
+@*
+    قاب صفحهٔ «سلامت حساب‌ها»؛ خودِ صفحه جزیرهٔ ledger-health است (islands/settings/LedgerHealth.island.vue) که
+    /api/diagnostics/cost-consistency را می‌خواند و «بازسازی حساب‌ها» را با POST /api/diagnostics/ledger-rebuild می‌زند.
+*@
+<div class="mx-auto max-w-4xl space-y-5">
+    <div class="flex items-center gap-3">
+        @* در RTL «بازگشت» به سمت راست اشاره می‌کند *@
+        <a href="/settings"
+           class="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-outline-variant hover:bg-surface-container">
+            <icon name="arrow-right" label="بازگشت به تنظیمات" />
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold">سلامت حساب‌ها</h1>
+            <p class="text-sm text-on-surface-variant">
+                بهای هر فرش از سطرهای خرید و کارهای کارگاه حساب و ذخیره می‌شود. این‌جا همه از نو حساب و با ذخیره‌شده سنجیده می‌شوند.
+            </p>
+        </div>
+    </div>
+
+    <div data-island="ledger-health" data-skeleton="20rem"></div>
+</div>

@@ -8,6 +8,7 @@
  *   <div data-island="hello" data-props='{"name":"دنیا"}'></div>
  *
  * درست مثل استفاده از jQuery: بک‌اند HTML را می‌سازد، Vue فقط بخش‌های تعاملی را زنده می‌کند.
+ * نام جزیره‌ها از registry.ts می‌آید (فایل‌های *.island.vue خودکار + جزیره‌های قدیمی).
  */
 import './styles/app.css'
 import { createApp, type Component } from 'vue'
@@ -18,7 +19,10 @@ function parseProps(el: HTMLElement): Record<string, unknown> {
   const raw = el.dataset.props
   if (!raw) return {}
   try {
-    return JSON.parse(raw) as Record<string, unknown>
+    const parsed: unknown = JSON.parse(raw)
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {}
   } catch (err) {
     console.error('[island] props نامعتبر روی', el, err)
     return {}
@@ -49,6 +53,10 @@ async function mountIsland(el: HTMLElement): Promise<void> {
   const name = el.dataset.island
   if (!name) return
 
+  // دو بار مانت نشود (مثلاً اگر mountIslands دوباره روی همان ریشه صدا زده شد)
+  if (el.dataset.islandMounted) return
+  el.dataset.islandMounted = 'pending'
+
   const loader = islands[name]
   if (!loader) {
     console.warn(`[island] جزیرهٔ ثبت‌نشده: "${name}"`)
@@ -72,26 +80,35 @@ async function mountIsland(el: HTMLElement): Promise<void> {
   }
 }
 
+/** همهٔ جزیره‌های مانت‌نشدهٔ زیر یک ریشه را مانت می‌کند. */
+export function mountIslands(root: ParentNode = document): void {
+  root
+    .querySelectorAll<HTMLElement>('[data-island]:not([data-island-mounted])')
+    .forEach((el) => void mountIsland(el))
+}
+
 /**
- * پوستهٔ UI (Toast + دیالوگ تأیید) در همهٔ صفحه‌ها لازم است، پس نقطهٔ اتصالش را
- * خودکار به انتهای body اضافه می‌کنیم — بدون نیاز به تغییر تک‌تک viewها.
+ * پوستهٔ UI (Toast، دیالوگ تأیید، پنل‌ها، راهنما، Ctrl+K، صف آفلاین) در همهٔ صفحه‌ها لازم است، پس نقطهٔ
+ * اتصالش را خودکار به انتهای body اضافه می‌کنیم — بدون نیاز به تغییر تک‌تک viewها.
+ * window.rugsUI بعد از مانت ساخته می‌شود و رویداد «rugs:ui-ready» site.js را خبر می‌کند.
  */
 function mountUiShell(): void {
   const host = document.createElement('div')
   host.dataset.islandMounted = 'true'
+  host.id = 'ui-shell'
   document.body.appendChild(host)
 
-  void import('./islands/UiShell.vue').then((mod) => {
-    createApp(mod.default as Component).mount(host)
-    exposeGlobally()
-  })
+  void import('./islands/UiShell.vue')
+    .then((mod) => {
+      createApp(mod.default as Component).mount(host)
+      exposeGlobally()
+    })
+    .catch((err: unknown) => console.error('[ui-shell] بارگذاری پوسته ناموفق بود', err))
 }
 
 function bootstrap(): void {
   mountUiShell()
-  document
-    .querySelectorAll<HTMLElement>('[data-island]:not([data-island-mounted])')
-    .forEach((el) => void mountIsland(el))
+  mountIslands()
 }
 
 if (document.readyState === 'loading') {

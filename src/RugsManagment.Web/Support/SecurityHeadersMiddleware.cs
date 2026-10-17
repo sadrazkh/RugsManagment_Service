@@ -17,9 +17,6 @@ public sealed class SecurityHeadersMiddleware(RequestDelegate next)
     /// <summary>کلید nonce در HttpContext.Items — layout از همین می‌خواند.</summary>
     public const string NonceKey = "csp-nonce";
 
-    /// <summary>فونت فارسی از این CDN می‌آید (هم CSS و هم فایل فونت).</summary>
-    private const string FontCdn = "https://cdn.jsdelivr.net";
-
     public async Task InvokeAsync(HttpContext context)
     {
         var nonce = Convert.ToBase64String(RandomNumberGenerator.GetBytes(16));
@@ -38,8 +35,9 @@ public sealed class SecurityHeadersMiddleware(RequestDelegate next)
         headers["Content-Security-Policy"] = string.Join("; ",
             "default-src 'self'",
             $"script-src 'self' 'nonce-{nonce}'",
-            $"style-src 'self' {FontCdn} 'unsafe-inline'",
-            $"font-src 'self' {FontCdn} data:",
+            // فونت Vazirmatn خودمیزبان است (/fonts/)؛ هیچ دامنهٔ بیرونی برای CSS یا فونت لازم نیست
+            "style-src 'self' 'unsafe-inline'",
+            "font-src 'self' data:",
             // تصاویر: خودمان + data/blob برای QR و بارکدِ تولیدشده در مرورگر
             "img-src 'self' data: blob:",
             "connect-src 'self'",

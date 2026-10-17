@@ -1,7 +1,13 @@
 /**
  * قالب‌بندی فارسی سمت کلاینت — معادل PersianFormat.cs در سرور.
  * ارقام فارسی، تاریخ شمسی و واحد پول، تا نمایش رِیزور و Vue یکسان باشد.
+ *
+ * واحد پول هرگز ثابت نوشته نمی‌شود: «تومان» یا «ریال» و تعداد رقم اعشار مبلغ از app-context کارگاه
+ * می‌آید (`currency.label`، `moneyScale`). دلار گمرکی جداست و همیشه «دلار» با دو رقم اعشار.
  */
+import { appContext } from '@/lib/context'
+import { CurrencyUnit } from '@/lib/types/platform'
+import { round, toPlainString, tryDec } from '@/lib/num'
 
 /** ارقام لاتین را به فارسی تبدیل می‌کند (جداکننده‌ها دست‌نخورده می‌مانند). */
 export function toPersianDigits(value: string | number): string {
@@ -14,10 +20,57 @@ export function faNumber(value: number | null | undefined, maximumFractionDigits
   return toPersianDigits(new Intl.NumberFormat('en-US', { maximumFractionDigits }).format(value))
 }
 
-/** مبلغ با واحد: «۱٬۲۵۰٬۰۰۰ تومان» */
+/**
+ * عدد دقیق (رشتهٔ اعشاری یا عدد) با جداکنندهٔ هزارگان و ارقام فارسی، گرد به `maxDecimals` رقم (نصفه
+ * دور از صفر) و دست‌کم `minDecimals` رقم: ۲٫۵ با (۲، ۲) → «۲.۵۰». همان شکل `faNumber` (جداکنندهٔ «,» و
+ * ممیز «.» مثل نمایش سرور)، ولی بی‌خطای ممیز شناور.
+ */
+export function faDecimal(value: unknown, maxDecimals = 2, minDecimals = 0): string {
+  const d = tryDec(value)
+  if (!d) return '—'
+  const plain = toPlainString(round(d, maxDecimals), Math.min(minDecimals, maxDecimals))
+  const negative = plain.startsWith('-')
+  const [intPart, fracPart] = plain.replace('-', '').split('.')
+  const grouped = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  return toPersianDigits((negative ? '-' : '') + grouped + (fracPart ? `.${fracPart}` : ''))
+}
+
+/** واحد پول کارگاه («تومان» یا «ریال») از app-context. */
+export function currencyLabel(): string {
+  return appContext().currency.label
+}
+
+/** مبلغ با واحد کارگاه: «۱,۲۵۰,۰۰۰ تومان» (یا «ریال» در کارگاه ریالی). */
 export function faMoney(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return '—'
-  return `${faNumber(value)} تومان`
+  const ctx = appContext()
+  return `${faDecimal(value, ctx.moneyScale)} ${ctx.currency.label}`
+}
+
+/** مبلغ بدون واحد، با تعداد رقم اعشار کارگاه. */
+export function faMoneyAmount(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return '—'
+  return faDecimal(value, appContext().moneyScale)
+}
+
+/** دلار گمرکی: «۶۰۷.۹۵ دلار» (دو رقم اعشار). */
+export function faUsd(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return '—'
+  return `${faDecimal(value, 2)} دلار`
+}
+
+/** مبلغ با واحد صریح (مثلاً مبلغ رسید ریالی در کارگاه تومانی). */
+export function faCurrency(value: number | null | undefined, unit: CurrencyUnit): string {
+  if (value == null || Number.isNaN(value)) return '—'
+  if (unit === CurrencyUnit.Usd) return faUsd(value)
+  const label = unit === CurrencyUnit.Rial ? 'ریال' : 'تومان'
+  return `${faDecimal(value, appContext().moneyScale)} ${label}`
+}
+
+/** متراژ: «۱۳.۵۱ متر» (دو رقم اعشار، صفر انتهایی حذف). */
+export function faArea(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return '—'
+  return `${faDecimal(value, 2)} متر`
 }
 
 /** شمارنده با ارقام فارسی. */

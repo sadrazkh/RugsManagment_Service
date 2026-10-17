@@ -36,6 +36,74 @@ jobs:
           dotnet test tests/RugsManagment.Tests/RugsManagment.Tests.csproj
           --no-build -c Release --logger "console;verbosity=normal"
 
+      - name: تست‌های معماری و پاس سازگاری
+        run: >
+          dotnet test tests/RugsManagment.ArchitectureTests/RugsManagment.ArchitectureTests.csproj
+          --no-build -c Release --logger "console;verbosity=normal"
+
+  database:
+    name: دیتابیس — زنجیرهٔ migration و تست‌های یکپارچه
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # دیتابیس خالی برای اجرای کل زنجیره؛ EF خودش آن را می‌سازد
+      ConnectionStrings__DefaultConnection: Host=localhost;Port=5432;Database=rugs_ci;Username=postgres;Password=postgres
+      # تست‌های یکپارچه برای هر کلاس دیتابیس دورریختنی خودشان را می‌سازند؛ در CI بدون این متغیر شکست می‌خورند
+      RUGS_TEST_PG: Host=localhost;Port=5432;Username=postgres;Password=postgres
+      EF_ARGS: --project src/RugsManagment.Infrastructure --startup-project src/RugsManagment.Web --configuration Release --no-build
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: نصب .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # dotnet-ef با نسخهٔ ثابت از .config/dotnet-tools.json
+      - name: بازیابی ابزارها
+        run: dotnet tool restore
+
+      - name: Build
+        run: dotnet build RugsManagment_Service.slnx -c Release
+
+      # کل زنجیره روی دیتابیس خالی — همان مسیری که قبلاً با 42701 (ستون تکراری) می‌شکست
+      - name: اجرای همهٔ migrationها روی دیتابیس خالی
+        run: dotnet ef database update $EF_ARGS
+
+      # مدلی که تغییر کرده ولی migration‌اش ساخته نشده، در تولید استارت را متوقف می‌کند؛ اینجا زودتر گرفته می‌شود
+      - name: مدل بدون migration جامانده
+        run: dotnet ef migrations has-pending-model-changes $EF_ARGS
+
+      - name: ساخت اسکریپت idempotent
+        run: dotnet ef migrations script --idempotent -o migrate.sql $EF_ARGS
+
+      # xmin ستون سیستمی پستگرس است؛ هر DDL روی آن (که EF برای IsRowVersion تولید می‌کند) migration را می‌شکند
+      - name: نبودِ DDL روی xmin
+        run: |
+          if grep -n -i 'xmin' migrate.sql; then
+            echo "::error file=migrate.sql::اسکریپت migration روی ستون سیستمی xmin دستور دارد؛ آن خط را از migration حذف کنید."
+            exit 1
+          fi
+
+      - name: تست‌های یکپارچه (PostgreSQL)
+        run: >
+          dotnet test tests/RugsManagment.IntegrationTests/RugsManagment.IntegrationTests.csproj
+          --no-build -c Release --logger "console;verbosity=normal"
+
   frontend:
     name: فرانت — تایپ‌چک و build
     runs-on: ubuntu-latest
@@ -54,6 +122,11 @@ jobs:
         working-directory: src/RugsManagment.Web/ClientApp
         run: npm ci
 
+      # vitest: کتابخانه‌ها، پیام‌ها و برابری برچسب‌ها با فایل‌های C# (برای همین کل مخزن checkout می‌شود)
+      - name: تست‌های فرانت
+        working-directory: src/RugsManagment.Web/ClientApp
+        run: npm test
+
       # npm run build شامل vue-tsc است، پس خطای تایپ هم اینجا گرفته می‌شود
       - name: Build جزیره‌ها
         working-directory: src/RugsManagment.Web/ClientApp
@@ -62,8 +135,8 @@ jobs:
   docker:
     name: Docker — بررسی ساخت ایمیج
     runs-on: ubuntu-latest
-    # فقط بعد از سبز شدن هر دو، چون build ایمیج هر دو را دوباره انجام می‌دهد
-    needs: [backend, frontend]
+    # فقط بعد از سبز شدن بقیه، چون build ایمیج همان کارها را دوباره انجام می‌دهد
+    needs: [backend, database, frontend]
 
     steps:
       - uses: actions/checkout@v4

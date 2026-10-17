@@ -1,0 +1,43 @@
+@model RugsManagment.Web.Controllers.Settings.GridSettingsController.GridSettingsModel
+@{
+    ViewData["Title"] = "ستون‌های جدول";
+}
+
+@*
+    قاب صفحهٔ «ستون‌های جدول»: یک زبانه برای هر جدول، و ویرایشگر جزیرهٔ grid-columns-editor
+    (islands/settings/GridColumnsEditor.island.vue) که از /api/settings/grid-layout/{gridId} می‌خواند و با PUT (با نسخه؛
+    نسخهٔ کهنه ۴۰۹) ذخیره می‌کند.
+*@
+<div class="mx-auto max-w-4xl space-y-5">
+    <div class="flex items-center gap-3">
+        @* در RTL «بازگشت» به سمت راست اشاره می‌کند *@
+        <a href="/settings"
+           class="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-outline-variant hover:bg-surface-container">
+            <icon name="arrow-right" label="بازگشت به تنظیمات" />
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold">ستون‌های جدول</h1>
+            <p class="text-sm text-on-surface-variant">
+                ترتیب، نام و پهنای ستون‌ها، و ستون‌هایی که پنهان بمانند. ستون‌هایی که مقدارشان به ردیف بعد می‌رسد «چسبان»اند.
+            </p>
+        </div>
+    </div>
+
+    @if (Model.Grids.Count > 1)
+    {
+        <nav class="flex flex-wrap gap-2" aria-label="جدول‌ها">
+            @foreach (var grid in Model.Grids)
+            {
+                var active = grid.GridId == Model.GridId;
+                <a href="/settings/grid/@grid.GridId"
+                   aria-current="@(active ? "page" : null)"
+                   class="inline-flex min-h-11 items-center rounded-lg border px-4 @(active ? "border-primary bg-primary-container text-on-primary-container font-semibold" : "border-outline-variant hover:bg-surface-container")">
+                    @grid.Title
+                </a>
+            }
+        </nav>
+    }
+
+    <div data-island="grid-columns-editor" data-skeleton="24rem"
+         data-props='@Json.Serialize(new { gridId = Model.GridId })'></div>
+</div>

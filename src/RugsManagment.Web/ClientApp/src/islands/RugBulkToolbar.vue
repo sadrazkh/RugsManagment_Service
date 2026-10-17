@@ -2,29 +2,43 @@
 /**
  * نوار عملیات دسته‌ای روی لیست فرش‌ها.
  * چک‌باکس‌های [data-rug-select] در Razor رندر می‌شوند؛ این جزیره انتخاب‌ها را جمع کرده،
- * و امکان «پیشبرد گروهیِ مرحلهٔ بعد» و «افزودن به گروه» را می‌دهد.
+ * و امکان «پیشبرد گروهیِ مرحلهٔ بعد»، «افزودن به ورودی»، چاپ برچسب و ویرایش گروهی را می‌دهد.
+ *
+ * حالت ساده (بازرگان و انباردار، یا پیش‌نمایش «نمای ساده»): «افزودن به ورودی»، پیشبرد مرحله و تغییر وضعیت
+ * پنهان‌اند (A.3)؛ کارهای کارگاه در «بیشتر» است. مبلغ («قیمت فروش هدف») فقط برای Business دیده و فرستاده
+ * می‌شود (A.5)؛ سرور مبلغ غیر null از دیگران را با ۴۰۳ رد می‌کند.
+ *
+ * درگاه افزونه `[data-bulk-action]`: دکمه‌های فازهای بعد («افزودن به نگله»، «ثبت هزینه برای این‌ها») از
+ * `CA/bulk-actions/*.action.ts` می‌آیند (`lib/bulkActions.ts`)؛ این فایل از فاز سکو یخ‌زده است.
  */
 import { computed, onMounted, reactive, ref } from 'vue'
-import { api } from '@/lib/api'
-import { faNumber } from '@/lib/format'
+import { api, errorMessage } from '@/lib/api'
+import { visibleBulkActions, type BulkAction, type BulkActionContext } from '@/lib/bulkActions'
+import { isSimpleUi, moneyVisible } from '@/lib/context'
+import { currencyLabel, faNumber } from '@/lib/format'
+import { EMPTY_GUID } from '@/lib/ids'
+import { BATCH_TERMS, MANUAL_RUG_STATUSES, rugStatusLabel } from '@/lib/labels'
 import { confirmDialog, toast, toastAfterReload } from '@/lib/ui'
 import AppIcon from '@/components/AppIcon.vue'
 import MoneyInput from '@/components/MoneyInput.vue'
 
-interface Group { id: string; name: string }
+interface Batch { id: string; name: string }
 
-const STATUSES = [
-  { value: 0, label: 'پیش‌نویس' },
-  { value: 1, label: 'در جریان' },
-  { value: 2, label: 'آمادهٔ فروش' },
-  { value: 4, label: 'بایگانی' },
-]
+const simple = isSimpleUi()
+const canSeeMoney = moneyVisible()
+const unit = currencyLabel()
+
+/** وضعیت‌هایی که دستی گذاشتنی‌اند (فروخته و صادرشده را خودِ کارشان می‌گذارد). */
+const STATUSES = MANUAL_RUG_STATUSES.map((value) => ({ value, label: rugStatusLabel(value, false) }))
 
 const selected = ref<Set<string>>(new Set())
 const count = computed(() => selected.value.size)
-const groups = ref<Group[]>([])
-const targetGroup = ref('')
+const batches = ref<Batch[]>([])
+const targetBatch = ref('')
 const busy = ref(false)
+
+/** دکمه‌های افزونه‌ای که بیننده اجازه دارد ببیند */
+const extraActions = visibleBulkActions()
 
 // ── ویرایش گروهی مشخصات ──
 const editorOpen = ref(false)
@@ -66,18 +80,17 @@ async function applyFields() {
       pattern: touched.pattern ? fields.pattern : null,
       material: touched.material ? fields.material : null,
       knotDensity: touched.knotDensity ? fields.knotDensity : null,
-      targetSalePrice: touched.targetSalePrice ? fields.targetSalePrice : null,
-      status: touched.status && fields.status !== '' ? Number(fields.status) : null,
-      // رشتهٔ خالی در انتخابگر گروه = خروج از گروه
-      batchId: touched.batchId
-        ? (fields.batchId || '00000000-0000-0000-0000-000000000000')
-        : null,
+      // مبلغ فقط از Business؛ برای بقیه همیشه null (سرور null را «دست نزن» می‌خواند)
+      targetSalePrice: canSeeMoney && touched.targetSalePrice ? fields.targetSalePrice : null,
+      status: !simple && touched.status && fields.status !== '' ? Number(fields.status) : null,
+      // رشتهٔ خالی در انتخابگر ورودی = بیرون بردن از ورودی
+      batchId: !simple && touched.batchId ? (fields.batchId || EMPTY_GUID) : null,
     })
 
     if (res.failedCount) {
-      toastAfterReload(`${res.successCount} فرش ویرایش شد، ${res.failedCount} ناموفق بود.`, 'warning')
+      toastAfterReload(`${faNumber(res.successCount)} فرش ویرایش شد، ${faNumber(res.failedCount)} ناموفق بود.`, 'warning')
     } else {
-      toastAfterReload(`${res.successCount} فرش ویرایش شد.`)
+      toastAfterReload(`${faNumber(res.successCount)} فرش ویرایش شد.`)
     }
   })
 }
@@ -97,7 +110,7 @@ async function bulkAdvance() {
   if (count.value === 0) return
 
   const ok = await confirmDialog({
-    title: `${count.value} فرش به مرحلهٔ بعد بروند؟`,
+    title: `${faNumber(count.value)} فرش به مرحلهٔ بعد بروند؟`,
     message: 'فرش‌هایی که مرحلهٔ فعالی ندارند نادیده گرفته می‌شوند.',
     confirmLabel: 'پیشبرد همه',
   })
@@ -113,19 +126,19 @@ async function bulkAdvance() {
     })
 
     if (res.failedCount) {
-      toastAfterReload(`${res.successCount} فرش پیش رفت، ${res.failedCount} ناموفق بود.`, 'warning')
+      toastAfterReload(`${faNumber(res.successCount)} فرش پیش رفت، ${faNumber(res.failedCount)} ناموفق بود.`, 'warning')
     } else {
-      toastAfterReload(`${res.successCount} فرش پیش رفت.`)
+      toastAfterReload(`${faNumber(res.successCount)} فرش پیش رفت.`)
     }
   })
 }
 
-async function addToGroup() {
-  if (count.value === 0 || !targetGroup.value) return
+async function addToBatch() {
+  if (count.value === 0 || !targetBatch.value) return
   const moved = count.value
   await run(async () => {
-    await api.post(`/api/batches/${targetGroup.value}/rugs`, { rugIds: [...selected.value] })
-    toastAfterReload(`${moved} فرش به گروه اضافه شد.`)
+    await api.post(`/api/batches/${targetBatch.value}/rugs`, { rugIds: [...selected.value] })
+    toastAfterReload(`${faNumber(moved)} فرش به ورودی اضافه شد.`)
   })
 }
 
@@ -144,7 +157,24 @@ async function run(fn: () => Promise<void>) {
     // پیام موفقیت در sessionStorage است و بعد از بارگذاری روی دادهٔ تازه دیده می‌شود
     window.location.reload()
   } catch (e) {
-    toast.error((e as Error).message)
+    toast.error(errorMessage(e))
+    busy.value = false
+  }
+}
+
+/** اجرای یک دکمهٔ افزونه با همان قرارداد (`BulkActionContext`). */
+async function runExtra(action: BulkAction) {
+  if (count.value === 0 || busy.value) return
+  const ctx: BulkActionContext = {
+    rugIds: [...selected.value],
+    clearSelection: clearAll,
+    reload: () => window.location.reload(),
+    setBusy: (value) => (busy.value = value),
+  }
+  try {
+    await action.run(ctx)
+  } catch (e) {
+    toast.error(errorMessage(e))
     busy.value = false
   }
 }
@@ -153,10 +183,11 @@ onMounted(async () => {
   document
     .querySelectorAll<HTMLInputElement>('[data-rug-select]')
     .forEach((c) => c.addEventListener('change', refreshSelection))
+  if (simple) return
   try {
-    groups.value = await api.get<Group[]>('/api/batches')
+    batches.value = await api.get<Batch[]>('/api/batches')
   } catch {
-    /* اگر گروهی نبود، انتخابگر خالی می‌ماند */
+    /* اگر ورودی‌ای نبود، انتخابگر خالی می‌ماند */
   }
 })
 </script>
@@ -216,16 +247,16 @@ onMounted(async () => {
             <input v-model.number="fields.knotDensity" :disabled="!touched.knotDensity" type="number" dir="ltr" class="fld" />
           </label>
 
-          <label class="block">
+          <label v-if="canSeeMoney" class="block">
             <span class="mb-1 flex items-center gap-1.5 text-xs">
               <input v-model="touched.targetSalePrice" type="checkbox" class="h-4 w-4 rounded border-outline-variant text-primary" />
               قیمت فروش هدف
             </span>
-            <MoneyInput v-if="touched.targetSalePrice" v-model="fields.targetSalePrice as number" />
+            <MoneyInput v-if="touched.targetSalePrice" v-model="fields.targetSalePrice" :suffix="unit" />
             <input v-else disabled class="fld" />
           </label>
 
-          <label class="block">
+          <label v-if="!simple" class="block">
             <span class="mb-1 flex items-center gap-1.5 text-xs">
               <input v-model="touched.status" type="checkbox" class="h-4 w-4 rounded border-outline-variant text-primary" />
               وضعیت
@@ -236,14 +267,14 @@ onMounted(async () => {
             </select>
           </label>
 
-          <label class="block">
+          <label v-if="!simple" class="block">
             <span class="mb-1 flex items-center gap-1.5 text-xs">
               <input v-model="touched.batchId" type="checkbox" class="h-4 w-4 rounded border-outline-variant text-primary" />
-              گروه
+              {{ BATCH_TERMS.batch }}
             </span>
             <select v-model="fields.batchId" :disabled="!touched.batchId" class="fld">
-              <option value="">— خارج کردن از گروه —</option>
-              <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
+              <option value="">— {{ BATCH_TERMS.removeFrom }} —</option>
+              <option v-for="b in batches" :key="b.id" :value="b.id">{{ b.name }}</option>
             </select>
           </label>
 
@@ -262,7 +293,7 @@ onMounted(async () => {
       </div>
 
       <div class="mx-auto flex max-w-[1440px] flex-wrap items-center gap-3">
-        <span class="font-bold text-primary" aria-live="polite">{{ count }} انتخاب‌شده</span>
+        <span class="font-bold text-primary" aria-live="polite"><span data-numeric>{{ faNumber(count) }}</span> انتخاب‌شده</span>
         <button
           type="button"
           class="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-sm text-on-surface-variant hover:bg-surface-container"
@@ -274,25 +305,46 @@ onMounted(async () => {
 
         <div class="flex-1"></div>
 
-        <label class="sr-only" for="bulk-group">گروه مقصد</label>
-        <select
-          id="bulk-group"
-          v-model="targetGroup"
-          class="min-h-11 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-sm outline-none focus:border-primary"
-        >
-          <option value="">— گروه —</option>
-          <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
-        </select>
+        <!-- درگاه افزونه: دکمه‌های فازهای بعد -->
+        <div v-if="extraActions.length" class="contents" data-bulk-action-slot>
+          <button
+            v-for="action in extraActions"
+            :key="action.key"
+            type="button"
+            :data-bulk-action="action.key"
+            :disabled="busy"
+            class="inline-flex min-h-11 items-center gap-2 rounded-lg px-4 text-sm"
+            :class="action.primary
+              ? 'bg-primary font-semibold text-on-primary hover:bg-primary-hover'
+              : 'border border-outline-variant hover:bg-surface-container'"
+            @click="runExtra(action)"
+          >
+            <AppIcon :name="action.icon" class="h-4 w-4" />
+            {{ action.label }}
+          </button>
+        </div>
 
-        <button
-          type="button"
-          :disabled="busy || !targetGroup"
-          class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-4 text-sm hover:bg-surface-container"
-          @click="addToGroup"
-        >
-          <AppIcon name="package" class="h-4 w-4" />
-          افزودن به گروه
-        </button>
+        <template v-if="!simple">
+          <label class="sr-only" for="bulk-batch">{{ BATCH_TERMS.batch }} مقصد</label>
+          <select
+            id="bulk-batch"
+            v-model="targetBatch"
+            class="min-h-11 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-sm outline-none focus:border-primary"
+          >
+            <option value="">— {{ BATCH_TERMS.batch }} —</option>
+            <option v-for="b in batches" :key="b.id" :value="b.id">{{ b.name }}</option>
+          </select>
+
+          <button
+            type="button"
+            :disabled="busy || !targetBatch"
+            class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-outline-variant px-4 text-sm hover:bg-surface-container"
+            @click="addToBatch"
+          >
+            <AppIcon name="package" class="h-4 w-4" />
+            {{ BATCH_TERMS.addTo }}
+          </button>
+        </template>
 
         <button
           type="button"
@@ -314,6 +366,7 @@ onMounted(async () => {
         </button>
 
         <button
+          v-if="!simple"
           type="button"
           :disabled="busy"
           class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-on-primary hover:bg-primary-hover"

@@ -6,12 +6,30 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.8">
+    <!-- هم‌نسخه با EF زمان اجرای Web (10.0.10) و ابزار dotnet-ef در .config/dotnet-tools.json -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <!--
+      نسخهٔ EF صریح است چون Design (PrivateAssets=all) به پروژه‌های مصرف‌کننده نمی‌رسد و Npgsql فقط
+      EF ≥ 10.0.4 می‌خواهد؛ بدون این، پروژهٔ تست EF 10.0.4 می‌گرفت و با اسمبلیِ کامپایل‌شده روی 10.0.10 نمی‌خواند (CS1705).
+    -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.10" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.8" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
+    <!--
+      نوشتن فایل اکسل سند (spec E.6/E.7). ClosedXML 0.105.1 کتاب کار را می‌سازد و DocumentFormat.OpenXml (همان نسخه‌ای که
+      ClosedXML می‌خواهد: [3.1.1, 4.0.0) → 3.1.1) بعدش مقدار ذخیره‌شدهٔ دقیق خانه‌ها، پهنای دقیق ستون‌ها و fitToPage + scale را
+      می‌گذارد (CachedValueInjector) — کارهایی که ClosedXML خودش درست نمی‌نویسد.
+    -->
+    <PackageReference Include="ClosedXML" Version="0.105.1" />
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- تست‌های یکپارچه تصمیم دروازهٔ پشتیبانِ Migrator را مستقیم صدا می‌زنند -->
+    <InternalsVisibleTo Include="RugsManagment.IntegrationTests" />
   </ItemGroup>
 
   <PropertyGroup>

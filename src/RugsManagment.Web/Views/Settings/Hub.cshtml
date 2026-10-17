@@ -1,0 +1,54 @@
+@using RugsManagment.Web.Controllers.Settings
+@model IReadOnlyList<SettingsHubSection>
+@{
+    ViewData["Title"] = "تنظیمات";
+}
+
+@*
+    مرکز تنظیمات: کاشی‌ها از ISettingsLinkهای ثبت‌شده می‌آیند (Web/Settings/*.cs)، پس فازهای بعد صفحهٔ
+    تنظیم خودشان را با یک فایل لینک اضافه می‌کنند و این view دست نمی‌خورد.
+*@
+<div class="mx-auto max-w-5xl space-y-8">
+    <div>
+        <h1 class="text-2xl font-bold">تنظیمات</h1>
+        <p class="text-sm text-on-surface-variant">
+            همه‌چیزهایی که یک بار تنظیم می‌شوند تا کار روزانهٔ بازرگان ساده بماند.
+        </p>
+    </div>
+
+    @if (Model.Count == 0)
+    {
+        <div class="rounded-xl border border-dashed border-outline-variant bg-surface-container-lowest p-12 text-center">
+            <span class="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full bg-surface-container text-on-surface-variant">
+                <icon name="settings" class="h-7 w-7" />
+            </span>
+            <p class="font-medium text-on-surface">هنوز صفحهٔ تنظیمی ثبت نشده است</p>
+        </div>
+    }
+
+    @foreach (var hubGroup in Model)
+    {
+        var headingId = $"settings-group-{(int)hubGroup.Group}";
+        <section aria-labelledby="@headingId" class="space-y-3">
+            <h2 id="@headingId" class="text-sm font-semibold text-primary">@hubGroup.Label</h2>
+
+            <ul class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                @foreach (var link in hubGroup.Links)
+                {
+                    <li>
+                        <a href="@link.Href"
+                           class="flex h-full min-h-11 items-start gap-3 rounded-xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm transition hover:border-primary hover:shadow-md focus-visible:border-primary">
+                            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                                <icon name="@link.Icon" class="h-5 w-5" />
+                            </span>
+                            <span class="min-w-0">
+                                <span class="block font-semibold text-on-surface">@link.Title</span>
+                                <span class="mt-0.5 block text-sm text-on-surface-variant">@link.Description</span>
+                            </span>
+                        </a>
+                    </li>
+                }
+            </ul>
+        </section>
+    }
+</div>

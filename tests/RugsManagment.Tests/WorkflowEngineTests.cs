@@ -209,7 +209,7 @@ public class WorkflowEngineTests
         // قاعدهٔ سامانه: کارِ شروع‌شده تعهد ایجاد کرده، پس هزینه‌اش شمرده می‌شود.
         // دارکشی نرخ ثابت ۱۵۰٬۰۰۰ دارد و بعد از پیشبرد، «در حال انجام» است.
         var rug = await RugWithPath(_wash, _stretch);
-        rug.PurchaseCost = 1_000_000m;
+        rug.PurchaseLines.Add(PurchaseLine(1_000_000m));
 
         await _sut.AdvanceStepAsync(rug, Ordered(rug)[0].Id, Advance(manualCost: 250_000m));
 
@@ -247,7 +247,7 @@ public class WorkflowEngineTests
     public async Task CalculateRugCosts_EstimatedMargin_UsesTargetPrice()
     {
         var rug = await RugWithPath(_wash);
-        rug.PurchaseCost = 1_000_000m;
+        rug.PurchaseLines.Add(PurchaseLine(1_000_000m));
         rug.TargetSalePrice = 1_800_000m;
 
         await _sut.AdvanceStepAsync(rug, Ordered(rug)[0].Id, Advance(manualCost: 200_000m));
@@ -298,6 +298,87 @@ public class WorkflowEngineTests
         Assert.Equal(RugStatus.ReadyForSale, _sut.ResolveStatusFromWorkflow(rug));
     }
 
+    // ── قیمت‌گذاری مرحله: مبلغ دستی و انجام‌دهنده ──
+
+    /// <summary>درخواست قیمت‌گذاری با روش و نرخ صریح (فرش ۲×۳ = ۶ m²).</summary>
+    private static AdvanceStepRequest PriceAs(StepPricingModel model, decimal rate, bool complete = false)
+        => new(null, null, model, rate, null, null, null, complete);
+
+    [Fact]
+    public async Task Pricing_ModelWithoutClearFlag_KeepsTheManualOverride()
+    {
+        var rug = await RugWithPath(_wash);
+        var step = Ordered(rug)[0];
+        await _sut.UpdateStepPricingAsync(rug, step.Id, Advance(manualCost: 400_000m, complete: false));
+
+        // همان شکل درخواستی که تزریق نرخ توافقی و تکمیل گروهی می‌سازند
+        await _sut.UpdateStepPricingAsync(rug, step.Id, PriceAs(StepPricingModel.PerSquareMeter, 85_000m));
+
+        Assert.Equal(400_000m, step.ManualCostOverride);
+        Assert.Equal(400_000m, step.EffectiveCost);
+    }
+
+    [Fact]
+    public async Task Pricing_ClearManualOverride_ReturnsTheStepToTheChosenFormula()
+    {
+        var rug = await RugWithPath(_wash);
+        var step = Ordered(rug)[0];
+        await _sut.UpdateStepPricingAsync(rug, step.Id, Advance(manualCost: 400_000m, complete: false));
+
+        await _sut.AdvanceStepAsync(rug, step.Id,
+            PriceAs(StepPricingModel.PerSquareMeter, 85_000m, complete: true) with { ClearManualOverride = true });
+
+        Assert.Null(step.ManualCostOverride);
+        Assert.Equal(510_000m, step.CalculatedCost);
+        Assert.Equal(510_000m, step.EffectiveCost);
+        Assert.Equal(WorkflowStepStatus.Completed, step.Status);
+    }
+
+    [Fact]
+    public async Task Pricing_ANewManualAmountWinsOverTheClearFlag()
+    {
+        var rug = await RugWithPath(_wash);
+        var step = Ordered(rug)[0];
+
+        await _sut.UpdateStepPricingAsync(rug, step.Id,
+            Advance(manualCost: 250_000m, complete: false) with { ClearManualOverride = true });
+
+        Assert.Equal(250_000m, step.ManualCostOverride);
+        Assert.Equal(250_000m, step.EffectiveCost);
+    }
+
+    [Fact]
+    public async Task Provider_ClearFlag_UnassignsTheProvider_ButANullProviderAloneKeepsIt()
+    {
+        var providerId = Guid.NewGuid();
+        var rug = NewRug();
+        await _sut.BuildCustomWorkflowAsync(rug, [new CustomWorkflowStepRequest(_wash.Id, false, providerId, null)]);
+        var step = Ordered(rug)[0];
+
+        await _sut.UpdateStepPricingAsync(rug, step.Id, Advance(complete: false));
+        Assert.Equal(providerId, step.ServiceProviderId);
+
+        await _sut.AdvanceStepAsync(rug, step.Id, Advance(complete: true) with { ClearServiceProvider = true });
+        Assert.Null(step.ServiceProviderId);
+    }
+
+    [Fact]
+    public async Task Provider_AnExplicitProviderWinsOverTheClearFlag()
+    {
+        var rug = await RugWithPath(_wash);
+        var step = Ordered(rug)[0];
+        var providerId = Guid.NewGuid();
+
+        await _sut.UpdateStepPricingAsync(rug, step.Id,
+            new AdvanceStepRequest(providerId, null, null, null, null, null, null, false) with { ClearServiceProvider = true });
+
+        Assert.Equal(providerId, step.ServiceProviderId);
+    }
+
     private static List<RugWorkflowStep> Ordered(Rug rug)
         => rug.WorkflowSteps.OrderBy(s => s.OrderIndex).ToList();
+
+    /// <summary>سطر خرید «کل»؛ آزمون واحد پاس سازگاری ندارد، پس جمع درون‌حافظهٔ موتور مبلغش را حساب می‌کند.</summary>
+    private static RugPurchaseLine PurchaseLine(decimal rate)
+        => new() { Basis = CostBasis.Total, Rate = rate, Label = "purchase" };
 }
