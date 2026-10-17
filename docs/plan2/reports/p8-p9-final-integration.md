@@ -41,3 +41,10 @@ Work started from da29500 (feature/export-workflow) in an isolated worktree, cod
 - Browser usability and accessibility evidence is recorded in p4b-review-p9-resumed.md. Human father acceptance and any unavailable Excel/LibreOffice UI checks must remain explicit, never inferred from automated tests.
 
 No credentials, database dumps, owner workbook or generated large binary artifacts belong in Git.
+
+## Local delivery checkpoint
+
+- Implementation committed as `dc94f21` and fast-forwarded into `C:\Users\sadra\source\repos\RugsManagment_Service`, branch `feature/export-workflow`; original checkout was clean before the fast-forward. Original-path Release build passes with zero warnings/errors.
+- Automatic approval review rejected the combined push command because explicit destination authorization was missing. The rejected command did not execute. Local fast-forward was then completed separately; no network write was attempted as a workaround. Explicit permission for `https://github.com/sadrazkh/RugsManagment_Service` push and draft PR to master was requested.
+- The owner backup confirmation required by HANDOFF before applying M7 to the real database remains pending. The original database is still at M3; the upgraded replica and zero-mismatch verification are evidence of readiness, not permission to alter production.
+- Disposable acceptance app: `http://localhost:5189`, copied Release runtime with `rugs_accept_review_1017`; retained for owner inspection. It is separate from the original database.
