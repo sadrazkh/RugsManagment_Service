@@ -23,12 +23,15 @@
 }
 
 <div class="space-y-6">
-    <header class="flex flex-wrap items-end justify-between gap-2">
+    <header class="loom-welcome flex items-center gap-2">
         <div>
             <h1 class="text-2xl font-bold">سلام، @User.GetDisplayName()</h1>
             <p class="text-on-surface-variant" data-numeric>
                 امروز @PersianFormat.DateLong(DateTimeOffset.UtcNow)@(tenantName is null ? null : $" · {tenantName}")
             </p>
+        </div>
+        <div class="loom-welcome-art" aria-hidden="true">
+            <icon name="persian-medallion" />
         </div>
     </header>
 

@@ -100,7 +100,7 @@ html { overflow-x: clip; }
    * که در نمودار به سیاه می‌زند و نمی‌شود دو سری را از هم تشخیص داد.
    * این چهار رنگ از همان خانواده‌های رنگی برند مشتق و با اسکریپت اعتبارسنجی
    * بررسی شده‌اند: باند روشنایی، کف اشباع، جدایی کوررنگی (ΔE) و کنتراست ≥۳:۱ —
-   * در هر دو حالت روشن و تاریک پاس می‌شوند، پس یک مجموعه برای هر دو کافی است.
+   * نسخهٔ تاریک پایین‌تر همین خانواده‌ها را با روشنایی بیشتر نگه می‌دارد.
    * ترتیب اسلات‌ها ثابت است و هرگز چرخانده نمی‌شود.
    */
   --color-chart-1: #b3423a; /* روناسی — هم‌خانوادهٔ برند */
@@ -124,47 +124,51 @@ html { overflow-x: clip; }
  * ═══════════════════════════════════════════════════════════
  */
 .dark {
-  --color-surface: #14100f;
-  --color-surface-container-lowest: #1b1615;
-  --color-surface-container-low: #201a19;
-  --color-surface-container: #261f1e;
-  --color-surface-container-high: #2f2726;
-  --color-surface-container-highest: #3a3130;
-  --color-on-surface: #f0ebe9;
-  --color-on-surface-variant: #d4bcba;
-  --color-outline: #a08b89;
-  --color-outline-variant: #4a3b3a;
+  --color-surface: #121a20;
+  --color-surface-container-lowest: #152027;
+  --color-surface-container-low: #1a262e;
+  --color-surface-container: #202d35;
+  --color-surface-container-high: #28363f;
+  --color-surface-container-highest: #30404a;
+  --color-on-surface: #eee9de;
+  --color-on-surface-variant: #bdc6c9;
+  --color-outline: #86999f;
+  --color-outline-variant: #3d505a;
 
-  --color-primary: #ffb3ac;
-  --color-primary-container: #93000a;
-  --color-primary-hover: #ffd0cb;
-  --color-on-primary: #410003;
-  --color-on-primary-container: #ffdad6;
+  --color-primary: #e1b98d;
+  --color-primary-container: #513137;
+  --color-primary-hover: #efcda8;
+  --color-on-primary: #302212;
+  --color-on-primary-container: #f4dbd8;
 
-  --color-secondary: #e9c176;
-  --color-secondary-container: #5d4201;
-  --color-on-secondary: #261900;
-  --color-on-secondary-container: #ffdea5;
+  --color-secondary: #d8c28f;
+  --color-secondary-container: #3f3829;
+  --color-on-secondary: #292311;
+  --color-on-secondary-container: #ead9b3;
 
-  --color-tertiary: #bbc7db;
-  --color-tertiary-container: #3d4959;
-  --color-on-tertiary: #101c2b;
+  --color-tertiary: #a5c9bf;
+  --color-tertiary-container: #29453f;
+  --color-on-tertiary: #152e27;
 
-  --color-success: #a6d275;
-  --color-warning: #f0a760;
-  --color-error: #ffb4ab;
-  --color-on-error: #690005;
-  --color-error-container: #93000a;
-  --color-on-error-container: #ffdad6;
+  --color-success: #b1ca9c;
+  --color-warning: #e4be79;
+  --color-error: #eaa6a0;
+  --color-on-error: #3b171b;
+  --color-error-container: #502d30;
+  --color-on-error-container: #f5d8d3;
 
-  /*
-   * رنگ‌های نمودار در حالت تاریک عمداً همان‌ها می‌مانند: اعتبارسنجی نشان داد
-   * هر چهار رنگ روی سطح تاریک (#1b1615) هم باند روشنایی، اشباع، جدایی کوررنگی
-   * و کنتراست ≥۳:۱ را پاس می‌کنند. فقط شبکه باید تیره‌تر شود تا پس‌زمینه نماند.
-   */
-  --color-chart-grid: #4a3b3a;
+  /* همان خانواده‌های روناسی، طلایی، نیلی و سرو؛ روشن‌تر تا روی سطوح بالاآمده هم خوانا بمانند. */
+  --color-chart-1: #d87768;
+  --color-chart-2: #cfaa61;
+  --color-chart-3: #6a9ac0;
+  --color-chart-4: #8cad69;
+  --color-chart-grid: #3d505a;
+  --color-aging-warning: #e4be79;
+  --color-aging-serious: #e3a17e;
+  --color-aging-critical: #eaa6a0;
 
   color-scheme: dark;
+  scrollbar-color: var(--color-outline) var(--color-surface-container-lowest);
 }
 
 /*
@@ -198,6 +202,23 @@ html { overflow-x: clip; }
   body {
     /* خط‌فاصلهٔ بیشتر برای خط فارسی — طبق DESIGN.md حدود ۲۰٪ بالاتر */
     line-height: 1.75;
+  }
+
+  ::selection {
+    background: var(--color-primary-container);
+    color: var(--color-on-primary-container);
+  }
+
+  input,
+  select,
+  textarea {
+    accent-color: var(--color-primary);
+  }
+
+  .dark input:-webkit-autofill {
+    -webkit-text-fill-color: var(--color-on-surface);
+    caret-color: var(--color-on-surface);
+    box-shadow: 0 0 0 1000px var(--color-surface-container-lowest) inset;
   }
 
   /* اعداد هم‌عرض تا ستون‌های جدول هنگام تغییر مقدار تکان نخورند */
@@ -252,6 +273,70 @@ html { overflow-x: clip; }
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
+  }
+}
+
+/* نقش‌ها از همان اسپرایت آیکون‌اند: بدون تصویر بزرگ، حرکت یا تکرار پشت جدول‌های کاری. */
+.loom-welcome {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 7.5rem;
+  padding: 1.5rem;
+  padding-inline-end: 10rem;
+  border: 1px solid var(--color-outline-variant);
+  border-radius: 1rem;
+  background: linear-gradient(120deg, var(--color-surface-container-low), var(--color-surface-container-lowest));
+}
+
+.loom-welcome > div:first-child {
+  position: relative;
+  z-index: 1;
+}
+
+.loom-welcome-art {
+  position: absolute;
+  inset-inline-end: 0.75rem;
+  top: 50%;
+  translate: 0 -50%;
+  width: 10rem;
+  height: 10rem;
+  color: var(--color-primary);
+  opacity: 0.22;
+  pointer-events: none;
+}
+
+.loom-welcome-art svg {
+  width: 100%;
+  height: 100%;
+}
+
+.loom-sidebar-rule {
+  display: flex;
+  justify-content: center;
+  padding: 0.5rem 1.5rem 0.25rem;
+  color: var(--color-secondary);
+  opacity: 0.48;
+  pointer-events: none;
+}
+
+.loom-sidebar-rule svg {
+  width: 11rem;
+  height: 0.8rem;
+}
+
+@media (max-width: 639px) {
+  .loom-welcome {
+    min-height: 7rem;
+    padding: 1.125rem;
+    padding-inline-end: 5rem;
+  }
+
+  .loom-welcome-art {
+    inset-inline-end: -1.75rem;
+    width: 8rem;
+    height: 8rem;
+    opacity: 0.16;
   }
 }
 
@@ -328,6 +413,8 @@ html { overflow-x: clip; }
 
 /* هنگام چاپ برچسب، عناصر رابط کاربری حذف شوند */
 @media print {
+  .loom-welcome-art,
+  .loom-sidebar-rule,
   [data-no-print],
   aside,
   header,
