@@ -189,22 +189,27 @@ public sealed class ShipmentRepository : IShipmentRepository
 
     public async Task<IReadOnlyList<BaleData>> ListBalesAsync(Guid tenantId, Guid shipmentId, CancellationToken cancellationToken = default)
     {
+        // جمعِ خط‌ها پیش از اتصال به نگله محاسبه می‌شود؛ نگلهٔ خالی هم باقی می‌ماند و xmin وارد گروه‌بندی نمی‌شود.
         const string sql = """
-            SELECT b."Id", b."Number", b.xmin, b."WeightKg", b."Notes",
-                   count(x.line_id)::int,
-                   COALESCE(sum(x.q), 0)::int,
-                   COALESCE(sum(x.area), 0),
-                   COALESCE(sum(x.usd), 0)
-            FROM "Bales" b
-            LEFT JOIN (
-                SELECT l."Id" AS line_id, l."BaleId" AS bale_id, r."Quantity" AS q,
-                       COALESCE(v."LineAreaM2", r."AreaM2" * r."Quantity") AS area, v."LineUsd" AS usd
+            WITH totals AS (
+                SELECT l."BaleId" AS bale_id,
+                       count(*)::int AS lines,
+                       sum(r."Quantity")::int AS pieces,
+                       sum(COALESCE(v."LineAreaM2", r."AreaM2" * r."Quantity")) AS area,
+                       sum(v."LineUsd") AS usd
                 FROM "ShipmentLines" l
                 JOIN "Rugs" r ON r."Id" = l."RugId" AND r."DeletedAt" IS NULL
                 LEFT JOIN "ShipmentLineValues" v ON v."LineId" = l."Id"
-                WHERE l."TenantId" = @tenant AND l."ShipmentId" = @shipment) x ON x.bale_id = b."Id"
+                WHERE l."TenantId" = @tenant AND l."ShipmentId" = @shipment
+                GROUP BY l."BaleId")
+            SELECT b."Id", b."Number", b.xmin, b."WeightKg", b."Notes",
+                   COALESCE(x.lines, 0),
+                   COALESCE(x.pieces, 0),
+                   COALESCE(x.area, 0),
+                   COALESCE(x.usd, 0)
+            FROM "Bales" b
+            LEFT JOIN totals x ON x.bale_id = b."Id"
             WHERE b."TenantId" = @tenant AND b."ShipmentId" = @shipment
-            GROUP BY b."Id", b."Number", b.xmin, b."WeightKg", b."Notes"
             ORDER BY b."Number", b."Id"
             """;
 

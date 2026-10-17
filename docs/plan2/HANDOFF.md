@@ -1,6 +1,7 @@
 # Plan 2 handoff: «بستهٔ صادرات فرش» (export rug workflow)
 
 > **2026-10-18 import UX follow-up:** blockers now appear automatically with exact Excel/related row numbers, inline correction and explicit reversible row skipping. Decisions survive reopen/refresh, stay isolated by sheet and require a fresh preview before commit. Reconciliation uses included rows. No new migration. Release build clean; P8 API16/16, planner20/20, frontend566/566. CUA tested160-row duplicate case through skip, reload, unskip, correction and successful commit. See `reports/import-decisions-integration-20261018.md`.
+> **Pre-merge performance correction:** latest CI passed391/392 integration tests, with only the unchanged <200ms measurement assertion failing (best273ms). `ListBalesAsync` aggregated after joining headers and consumed250–260ms. Preaggregating active shipment lines by BaleId preserves empty bales/xmin/totals and reduces measurements to **36/35/37/36/37ms** locally (bale query16.2–18.0ms). Release warning-as-error build and all **13 P4a integration tests** pass; finalize/reopen still16/17 SQL commands. No test limit or database setting was relaxed. Owner explicitly requested merging PR#1 to master; merge follows successful CI on this correction.
 
 > **2026-10-17 continuation — this status supersedes the historical WIP status below.**
 > P4b/P5/P6-wiring/P7/P8/P9 implementation is complete in `codex/finish-export-workflow`, based on `da29500`.
